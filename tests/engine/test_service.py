@@ -156,7 +156,7 @@ def test_empty_batch_is_empty(analyzer: Analyzer):
 
 @pytest.mark.data
 @pytest.mark.slow
-@pytest.mark.parametrize(("batch_size", "low", "high"), [(None, 0.08, 0.12), (32, 0.07, 0.13)])
+@pytest.mark.parametrize(("batch_size", "low", "high"), [(None, 0.09, 0.11), (32, 0.08, 0.12)])
 def test_default_threshold_flags_about_ten_percent_of_the_validation_set(
     analyzer: Analyzer, settings: Settings, batch_size, low, high
 ):
