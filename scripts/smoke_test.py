@@ -280,12 +280,21 @@ def check_logs(logs: str) -> dict[str, bool]:
 
 
 def run_bench(
-    image: str, name: str, cpus: float, memory: str, sentences: Path, n: int, xai: int
+    image: str,
+    name: str,
+    cpus: float,
+    memory: str,
+    sentences: Path,
+    n: int,
+    xai: int,
+    batch_size: int | None,
 ) -> dict:
     """1.000 câu end-to-end trong container riêng cùng giới hạn; bộ nhớ đỉnh do bench tự đọc."""
     container = Container(name, image, cpus, memory)
     command = ("python", "-m", "edupulse.engine.bench", "--input", "/tmp/sentences.txt")
     command += ("--n", str(n), "--xai", str(xai), "--json")
+    if batch_size is not None:
+        command += ("--batch-size", str(batch_size))
     try:
         container.start(*command, mounts=(f"{sentences}:/tmp/sentences.txt:ro",))
         exit_code = int(docker("wait", name, timeout=1800).strip())
@@ -354,7 +363,14 @@ def run_scenario(
         probe_logged_content(base, texts[0])
         bench_name = f"{server.name}-bench"
         result["bench"] = run_bench(
-            args.image, bench_name, cpus, args.memory, bench_file, args.n, args.xai
+            args.image,
+            bench_name,
+            cpus,
+            args.memory,
+            bench_file,
+            args.n,
+            args.xai,
+            args.bench_batch_size,
         )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
         result["checks"].update(check_logs("".join(server.logs())))
@@ -546,9 +562,11 @@ def render_markdown(report: dict) -> str:
     if bench and "error" not in bench:
         steps = [[step, seconds] for step, seconds in bench.get("steps_s", {}).items()]
         steps.append(["tổng", bench["total_s"]])
-        lines += ["", "## Bench 1.000 câu trong container riêng", ""] + table(
-            ["Bước", "Giây"], steps
+        batch = bench.get("batch_size")
+        title = "## Bench 1.000 câu trong container riêng" + (
+            "" if batch is None else f" (lô ONNX {batch})"
         )
+        lines += ["", title, ""] + table(["Bước", "Giây"], steps)
         lines += [
             "",
             f"RSS cuối {bench.get('rss_mb', '-')} MB;"
@@ -618,6 +636,7 @@ def parse_args(settings: Settings) -> argparse.Namespace:
     add("--sentences", help="file mỗi dòng một câu; mặc định lấy tập val đã xử lý")
     add("--n", type=int, default=1000, help="số câu của bench")
     add("--xai", type=int, default=20, help="số câu được giải thích tự động")
+    add("--bench-batch-size", type=int, help="lô ONNX của bench; 1 = từng câu một (tham khảo)")
     add("--repeat", type=int, default=30, help="số lần lặp mỗi phép đo độ trễ")
     add("--tag", default=arch, help="hậu tố kiến trúc trong tên file báo cáo")
     add("--out-dir", type=Path, default=REPO_ROOT / "results" / "perf")

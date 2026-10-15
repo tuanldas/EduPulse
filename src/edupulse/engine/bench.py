@@ -24,7 +24,13 @@ def read_sentences(path: Path, limit: int) -> list[str]:
     return [line.strip() for line in lines if line.strip()][:limit]
 
 
-def measure(analyzer: Analyzer, texts: Sequence[str], xai_rows: int, budget_pct: float) -> dict:
+def measure(
+    analyzer: Analyzer,
+    texts: Sequence[str],
+    xai_rows: int,
+    budget_pct: float,
+    batch_size: int | None = None,
+) -> dict:
     """Chạy một batch như job thật và trả thời gian (giây) từng bước."""
     steps: dict[str, float] = {}
 
@@ -35,7 +41,7 @@ def measure(analyzer: Analyzer, texts: Sequence[str], xai_rows: int, budget_pct:
     prepared = [p for p in prepared if p.n_words]
 
     started = time.perf_counter()
-    analyses = analyzer.infer(prepared)
+    analyses = analyzer.infer(prepared, batch_size=batch_size)
     steps["predict"] = time.perf_counter() - started
 
     started = time.perf_counter()
@@ -55,6 +61,7 @@ def measure(analyzer: Analyzer, texts: Sequence[str], xai_rows: int, budget_pct:
         "n": len(texts),
         "skipped_no_content": skipped,
         "budget_pct": budget_pct,
+        "batch_size": batch_size,
         "flagged": sum(a.flag.needs_review for a in analyses),
         "xai_rows": len(candidates),
         "xai_forwards": forwards,
@@ -70,6 +77,7 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--n", type=int, default=1000, help="số câu đo")
     parser.add_argument("--xai", type=int, default=AUTO_XAI_TOP, help="số câu giải thích tự động")
     parser.add_argument("--budget", type=float, default=DEFAULT_BUDGET, help="ngân sách duyệt, %%")
+    parser.add_argument("--batch-size", type=int, help="kích thước lô ONNX; 1 = từng câu một")
     parser.add_argument("--json", action="store_true", help="in một dòng JSON ra stdout")
     return parser.parse_args(argv)
 
@@ -90,7 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
 
-    result = measure(analyzer, texts, args.xai, args.budget)
+    result = measure(analyzer, texts, args.xai, args.budget, args.batch_size)
     result.update(
         load_s=round(load_s, 2),
         rss_mb=current_rss_mb(),

@@ -50,6 +50,15 @@ def test_one_sentence_gives_the_same_numbers_by_every_route(analyzer: Analyzer, 
     assert single.score == batched.score
 
 
+def test_batch_size_one_reproduces_single_sentence_results_exactly(analyzer: Analyzer, typed_texts):
+    # Int8 động làm kết quả phụ thuộc bạn cùng lô; lô 1 là chế độ tất định khớp analyze và golden.
+    batched = analyzer.analyze_many(typed_texts, batch_size=1)
+    for text, analysis in zip(typed_texts, batched, strict=True):
+        single = analyzer.analyze(text)
+        assert (analysis.sentiment, analysis.topic) == (single.sentiment, single.topic), text
+        assert analysis.score == single.score
+
+
 def test_single_sentence_is_flagged_exactly_when_below_the_default_budget_threshold(
     analyzer: Analyzer, texts
 ):

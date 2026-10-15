@@ -115,10 +115,15 @@ class Analyzer:
         return prepare_many(texts, use_ner=self._use_ner)
 
     def infer(
-        self, prepared: Sequence[Prepared], progress: Callable[[int, int], None] | None = None
+        self,
+        prepared: Sequence[Prepared],
+        progress: Callable[[int, int], None] | None = None,
+        batch_size: int | None = None,
     ) -> list[Analysis]:
         """Dự đoán và điểm cờ từng câu, chưa quyết định cờ; `progress(xong, tổng)` sau mỗi lô.
 
+        Int8 động làm kết quả một câu phụ thuộc nhẹ vào bạn cùng lô. `batch_size=1` cho đúng kết
+        quả của `analyze` và của lúc hiệu chỉnh (chậm hơn vài lần); mặc định dùng lô của mô hình.
         Ném `NoContent` (kèm chỉ số các dòng) nếu có câu không còn từ nào để phân tích.
         """
         empty = [i for i, p in enumerate(prepared) if p.n_words == 0]
@@ -127,6 +132,7 @@ class Analyzer:
         total = len(prepared)
         logits = self._model.predict(
             [p.model_text for p in prepared],
+            batch_size=batch_size,
             progress=None if progress is None else lambda done: progress(done, total),
         )
         calibration = self.bundle.calibration
@@ -182,8 +188,10 @@ class Analyzer:
         texts: Sequence[str],
         budget_pct: float = DEFAULT_BUDGET,
         progress: Callable[[int, int], None] | None = None,
+        batch_size: int | None = None,
     ) -> list[Analysis]:
-        return self.flag(self.infer(self.prepare_many(texts), progress), budget_pct)
+        prepared = self.prepare_many(texts)
+        return self.flag(self.infer(prepared, progress, batch_size), budget_pct)
 
     def explain_prepared(self, prepared: Prepared) -> Explanation:
         if prepared.n_words == 0:
