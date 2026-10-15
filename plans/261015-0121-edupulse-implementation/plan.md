@@ -64,6 +64,13 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - [ ] PDR 7: trang 4 đủ model card, disclaimer, bảng từng lớp, CheckList, quyền riêng tư (tên: best effort + disclaimer); nhóm của file mẫu mang nhãn "dữ liệu minh hoạ".
 - [ ] Dữ liệu: repo, bundle, HF không chứa câu gốc UIT-VSFC (guard `build_artifacts`; chỉ ≤30 câu ví dụ trong `results/`); HF lỗi lúc build → demo ẩn kèm thông báo, build không fail.
 
+## Nhật ký mốc
+### M1 — 2026-10-15 (sớm 2 ngày so với kế hoạch): ĐẠT CÓ ĐIỀU KIỆN
+- Bundle `v0-smoke`: PhoBERT MTL seed 42, int8 `ffn_out_early6_fp32+heads_fp32` (333MB), chọn qua 2 vòng tìm kiếm đăng ký trước (`results/metrics/onnx_gate_search.json`). Val (batch=1): cảm xúc 94,8 / 85,3, chủ đề 89,8 / 81,0 (acc / mF1); LinearSVC mF1 78,1 / 76,4. Phục vụ từng câu ở mọi đường (int8 động phụ thuộc lô).
+- Smoke chính thức (`results/perf/smoke-2026-10-15-arm64.md`, container 2 CPU/1,5GB): RAM đỉnh 618MB, khởi động 2,3 s, 1.000 câu 27,3 s, API/log sạch: ĐẠT. 1 câu + giải thích p95 1,09 s > 0,6 s: TRƯỢT. Nguyên nhân: phần FP32 chạy chậm ~2,9× trong VM Docker trên Mac (trên máy thật ~1,3×), chưa có số x86.
+- Người dùng chọn phương án A: nhãn hiện ngay, giải thích tải sau; `XAI_MAX_WORDS` mặc định 25 (phủ ~90% câu val, chỉnh bằng env), chốt sau khi đo trên VPS (phase 9). Tiêu chí PDR 5 tách: nhãn p95 ≤0,5 s, giải thích p95 ≤2 s. Giữ nguyên cấu hình lượng tử hoá (đạt cổng chất lượng).
+- Sửa lỗi phát hiện ở M1: token id ngoài bảng embedding (≥64001) → `<unk>`; giải thích chạy lô 1 để nhất quán với nhãn.
+
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
 2. Chấp nhận mốc smoke 17/10 (muộn nhất sáng 18/10) thay cho "ngày 2–3"? Smoke vẫn trước mọi việc UI (xem Unresolved contradictions).
