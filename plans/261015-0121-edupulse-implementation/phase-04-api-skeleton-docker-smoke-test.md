@@ -10,6 +10,8 @@ depends_on: [1, 3]  # phần A chỉ cần 1; phần B cần artifacts/v0-smoke 
 # Phase 4: API skeleton, Docker, smoke test giới hạn tài nguyên
 <!-- Updated: Validation Session 1–2 - depends_on [1, 3] (F17); engine dùng `scoring.py`, bỏ `engine/calibration.py` (F11); test golden 20 câu tự viết thay test theo demo (F8); `artifacts/<version>/` qua build-arg (F8); tắt access log, log theo route template (F4); ngưỡng 1.000 câu gồm auto-XAI ≤30 s (F15); smoke từ chối đo khi khoá MPS đang giữ, không build Docker khi train (F14); mốc dừng M1; lịch smoke mục tiêu 17/10 -->
 
+<!-- Updated: Session 4 (lead, môi trường) - bundle vào image qua --build-context artifacts, không COPY từ repo -->
+
 ## Context links
 - [r6 kiến trúc](./research/researcher-02-architecture.md): §1 topology 1 origin (L3–15); §5 bẫy Next export (L46); §6 dev không rewrites (L63); §7 endpoint + quy tắc vận hành (L64–79, nhất là L78).
 - [r2 deploy](../reports/researcher-261014-1913-hf-spaces-streamlit-deploy.md): JRE trong `python:3.12-slim` đã kiểm (L27); số đo + ước lượng x86 (L38–47); Dockerfile mẫu (L66–79).
@@ -34,7 +36,7 @@ depends_on: [1, 3]  # phần A chỉ cần 1; phần B cần artifacts/v0-smoke 
 - Tài nguyên độc quyền (F14): không build/chạy Docker trong lúc run MPS của phase 3 (12 phút); `smoke_test.py` từ chối đo khi `outputs/.mps.lock` đang bị giữ.
 - VPS 2GB còn ~1,5GB cho container sau OS + dockerd ⇒ smoke chạy `--cpus=2 --memory=1536m --memory-swap=1536m`. Docker Desktop đang tắt: bật khi không train, cấp VM ≥4GB RAM / ≥4 CPU.
 - Kịp mốc: nếu run 4 epoch chưa xong, export checkpoint epoch 1 (model đã fine-tune thật, không phải model giả) để đo RAM/latency; đo lại với bundle đầy đủ khi có.
-- Bundle theo phiên bản: `docker build --build-arg BUNDLE_VERSION=v0-smoke` → `COPY artifacts/${BUNDLE_VERSION}/ /app/artifacts/`, `EDUPULSE_ARTIFACTS_DIR=/app/artifacts` (F8).
+- Bundle theo phiên bản (Session 4: bundle nằm ở `$EDUPULSE_HOME`, ngoài repo): `make docker-build BUNDLE_VERSION=v0-smoke IMAGE=edupulse:smoke` truyền `--build-context artifacts=<bundle_dir>` → Dockerfile `COPY --from=artifacts . /app/artifacts/`, `EDUPULSE_ARTIFACTS_DIR=/app/artifacts` (F8). Không COPY file nặng từ repo.
 - Dev: `next dev` :3000 + uvicorn :8000, CORS bật bằng env, `NEXT_PUBLIC_API_BASE`; KHÔNG rewrites (r6 L63). `next dev` tự sinh `AGENTS.md` (tắt `agentRules:false`); font Google tải lúc build ⇒ build cần mạng (r6 L46).
 
 ## Requirements
@@ -56,7 +58,7 @@ POST /api/explain {text}  (gọi song song để kết quả hiện trước)
 log: access_log middleware → "POST /api/analyze 200 412ms" (không nội dung, không query)
 ```
 Smoke test (ghi `results/perf/smoke-<ngày>-arm64.{json,md}`; từ chối chạy nếu khoá MPS đang giữ):
-1. `docker build --build-arg BUNDLE_VERSION=v0-smoke -t edupulse:smoke .`; ghi kích thước image.
+1. `make docker-build BUNDLE_VERSION=v0-smoke IMAGE=edupulse:smoke` (BuildKit `--build-context artifacts=…`); ghi kích thước image.
 2. `docker run -d --cpus=2 --memory=1536m --memory-swap=1536m -p 8000:8000 edupulse:smoke`; đo thời gian tới `/api/health` 200.
 3. `docker cp` file 1.000 câu val thật (tải local, không commit) → `docker exec … python -m edupulse.engine.bench --n 1000 --xai 20`: thời gian từng bước + tổng end-to-end; đọc `memory.peak` của cgroup v2.
 4. Từ host: 30 lần `/api/analyze` + `/api/explain` (câu ≤40 từ) → p50/p95; lặp lại khi bench đang chạy (độ trễ chen ngang).
