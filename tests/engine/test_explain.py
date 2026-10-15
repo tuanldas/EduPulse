@@ -12,6 +12,7 @@ from edupulse.engine.explain import (
     ExplanationUnavailable,
     _explain_head,
     display_token,
+    is_punctuation,
 )
 from edupulse.engine.service import Analyzer
 from edupulse.scoring import CDF_POINTS, softmax_t
@@ -53,6 +54,21 @@ def test_display_token_inverts_what_the_normalizer_produces():
     shown = " ".join(display_token(token) for token in model_text.split())
     for symbol in (":)", "3.0", "uit.edu.vn", ":("):
         assert symbol in shown
+
+
+@pytest.mark.parametrize(
+    "token", [",", ".", "!", "?", ";", "(", ")", '"', "-", "%", "doubledot", "dotdotdot"]
+)
+def test_punctuation_tokens_are_recognised(token):
+    assert is_punctuation(token)
+
+
+@pytest.mark.parametrize(
+    "token",
+    ["thầy", "giảng_viên", "wzjwz1", "colonsmile", "colonsad", "vdotv", "3dot0", "50%", "a,"],
+)
+def test_words_names_emoticons_and_numbers_are_not_punctuation(token):
+    assert not is_punctuation(token)
 
 
 def _head_calibration(temperature: float = 1.0) -> HeadCalibration:
@@ -118,16 +134,37 @@ def test_single_token_sentence_has_one_effect():
     assert len(head.tokens) == 1 and head.support == (0,)
 
 
+def test_tokens_that_are_not_occluded_have_zero_effect_and_are_never_selected():
+    # Câu "a , b": chỉ che từ 0 và 2; dấu phẩy (vị trí 1) không được chạy lại.
+    logits = _logits_with_drops([2.0, 2.0])
+    head = _explain_head("sentiment", logits, _head_calibration(), ["a", ",", "b"], occluded=[0, 2])
+    comma = head.tokens[1]
+    assert comma.delta == 0.0 and comma.p_without == pytest.approx(head.probability)
+    assert head.tokens[0].delta > MIN_EFFECT and head.tokens[2].delta > MIN_EFFECT
+    assert head.support == (0, 2)
+
+
+def test_a_sentence_of_only_punctuation_has_nothing_to_occlude():
+    head = _explain_head(
+        "sentiment", _logits_with_drops([]), _head_calibration(), ["!", "?"], occluded=[]
+    )
+    assert [t.delta for t in head.tokens] == [0.0, 0.0]
+    assert head.support == () and head.oppose == ()
+
+
 # --- Trên mô hình thật --------------------------------------------------------------------------
 
 
 @pytest.mark.model
-def test_occlusion_runs_n_plus_one_forwards_and_explains_both_heads(analyzer: Analyzer):
+def test_occlusion_runs_one_forward_per_non_punctuation_word_plus_the_sentence(analyzer: Analyzer):
     text = "Thầy giảng bài [đã gỡ câu UIT-VSFC] :)"
     prepared = prepare(text, use_ner=False)
+    tokens = prepared.model_text.split()
+    words = [t for t in tokens if not is_punctuation(t)]
+    assert len(words) < len(tokens), "câu thử phải có dấu câu để kiểm tra việc bỏ qua"
     explanation = analyzer.explain_prepared(prepared)
 
-    assert explanation.n_forwards == prepared.n_words + 1
+    assert explanation.n_forwards == len(words) + 1
     for head in (explanation.sentiment, explanation.topic):
         assert len(head.tokens) == prepared.n_words
         assert 0.0 < head.probability <= 1.0
@@ -135,10 +172,29 @@ def test_occlusion_runs_n_plus_one_forwards_and_explains_both_heads(analyzer: An
         assert all(0 <= i < prepared.n_words for i in head.support + head.oppose)
         assert all(head.tokens[i].delta >= MIN_EFFECT for i in head.support)
         assert all(head.tokens[i].delta <= -MIN_EFFECT for i in head.oppose)
-        assert all(
-            t.p_without == pytest.approx(head.probability - t.delta, abs=1e-6) for t in head.tokens
-        )
+        for token, effect in zip(tokens, head.tokens, strict=True):
+            if is_punctuation(token):
+                assert effect.delta == 0.0
+            assert effect.p_without == pytest.approx(head.probability - effect.delta, abs=1e-6)
+        selected = {tokens[i] for i in head.support + head.oppose}
+        assert not any(is_punctuation(t) for t in selected)
     assert ":)" in [t.text for t in explanation.sentiment.tokens]
+
+
+@pytest.mark.model
+def test_explanation_reproduces_the_analyze_prediction_exactly(analyzer: Analyzer):
+    # Câu đầy đủ chạy lô 1 như analyze nên nhãn và xác suất giống hệt (không lệch theo bạn cùng lô).
+    for text in (
+        "Thầy giảng bài rất dễ hiểu, em rất thích.",
+        "Phòng học nóng, máy chiếu mờ và micro thường xuyên bị rè nên rất khó nghe.",
+        "Môn này có hai bài kiểm tra giữa kỳ và một bài thi cuối kỳ.",
+    ):
+        analysis = analyzer.analyze(text)
+        explanation = analyzer.explain(text)
+        assert explanation.sentiment.label == analysis.sentiment.label
+        assert explanation.sentiment.probability == analysis.sentiment.confidence
+        assert explanation.topic.label == analysis.topic.label
+        assert explanation.topic.probability == analysis.topic.confidence
 
 
 @pytest.mark.model
@@ -165,4 +221,6 @@ def test_sentence_at_the_limit_is_still_explained(analyzer: Analyzer):
     words = ["rất"] * (XAI_MAX_WORDS - 2) + ["hay", "."]
     prepared = prepare(" ".join(words), use_ner=False)
     assert prepared.n_words <= XAI_MAX_WORDS
-    assert analyzer.explain_prepared(prepared).n_forwards == prepared.n_words + 1
+    tokens = prepared.model_text.split()
+    expected = sum(not is_punctuation(t) for t in tokens) + 1
+    assert analyzer.explain_prepared(prepared).n_forwards == expected
