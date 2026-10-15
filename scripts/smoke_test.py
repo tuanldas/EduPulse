@@ -597,6 +597,12 @@ def render_markdown(report: dict) -> str:
             f"RSS cuối {bench.get('rss_mb', '-')} MB;"
             f" cgroup memory.peak {bench.get('cgroup_memory_peak_mb', '-')} MB.",
         ]
+        throttle = bench.get("cgroup_cpu_throttle")
+        if throttle:
+            lines.append(
+                f"Giới hạn CPU (CFS): bị cắt {throttle['throttled']}/{throttle['periods']} chu kỳ,"
+                f" tổng {throttle['throttled_s']} s."
+            )
     elif bench:
         lines += [
             "",
