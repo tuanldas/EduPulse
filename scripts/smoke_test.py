@@ -395,6 +395,21 @@ def read_sentences(args: argparse.Namespace, settings: Settings) -> list[str]:
     return sentences
 
 
+_SIZE_UNITS = {"B": 1, "kB": 1e3, "MB": 1e6, "GB": 1e9}
+
+
+def image_layers_mb(image: str) -> int:
+    """Tổng dung lượng các lớp chưa nén (MB). `docker image inspect .Size` của kho containerd cộng
+    cả bản nén lưu trong kho nên lớn gấp rưỡi con số người dùng tải về hay thấy trên đĩa."""
+    total = 0.0
+    for size in docker("history", "--format", "{{.Size}}", image).split():
+        match = re.fullmatch(r"([\d.]+)([kMG]?B)", size)
+        if match is None:
+            raise SmokeError(f"Không hiểu dung lượng lớp {size!r} của {image}")
+        total += float(match.group(1)) * _SIZE_UNITS[match.group(2)]
+    return round(total / 1e6)
+
+
 def build_image(args: argparse.Namespace) -> dict:
     started = time.monotonic()
     if not args.skip_build:
@@ -403,12 +418,11 @@ def build_image(args: argparse.Namespace) -> dict:
         built = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, timeout=3600)
         if built.returncode != 0:
             raise SmokeError(f"make docker-build lỗi:\n{(built.stdout + built.stderr)[-1500:]}")
-    size = docker("image", "inspect", "-f", "{{.Size}}", args.image, check=False).strip()
-    if not size.isdigit():
+    if not docker("image", "inspect", "-f", "{{.Id}}", args.image, check=False).strip():
         raise SmokeError(f"Không thấy image {args.image}; bỏ --skip-build hoặc `make docker-build`")
     return {
         "tag": args.image,
-        "size_mb": round(int(size) / 1048576),
+        "size_mb": image_layers_mb(args.image),
         "build_s": None if args.skip_build else round(time.monotonic() - started, 1),
     }
 
@@ -507,7 +521,8 @@ def render_markdown(report: dict) -> str:
     ]
     if image:
         lines.append(
-            f"- Image `{image['tag']}`: {image['size_mb']} MB; dựng mất {image['build_s']} s"
+            f"- Image `{image['tag']}`: {image['size_mb']} MB (tổng các lớp, chưa nén);"
+            f" dựng mất {image['build_s']} s"
         )
     limits = f"--cpus={gate.get('cpus', '-')} --memory={gate.get('memory', '-')}"
     lines += [f"- Giới hạn đo chính: `{limits}`, không swap", "", "## Bảng go/no-go", ""]
