@@ -22,6 +22,11 @@ from edupulse.labels import SENTIMENT, TOPIC
 # Mỗi lần gọi chỉ vài chục câu: song song hoá của tokenizers tốn hơn lợi và tranh CPU với ORT.
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
+# ORT gửi sự kiện sử dụng về Microsoft ở một số nền tảng. Tắt trước khi tạo session đầu tiên: dữ
+# liệu của sinh viên không được rời máy chủ, và khi mạng chặn thì bước xả sự kiện lúc thoát tiến
+# trình có thể quay vòng chiếm CPU hàng chục phút (đã gặp trên macOS).
+ort.disable_telemetry_events()
+
 DEFAULT_BATCH_SIZE = 32
 WARMUP_TEXT = "xin chào"
 
