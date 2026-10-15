@@ -51,6 +51,7 @@ from ml.phobert_model import (
     MAX_LEN,
     PAD_ID,
     MultiHeadPhoBERT,
+    encode_ids,
     head_sizes,
     load_pretrained,
     load_tokenizer,
@@ -76,10 +77,6 @@ def keep_awake() -> subprocess.Popen[bytes] | None:
     if platform.system() != "Darwin" or shutil.which("caffeinate") is None:
         return None
     return subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
-
-
-def encode(tokenizer: Any, texts: list[str]) -> list[list[int]]:
-    return [encoding.ids for encoding in tokenizer.encode_batch(texts)]
 
 
 def pad_batch(
@@ -176,8 +173,9 @@ def train(args: argparse.Namespace, run_dir: Path, device_name: str) -> dict[str
     if args.limit:
         train_df, val_df = train_df.head(args.limit), val_df.head(max(args.limit // 2, 8))
     tokenizer = load_tokenizer(args.max_len)
-    train_ids = encode(tokenizer, train_df["text_rdr"].tolist())
-    val_ids = encode(tokenizer, val_df["text_rdr"].tolist())
+    # encode_ids đổi mảnh BPE ngoài bảng embedding (id >= 64.001) thành <unk> như tokenizer gốc.
+    train_ids = encode_ids(tokenizer, train_df["text_rdr"].tolist())
+    val_ids = encode_ids(tokenizer, val_df["text_rdr"].tolist())
     lengths = [len(s) for s in train_ids]
     targets = {t: torch.tensor(train_df[t].to_numpy()) for t in tasks}
     val_targets = {t: val_df[t].to_numpy() for t in tasks}

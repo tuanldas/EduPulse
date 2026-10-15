@@ -53,7 +53,7 @@ from ml.common import (
     write_json,
 )
 from ml.download_data import DATASET_REPO, load_raw_manifest
-from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, QUANTIZATION
+from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, unk_alias_gap
 from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
 from ml.train_baseline import load_model
 
@@ -254,12 +254,36 @@ def verify_bundle(bundle_dir: Path) -> Manifest:
         raise BundleError("tên đầu vào ONNX lệch manifest")
     if tuple(o.name for o in session.get_outputs()) != tuple(manifest.onnx.output_names):
         raise BundleError("tên đầu ra ONNX lệch manifest")
+    spec = manifest.onnx
+    if spec.embedding_rows > spec.base_vocab_size:
+        # Hàng embedding thừa phải hành xử y như <unk>: id cuối bảng cho logits giống id <unk>.
+        gap = unk_alias_gap(session, spec.embedding_rows, spec.unk_id)
+        if gap > 1e-5:
+            raise BundleError(
+                f"id {spec.embedding_rows - 1} không hành xử như <unk> (lệch {gap:.2e})"
+            )
     for name in BASELINE_FILES:
         load_model(bundle_dir / name)
     return manifest
 
 
-def build(version: str, run: Path, stage: str, force: bool) -> Path:
+def require_passed_gate(gate: dict[str, Any], run: Path, allow_failed: bool) -> dict[str, Any]:
+    """Cổng int8 của đúng run này phải qua trước khi đóng gói; trả về mục `embedding`."""
+    if gate.get("run") != run.name:
+        raise BundleError(f"onnx_gate.json là của run {gate.get('run')!r}, không phải {run.name!r}")
+    if gate.get("normalizer_version") != NORMALIZER_VERSION:
+        raise BundleError("onnx_gate.json sinh bởi bản chuẩn hoá khác — chạy lại `make export`")
+    if not gate["gate"]["passed"] and not allow_failed:
+        raise BundleError(
+            "cổng int8 chưa qua (xem onnx_gate.json); chỉ dùng --allow-failed-gate cho bundle thử "
+            "đường ống, không để báo số"
+        )
+    return gate["embedding"]
+
+
+def build(
+    version: str, run: Path, stage: str, force: bool, allow_failed_gate: bool = False
+) -> Path:
     target = settings().artifacts_dir(version)
     if target.exists() and not force:
         raise BundleError(
@@ -269,11 +293,14 @@ def build(version: str, run: Path, stage: str, force: bool) -> Path:
     calibration_path = settings().outputs_dir / "calibration" / run.name / "calibration.json"
     for needed in (
         onnx_dir / "model.int8.onnx",
+        onnx_dir / "onnx_gate.json",
         calibration_path,
         onnx_dir / "val_logits_int8.npz",
     ):
         if not needed.is_file():
             raise BundleError(f"thiếu {needed} — chạy `make export calibrate`")
+    gate = read_json(onnx_dir / "onnx_gate.json")
+    embedding = require_passed_gate(gate, run, allow_failed_gate)
 
     history = read_json(run / "history.json")
     calibration = Calibration.model_validate_json(calibration_path.read_text("utf-8"))
@@ -324,7 +351,10 @@ def build(version: str, run: Path, stage: str, force: bool) -> Path:
                 input_names=INPUT_NAMES,
                 output_names=tuple(OUTPUT_NAMES[t] for t in TASKS),
                 pad_id=PAD_ID,
-                quantization=QUANTIZATION,
+                quantization=gate["quantization"],
+                base_vocab_size=embedding["base_vocab_size"],
+                unk_id=embedding["unk_id"],
+                embedding_rows=embedding["embedding_rows"],
             ),
             files={name: sha256_file(staging / name) for name in BUNDLE_FILES},
             dataset=DatasetInfo(
@@ -356,6 +386,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--stage", choices=["smoke", "release"], help="mặc định: smoke nếu tên có 'smoke'"
     )
     parser.add_argument("--force", action="store_true", help="ghi đè bundle cùng phiên bản")
+    parser.add_argument(
+        "--allow-failed-gate",
+        action="store_true",
+        help="đóng gói dù cổng int8 chưa qua (chỉ để thử đường ống, không báo số)",
+    )
     return parser
 
 
@@ -363,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     stage = args.stage or ("smoke" if "smoke" in args.version else "release")
     try:
-        target = build(args.version, resolve_run(args.run), stage, args.force)
+        target = build(
+            args.version, resolve_run(args.run), stage, args.force, args.allow_failed_gate
+        )
     except BundleError as error:
         print(f"{LOG_PREFIX}: {error}", file=sys.stderr)
         return 1
