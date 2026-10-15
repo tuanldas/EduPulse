@@ -31,3 +31,6 @@ apps/web/test-results/
 .DS_Store
 .idea/
 .vscode/
+
+# Git worktree của các agent chạy song song
+/.claude/worktrees/
