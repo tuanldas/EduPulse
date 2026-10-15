@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -21,9 +22,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from edupulse.api.access_log import AccessLogMiddleware
 from edupulse.api.errors import http_error_handler, install_error_handlers
 from edupulse.api.paths import is_api_path
-from edupulse.api.routes import meta
+from edupulse.api.routes import analyze, meta
 from edupulse.api.security_headers import SecurityHeadersMiddleware
 from edupulse.config import Settings, load_settings
+from edupulse.engine.service import Analyzer
 
 logger = logging.getLogger("edupulse.api")
 
@@ -39,22 +41,20 @@ def _configure_logging() -> None:
     root.setLevel(logging.INFO)
 
 
-def _require_bundle(settings: Settings) -> None:
-    """Dừng ngay lúc khởi động, kèm hướng dẫn, nếu chưa có bundle mô hình."""
-    manifest = settings.bundle_dir / "manifest.json"
-    if not manifest.is_file():
-        raise RuntimeError(
-            f"Không tìm thấy bundle mô hình: thiếu {manifest}. Tạo bằng `make artifacts` hoặc "
-            "tải bằng `make fetch-artifacts`, rồi đặt BUNDLE_VERSION hoặc EDUPULSE_ARTIFACTS_DIR "
-            "trỏ tới bundle. Với Docker, build lại image kèm bundle (`make docker-build`)."
-        )
-
-
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Nạp mô hình trước khi nhận kết nối; thiếu hoặc lệch bundle thì dừng với thông báo rõ."""
     settings: Settings = app.state.settings
-    _require_bundle(settings)
-    logger.info("Sẵn sàng: bundle %s, web %s", settings.bundle_dir, settings.web_dir)
+    # Nạp mất vài giây (băm tệp, ONNX, JVM): chạy ngoài vòng lặp sự kiện.
+    app.state.analyzer = await run_in_threadpool(Analyzer.load, settings)
+    manifest = app.state.analyzer.bundle.manifest
+    logger.info(
+        "Sẵn sàng: bundle %s (%s, mô hình %s), web %s",
+        manifest.bundle_version,
+        manifest.stage,
+        manifest.model_version,
+        settings.web_dir,
+    )
     yield
 
 
@@ -104,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     install_error_handlers(app)
     app.include_router(meta.router)
+    app.include_router(analyze.router)
     _serve_web(app, settings.web_dir)
 
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.

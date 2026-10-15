@@ -64,6 +64,25 @@ def test_wrong_method_keeps_the_route_template(
     assert re.fullmatch(r"POST /api/health 405 \d+ms", access_lines()[-1])
 
 
+@pytest.mark.model
+def test_analyze_and_explain_requests_never_log_the_sentence(
+    live_client: TestClient,
+    access_lines: Callable[[], list[str]],
+    caplog: pytest.LogCaptureFixture,
+):
+    live_client.post(f"/api/analyze?{SECRET_QUERY}", json={"text": SECRET_BODY})
+    live_client.post("/api/explain", json={"text": SECRET_BODY})
+    live_client.post("/api/analyze", json={"text": "x" * 600})  # 422
+
+    lines = access_lines()
+    assert re.fullmatch(r"POST /api/analyze 200 \d+ms", lines[0])
+    assert re.fullmatch(r"POST /api/explain 200 \d+ms", lines[1])
+    assert re.fullmatch(r"POST /api/analyze 422 \d+ms", lines[2])
+    everything = "\n".join(record.getMessage() for record in caplog.records)
+    for secret in ("BI-MAT", "Nhom", "Thay Nam", "0912345678", "x" * 20):
+        assert secret not in everything
+
+
 def test_static_requests_are_grouped_instead_of_logging_the_path(
     client: TestClient, web_dir: Path, access_lines: Callable[[], list[str]]
 ):
