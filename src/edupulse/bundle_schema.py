@@ -139,8 +139,15 @@ class BudgetEfficiency(_Strict):
 
 
 class Calibration(_Strict):
+    """Nhiệt độ, bảng phân vị độ tin cậy và ngưỡng cờ, tính từ logits val của bản int8.
+
+    Int8 động phụ thuộc nhẹ vào lô nên logits val được chạy từng câu một (`logits_batch_size` = 1),
+    cùng điều kiện với phân tích một câu: `tau` và `cdf` là tham chiếu tất định cho đường đó.
+    """
+
     schema_version: Literal[1] = SCHEMA_VERSION
     split: Literal["val"] = "val"
+    logits_batch_size: Literal[1] = 1
     n: int = Field(gt=0)
     sentiment: HeadCalibration
     topic: HeadCalibration

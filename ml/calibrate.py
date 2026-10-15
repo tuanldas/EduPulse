@@ -3,7 +3,8 @@
     python -m ml.calibrate                 # make calibrate (run 'best')
 
 Đầu vào là logits val của CHÍNH bản int8 sẽ triển khai (`outputs/onnx/<run>/val_logits_int8.npz`),
-vì lượng tử hoá đổi nhẹ logits. Với mỗi head:
+vì lượng tử hoá đổi nhẹ logits; logits chạy từng câu một (batch 1) vì int8 động phụ thuộc lô, nên
+ngưỡng là tham chiếu tất định cho phân tích một câu. Với mỗi head:
 1. Nhiệt độ T tối ưu NLL trên toàn val. Chỉ dùng T nếu kiểm chéo (200 lần chia đôi val, fit T ở
    nửa A, đo ở nửa B) làm NLL giảm mà ECE không tệ đi; không thì giữ T = 1 (mô hình đa nhiệm
    thường đã gần hiệu chuẩn).

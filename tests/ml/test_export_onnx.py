@@ -53,7 +53,46 @@ def test_gate_report_has_the_documented_structure(exported):
     assert set(gate["fp32"]) == set(gate["int8"]) == set(TASKS)
     assert set(gate["delta_macro_f1_points"]) == set(TASKS)
     assert gate["gate"]["max_drop_points"] == 1.0
+    assert gate["gate"]["modes"] == ["batch=1", "batch=32"]
     assert gate["files"]["int8_bytes"] < gate["files"]["fp32_bytes"]
+
+
+def test_gate_covers_both_serving_modes_and_reports_batch_dependence(exported):
+    _, gate = exported
+    assert set(gate["int8_batched"]) == set(gate["delta_macro_f1_points_batched"]) == set(TASKS)
+    for task in TASKS:
+        stats = gate["batch_dependence"][task]
+        assert 0 <= stats["median_abs_logit_diff"] <= stats["p95_abs_logit_diff"]
+        assert stats["p95_abs_logit_diff"] <= stats["max_abs_logit_diff"]
+        assert 0 <= stats["label_flips"] <= gate["n_val"]
+    worst = max(
+        -delta
+        for deltas in (gate["delta_macro_f1_points"], gate["delta_macro_f1_points_batched"])
+        for delta in deltas.values()
+    )
+    assert gate["gate"]["passed"] == (worst <= gate["gate"]["max_drop_points"])
+
+
+def test_batch_dependence_statistics_on_known_arrays():
+    single = np.array([[1.0, 0.0], [0.0, 1.0], [2.0, 0.0]])
+    batched = np.array([[1.1, 0.0], [0.0, 0.8], [0.0, 2.0]])
+    stats = export_onnx.batch_dependence(single, batched)
+    assert stats["max_abs_logit_diff"] == pytest.approx(2.0)
+    assert stats["label_flips"] == 1  # chỉ dòng cuối đổi nhãn
+    assert stats["median_abs_logit_diff"] == pytest.approx(0.15)  # sắp xếp: 0 0 0,1 0,2 2 2
+
+
+def test_reference_validation_logits_are_the_single_sentence_run(exported):
+    out, _ = exported
+    saved = np.load(out / "val_logits_int8.npz")
+    session = export_onnx.make_session(out / "model.int8.onnx", threads=2)
+    from ml.common import load_processed
+
+    sentences = load_processed("validation")["text_rdr"].tolist()[:5]
+    for index, sequence in enumerate(export_onnx.encode(sentences)):
+        alone = export_onnx.run_logits(session, [sequence], batch_size=1)
+        for task in TASKS:
+            assert saved[task][index] == pytest.approx(alone[task][0], abs=1e-5)
 
 
 def test_all_expected_files_are_written(exported):

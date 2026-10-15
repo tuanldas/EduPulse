@@ -93,6 +93,7 @@ LIMITATIONS = [
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
     "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
     "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
+    "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt.",
 ]
 NOTE_X86 = "Chưa đo trên x86: số đo tốc độ và RAM lấy từ máy Apple M1 (arm64)."
 NOTE_DEMO = (

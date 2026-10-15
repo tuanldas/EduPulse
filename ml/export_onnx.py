@@ -5,8 +5,11 @@
 Các bước (đều trên CPU): xuất FP32 bằng `torch.onnx.export(dynamo=True)` với trục batch và seq
 động -> kiểm khớp torch (|Δlogit| < 1e-3) -> `quant_pre_process` (bắt buộc với bản dynamo) ->
 lượng tử hoá int8 chỉ MatMul, từng kênh, reduce_range -> chấm val FP32 và int8 -> ghi cổng.
-Cổng: macro-F1 val của int8 không được thấp hơn FP32 quá 1 điểm ở MỘT trong hai tác vụ, nếu không
-tiến trình thoát với mã 1. Cũng sinh `golden_predictions.json` (20 câu tự viết, mỗi câu chạy riêng).
+Cổng: macro-F1 val của int8 không được thấp hơn FP32 quá 1 điểm ở MỘT trong hai tác vụ, ở cả hai
+chế độ chạy (từng câu một và lô 32), nếu không tiến trình thoát với mã 1. Int8 động phụ thuộc lô,
+nên logits val dùng để hiệu chuẩn (`val_logits_int8.npz`) và `golden_predictions.json` đều chạy
+từng câu một (batch 1), đúng điều kiện của phân tích một câu; mức lệch so với lô nằm trong
+`onnx_gate.json["batch_dependence"]`.
 
 Đầu ra trong `outputs/onnx/<run>/`: model.fp32.onnx, model.int8.onnx, val_logits_int8.npz,
 onnx_gate.json, golden_predictions.json.
@@ -160,6 +163,17 @@ def torch_logits(model: MultiHeadPhoBERT, sequences: list[list[int]]) -> dict[st
     return {task: np.concatenate(parts) for task, parts in out.items()}
 
 
+def batch_dependence(single: np.ndarray, batched: np.ndarray) -> dict[str, float]:
+    """Độ lệch logits của cùng một câu giữa chạy riêng và chạy trong lô (int8 động)."""
+    diff = np.abs(single.astype(np.float64) - batched.astype(np.float64))
+    return {
+        "median_abs_logit_diff": float(np.median(diff)),
+        "p95_abs_logit_diff": float(np.percentile(diff, 95)),
+        "max_abs_logit_diff": float(diff.max()),
+        "label_flips": int((single.argmax(1) != batched.argmax(1)).sum()),
+    }
+
+
 def summary(logits: dict[str, np.ndarray], targets: dict[str, np.ndarray]) -> dict[str, Any]:
     result = {}
     for task in TASKS:
@@ -236,17 +250,32 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
     fp32_val = run_logits(fp32_session, sequences)
     timing["val_fp32_s"] = round(time.time() - started, 1)
     int8_session = make_session(int8_path, threads)
+    # Int8 động tính thang kích hoạt theo CẢ tensor nên logits của một câu phụ thuộc các câu cùng
+    # lô (lệch cỡ 0,1 logit). Chuẩn tham chiếu là từng câu một (batch 1): đúng điều kiện của phân
+    # tích một câu và của câu vàng, nên hiệu chuẩn và cổng dựa trên đó. Lô 32 (đường phân tích
+    # hàng loạt) được đo thêm để biết mức lệch và cũng phải qua cổng.
     started = time.time()
-    int8_val = run_logits(int8_session, sequences)
-    timing["val_int8_s"] = round(time.time() - started, 1)
+    int8_val = run_logits(int8_session, sequences, batch_size=1)
+    timing["val_int8_single_s"] = round(time.time() - started, 1)
+    started = time.time()
+    int8_batched = run_logits(int8_session, sequences)
+    timing["val_int8_batched_s"] = round(time.time() - started, 1)
 
     fp32_summary, int8_summary = summary(fp32_val, targets), summary(int8_val, targets)
+    batched_summary = summary(int8_batched, targets)
     deltas = {
         t: round((int8_summary[t]["macro_f1"] - fp32_summary[t]["macro_f1"]) * 100, 3)
         for t in TASKS
     }
+    deltas_batched = {
+        t: round((batched_summary[t]["macro_f1"] - fp32_summary[t]["macro_f1"]) * 100, 3)
+        for t in TASKS
+    }
     flips = {t: int((fp32_val[t].argmax(1) != int8_val[t].argmax(1)).sum()) for t in TASKS}
-    passed = all(-delta <= GATE_MAX_DROP_POINTS for delta in deltas.values())
+    dependence = {t: batch_dependence(int8_val[t], int8_batched[t]) for t in TASKS}
+    passed = all(
+        -delta <= GATE_MAX_DROP_POINTS for delta in (*deltas.values(), *deltas_batched.values())
+    )
 
     np.savez(
         out_dir / "val_logits_int8.npz",
@@ -271,9 +300,16 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
         "quantization": QUANTIZATION,
         "fp32": fp32_summary,
         "int8": int8_summary,
+        "int8_batched": batched_summary,
         "delta_macro_f1_points": deltas,
+        "delta_macro_f1_points_batched": deltas_batched,
         "label_flips": flips,
-        "gate": {"max_drop_points": GATE_MAX_DROP_POINTS, "passed": passed},
+        "batch_dependence": dependence,
+        "gate": {
+            "max_drop_points": GATE_MAX_DROP_POINTS,
+            "passed": passed,
+            "modes": ["batch=1", f"batch={EVAL_BATCH}"],
+        },
         "files": {"fp32_bytes": fp32_path.stat().st_size, "int8_bytes": int8_path.stat().st_size},
         "versions": {"onnxruntime": ort.__version__, "torch": torch.__version__},
         "threads": threads,
@@ -298,6 +334,8 @@ def run_summary(run: Path, out_dir: Path) -> dict[str, Any]:
         "epochs": history["epochs"],
         "val_fp32_onnx": gate["fp32"],
         "val_int8_onnx": gate["int8"],
+        "val_int8_batched_onnx": gate["int8_batched"],
+        "batch_dependence": gate["batch_dependence"],
     }
 
 
@@ -323,11 +361,20 @@ def main(argv: list[str] | None = None) -> int:
         shutil.copyfile(out_dir / "onnx_gate.json", args.gate_copy)
     if args.run_summary:
         write_json(args.run_summary, run_summary(run, out_dir))
-    print(json.dumps({k: gate[k] for k in ("run", "delta_macro_f1_points", "label_flips", "gate")}))
+    keys = (
+        "run",
+        "delta_macro_f1_points",
+        "delta_macro_f1_points_batched",
+        "label_flips",
+        "batch_dependence",
+        "gate",
+    )
+    print(json.dumps({k: gate[k] for k in keys}))
     if not gate["gate"]["passed"]:
         print(
             f"CỔNG KHÔNG QUA: int8 giảm macro-F1 val quá {GATE_MAX_DROP_POINTS} điểm "
-            f"({gate['delta_macro_f1_points']})",
+            f"(từng câu {gate['delta_macro_f1_points']}, "
+            f"lô {gate['delta_macro_f1_points_batched']})",
             file=sys.stderr,
         )
         return 1
