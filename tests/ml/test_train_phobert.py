@@ -113,3 +113,23 @@ def test_tiny_cpu_run_writes_loadable_checkpoint_and_is_idempotent(tmp_path):
     stamp = (out / "history.json").stat().st_mtime_ns
     assert train_phobert.main(argv) == 0  # run đã hoàn tất: không chạy lại
     assert (out / "history.json").stat().st_mtime_ns == stamp
+
+
+@pytest.mark.data
+@pytest.mark.slow
+def test_training_survives_sentences_whose_pieces_fall_outside_the_embedding_table(tmp_path):
+    """Hồi quy: mảnh "đạt_" (id 65771) trong 800 câu train đầu từng làm sập cả run."""
+    from ml.common import load_processed
+    from ml.phobert_model import MODEL_VOCAB_SIZE
+
+    first = load_processed("train")["text_rdr"].tolist()[:800]
+    raw = [e.ids for e in load_tokenizer().encode_batch(first)]
+    assert any(max(ids) >= MODEL_VOCAB_SIZE for ids in raw), (
+        "tiền điều kiện của test không còn đúng"
+    )
+
+    out = tmp_path / "run"
+    argv = ["--heads", "mtl", "--limit", "800", "--epochs", "1", "--device", "cpu"]
+    assert train_phobert.main([*argv, "--out", str(out)]) == 0
+    history = json.loads((out / "history.json").read_text("utf-8"))
+    assert history["finished"] is True and history["n_train"] == 800

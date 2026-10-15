@@ -181,3 +181,60 @@ def test_refuses_runs_made_by_another_normalizer(tiny_run, tmp_path):
     write_json(stale / "history.json", {**history, "normalizer_version": "0"})
     with pytest.raises(RuntimeError, match="chuẩn hoá"):
         export_onnx.export(stale, tmp_path / "out", threads=1)
+
+
+# --- Id ngoài bảng embedding gốc ------------------------------------------------------------------
+
+RARE_PIECE_TEXT = "thầy truyền_đạt_kiến thức rất tốt ."
+
+
+def test_embedding_report_documents_the_expansion(exported):
+    _, gate = exported
+    report = gate["embedding"]
+    assert (report["base_vocab_size"], report["unk_id"]) == (64001, 3)
+    assert report["embedding_rows"] == 66119 and report["extra_rows"] == 2118
+    assert report["unk_alias_max_diff"]["fp32"] <= 1e-5
+    assert report["unk_alias_max_diff"]["int8"] <= 1e-5
+    parity = report["rare_piece_parity"]
+    assert parity["ok"] and parity["n_out_of_range"] >= 2  # hai câu tự viết, cộng câu của dữ liệu
+    assert parity["max_abs_logit_diff"] < parity["tolerance"]
+
+
+def test_onnx_accepts_the_largest_tokenizer_id_and_treats_it_as_unk(exported):
+    out, _ = exported
+    for name in ("model.fp32.onnx", "model.int8.onnx"):
+        session = export_onnx.make_session(out / name, threads=1)
+        last = export_onnx.run_logits(session, [[0, 66118, 5, 2]], batch_size=1)
+        unk = export_onnx.run_logits(session, [[0, 3, 5, 2]], batch_size=1)
+        for task in TASKS:
+            assert np.array_equal(last[task], unk[task]), name
+        assert export_onnx.unk_alias_gap(session, 66119) == 0.0
+
+
+def test_ids_beyond_the_tokenizer_vocabulary_are_still_rejected(exported):
+    out, _ = exported
+    session = export_onnx.make_session(out / "model.int8.onnx", threads=1)
+    with pytest.raises(Exception, match="out of bounds|out of range|bound"):
+        export_onnx.run_logits(session, [[0, 66119, 2]], batch_size=1)
+
+
+def test_torch_and_onnx_agree_on_a_sentence_with_an_out_of_table_piece(exported, tiny_run):
+    """Torch nhận id đã đổi thành <unk>, ONNX nhận id thô của tokenizer.json: kết quả phải khớp."""
+    from ml.phobert_model import MODEL_VOCAB_SIZE, clamp_ids
+
+    out, _ = exported
+    raw = export_onnx.encode([RARE_PIECE_TEXT])
+    assert max(raw[0]) >= MODEL_VOCAB_SIZE
+    model = MultiHeadPhoBERT.from_pretrained(tiny_run).eval()
+    expected = export_onnx.torch_logits(model, [clamp_ids(raw[0])])
+    session = export_onnx.make_session(out / "model.fp32.onnx", threads=1)
+    actual = export_onnx.run_logits(session, raw, batch_size=1)
+    for task in TASKS:
+        assert actual[task] == pytest.approx(expected[task], abs=1e-4)
+
+
+def test_int8_model_runs_on_the_rare_piece_sentence(exported):
+    out, _ = exported
+    session = export_onnx.make_session(out / "model.int8.onnx", threads=1)
+    logits = export_onnx.run_logits(session, export_onnx.encode([RARE_PIECE_TEXT]), batch_size=1)
+    assert all(np.isfinite(logits[task]).all() for task in TASKS)

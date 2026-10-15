@@ -67,10 +67,25 @@ class BaseModelInfo(_Strict):
 
 
 class OnnxSpec(_Strict):
+    """Giao diện ONNX. Tokenizer.json có nhiều mục hơn bảng embedding gốc của PhoBERT (66.119 so với
+    64.001): ONNX được nới bảng tới `embedding_rows` hàng, hàng thừa là bản sao `<unk>`, nên mọi id
+    của tokenizer.json đều chạy được và hành xử như `<unk>` mà phía phục vụ không cần đổi id."""
+
     input_names: tuple[str, str] = ("input_ids", "attention_mask")
     output_names: tuple[str, str] = ("sentiment_logits", "topic_logits")
     pad_id: int = 1
     quantization: str
+    base_vocab_size: int = Field(default=64001, gt=0)  # số hàng embedding của checkpoint gốc
+    unk_id: int = Field(default=3, ge=0)
+    embedding_rows: int = Field(default=64001, gt=0)  # số hàng embedding của ONNX này
+
+    @model_validator(mode="after")
+    def _embedding_covers_vocabulary(self) -> OnnxSpec:
+        if self.embedding_rows < self.base_vocab_size:
+            raise ValueError("embedding_rows không được nhỏ hơn base_vocab_size")
+        if not self.unk_id < self.base_vocab_size:
+            raise ValueError("unk_id phải nằm trong bảng embedding gốc")
+        return self
 
 
 class Manifest(_Strict):

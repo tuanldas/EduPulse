@@ -6,6 +6,13 @@ nhiệm (STL). Cùng kiến trúc đầu nên chỉ có một đường mã.
 BẪY: lớp con `PreTrainedModel` phải đặt `base_model_prefix = "roberta"` VÀ giữ bộ mã hoá ở thuộc
 tính `self.roberta`. Tên khác thì toàn bộ bộ mã hoá bị khởi tạo ngẫu nhiên mà không báo lỗi (chỉ
 có bảng "LOAD REPORT" liệt kê các khoá MISSING). `tests/ml/test_phobert_model.py` canh điều này.
+
+BẪY thứ hai: `tokenizer.json` của PhoBERT-base-v2 có 66.119 mục (id tới 66118) nhưng bảng embedding
+chỉ có 64.001 hàng. 2.118 mục thừa là mảnh BPE do merge tạo ra mà từ điển gốc không có (vd "đạt_");
+tokenizer chậm chính thức đổi chúng thành `<unk>`. Đưa id đó vào mô hình làm sập huấn luyện (chỉ số
+ngoài biên), nên: lúc train/eval dùng `encode_ids` (đổi id >= 64001 thành `<unk>`), còn mô hình
+xuất ra ONNX được nới bảng embedding tới đủ 66.119 hàng, hàng thừa là bản sao hàng `<unk>`, nhờ vậy
+mọi id của tokenizer.json đều chạy được và hành xử như `<unk>`, phía phục vụ không phải xử lý gì.
 """
 
 from __future__ import annotations
@@ -27,6 +34,8 @@ BASE_MODEL = "vinai/phobert-base-v2"
 BASE_REVISION = "86cd7fd4c148980922ac11a2cf5e257f2ba639e1"
 MAX_LEN = 128
 PAD_ID = 1  # <pad> của PhoBERT
+UNK_ID = 3  # <unk> của PhoBERT
+MODEL_VOCAB_SIZE = 64001  # số hàng bảng embedding của checkpoint gốc (config.vocab_size)
 
 
 def head_sizes(heads: str) -> dict[str, int]:
@@ -108,3 +117,29 @@ def load_tokenizer(max_len: int = MAX_LEN) -> Tokenizer:
     tokenizer = Tokenizer.from_file(str(tokenizer_path()))
     tokenizer.enable_truncation(max_length=max_len)
     return tokenizer
+
+
+def clamp_ids(ids: list[int]) -> list[int]:
+    """Đổi id nằm ngoài bảng embedding gốc (>= 64.001) thành `<unk>`, như tokenizer chính thức."""
+    return [UNK_ID if i >= MODEL_VOCAB_SIZE else i for i in ids]
+
+
+def encode_ids(tokenizer: Tokenizer, texts: list[str]) -> list[list[int]]:
+    """Id token cho huấn luyện và chấm điểm bằng torch: luôn nằm trong bảng embedding gốc."""
+    return [clamp_ids(encoding.ids) for encoding in tokenizer.encode_batch(texts)]
+
+
+def expand_word_embeddings(model: MultiHeadPhoBERT, rows: int, fill_id: int = UNK_ID) -> None:
+    """Nới bảng embedding từ vựng lên `rows` hàng tại chỗ; hàng mới sao chép hàng `fill_id`.
+
+    Dùng khi xuất ONNX để mọi id của tokenizer.json chạy được và hành xử đúng như `<unk>`.
+    """
+    old = model.roberta.embeddings.word_embeddings
+    if rows < old.num_embeddings:
+        raise ValueError(f"chỉ nới được, không thu nhỏ: {old.num_embeddings} -> {rows}")
+    new = nn.Embedding(rows, old.embedding_dim, padding_idx=old.padding_idx)
+    with torch.no_grad():
+        new.weight[: old.num_embeddings] = old.weight
+        new.weight[old.num_embeddings :] = old.weight[fill_id]
+    model.roberta.embeddings.word_embeddings = new
+    model.config.vocab_size = rows

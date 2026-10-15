@@ -172,6 +172,40 @@ def test_manifest_rejects_bad_values(field, value, message):
         Manifest(**manifest_data(**{field: value}))
 
 
+def test_onnx_spec_defaults_describe_the_unexpanded_embedding():
+    spec = Manifest(**manifest_data()).onnx
+    assert (spec.base_vocab_size, spec.unk_id, spec.embedding_rows) == (64001, 3, 64001)
+
+
+def test_onnx_spec_records_the_expanded_embedding_and_round_trips():
+    data = manifest_data(
+        onnx={
+            "quantization": "int8",
+            "base_vocab_size": 64001,
+            "unk_id": 3,
+            "embedding_rows": 66119,
+        }
+    )
+    manifest = Manifest(**data)
+    again = Manifest.model_validate_json(manifest.model_dump_json())
+    assert again.onnx.embedding_rows == 66119 and again.onnx.base_vocab_size == 64001
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"embedding_rows": 100}, "embedding_rows"),
+        ({"unk_id": 64001}, "unk_id"),
+        ({"unk_id": -1}, "unk_id"),
+        ({"base_vocab_size": 0}, "base_vocab_size"),
+    ],
+)
+def test_onnx_spec_rejects_inconsistent_embedding_sizes(override, message):
+    onnx_spec = {"quantization": "int8", **override}
+    with pytest.raises(ValidationError, match=message):
+        Manifest(**manifest_data(onnx=onnx_spec))
+
+
 def test_manifest_requires_every_field_and_rejects_unknown_ones():
     data = manifest_data()
     del data["normalizer_version"]

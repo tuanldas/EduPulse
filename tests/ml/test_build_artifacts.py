@@ -40,25 +40,39 @@ TEXTS = [
 LABEL_IDS = np.array([2, 0, 0, 2, 0] * 6)
 
 
-def tiny_onnx(path: Path, output_names=("sentiment_logits", "topic_logits")) -> None:
-    """ONNX nhỏ mang đúng tên vào/ra của bundle thật; logits = trung bình id x trọng số cố định."""
+BASE_ROWS, TOTAL_ROWS, UNK = 10, 20, 3  # bảng embedding nhỏ: 10 hàng gốc, nới tới 20, <unk> = 3
+
+
+def tiny_onnx(
+    path: Path, output_names=("sentiment_logits", "topic_logits"), extra_rows_match_unk=True
+) -> None:
+    """ONNX nhỏ mang đúng tên vào/ra của bundle thật và có bảng embedding được nới như bản thật.
+
+    Logits = trung bình có mặt nạ của embedding nhân trọng số cố định. Các hàng từ BASE_ROWS trở đi
+    sao chép hàng UNK (hoặc khác đi nếu `extra_rows_match_unk=False`, để thử bộ kiểm tra).
+    """
     ids = helper.make_tensor_value_info("input_ids", TensorProto.INT64, ["batch", "seq"])
     mask = helper.make_tensor_value_info("attention_mask", TensorProto.INT64, ["batch", "seq"])
     outputs = [
         helper.make_tensor_value_info(name, TensorProto.FLOAT, ["batch", size])
         for name, size in zip(output_names, (3, 4), strict=True)
     ]
+    table = np.arange(TOTAL_ROWS * 4, dtype=np.float32).reshape(TOTAL_ROWS, 4) / 10.0
+    table[BASE_ROWS:] = table[UNK] if extra_rows_match_unk else table[UNK] + 1.0
     nodes = [
-        helper.make_node("Cast", ["input_ids"], ["ids_f"], to=TensorProto.FLOAT),
+        helper.make_node("Gather", ["table", "input_ids"], ["emb"]),
         helper.make_node("Cast", ["attention_mask"], ["mask_f"], to=TensorProto.FLOAT),
-        helper.make_node("Mul", ["ids_f", "mask_f"], ["masked"]),
-        helper.make_node("ReduceMean", ["masked"], ["mean"], axes=[1], keepdims=1),
+        helper.make_node("Unsqueeze", ["mask_f", "axes"], ["mask3"]),
+        helper.make_node("Mul", ["emb", "mask3"], ["masked"]),
+        helper.make_node("ReduceMean", ["masked"], ["mean"], axes=[1], keepdims=0),
         helper.make_node("MatMul", ["mean", "w_s"], [output_names[0]]),
         helper.make_node("MatMul", ["mean", "w_t"], [output_names[1]]),
     ]
     weights = [
-        numpy_helper.from_array(np.ones((1, 3), dtype=np.float32), "w_s"),
-        numpy_helper.from_array(np.ones((1, 4), dtype=np.float32), "w_t"),
+        numpy_helper.from_array(table, "table"),
+        numpy_helper.from_array(np.array([2], dtype=np.int64), "axes"),
+        numpy_helper.from_array(np.ones((4, 3), dtype=np.float32), "w_s"),
+        numpy_helper.from_array(np.ones((4, 4), dtype=np.float32), "w_t"),
     ]
     graph = helper.make_graph(nodes, "tiny", [ids, mask], outputs, weights)
     model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
@@ -154,7 +168,12 @@ def bundle(tmp_path) -> Path:
         normalizer_version=NORMALIZER_VERSION,
         max_len=128,
         labels={task: list(names) for task, names in LABELS.items()},
-        onnx={"quantization": "test"},
+        onnx={
+            "quantization": "test",
+            "base_vocab_size": BASE_ROWS,
+            "unk_id": UNK,
+            "embedding_rows": TOTAL_ROWS,
+        },
         files={name: sha256_file(root / name) for name in builder.BUNDLE_FILES},
         dataset={"name": "d", "revision": "r", "splits": {"train": 1}, "license_note": "n"},
         base_model={"name": "b", "revision": "r", "license": "l"},
@@ -208,6 +227,45 @@ def test_wrong_onnx_output_names_are_caught(bundle):
     write_json(bundle / "manifest.json", manifest)
     with pytest.raises(builder.BundleError, match="đầu ra ONNX"):
         builder.verify_bundle(bundle)
+
+
+def test_expanded_embedding_rows_that_do_not_behave_as_unk_are_caught(bundle):
+    tiny_onnx(bundle / "model.int8.onnx", extra_rows_match_unk=False)
+    manifest = json.loads((bundle / "manifest.json").read_text("utf-8"))
+    manifest["files"]["model.int8.onnx"] = sha256_file(bundle / "model.int8.onnx")
+    write_json(bundle / "manifest.json", manifest)
+    with pytest.raises(builder.BundleError, match="không hành xử như <unk>"):
+        builder.verify_bundle(bundle)
+
+
+def test_manifest_records_the_embedding_expansion(bundle):
+    spec = builder.verify_bundle(bundle).onnx
+    assert (spec.base_vocab_size, spec.unk_id, spec.embedding_rows) == (BASE_ROWS, UNK, TOTAL_ROWS)
+
+
+def passing_gate(run_name="mtl-s1", passed=True):
+    return {
+        "run": run_name,
+        "normalizer_version": NORMALIZER_VERSION,
+        "gate": {"passed": passed},
+        "embedding": {"base_vocab_size": 64001, "unk_id": 3, "embedding_rows": 66119},
+    }
+
+
+def test_gate_must_have_passed_for_the_same_run(tmp_path):
+    run = tmp_path / "mtl-s1"
+    assert (
+        builder.require_passed_gate(passing_gate(), run, allow_failed=False)["embedding_rows"]
+        == 66119
+    )
+    with pytest.raises(builder.BundleError, match="cổng int8 chưa qua"):
+        builder.require_passed_gate(passing_gate(passed=False), run, allow_failed=False)
+    assert builder.require_passed_gate(passing_gate(passed=False), run, allow_failed=True)
+    with pytest.raises(builder.BundleError, match="không phải"):
+        builder.require_passed_gate(passing_gate("mtl-s2"), run, allow_failed=False)
+    stale = {**passing_gate(), "normalizer_version": "0"}
+    with pytest.raises(builder.BundleError, match="bản chuẩn hoá khác"):
+        builder.require_passed_gate(stale, run, allow_failed=False)
 
 
 def test_different_normalizer_versions_are_refused():

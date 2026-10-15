@@ -48,8 +48,12 @@ from ml.phobert_model import (
     BASE_MODEL,
     BASE_REVISION,
     MAX_LEN,
+    MODEL_VOCAB_SIZE,
     PAD_ID,
+    UNK_ID,
     MultiHeadPhoBERT,
+    clamp_ids,
+    expand_word_embeddings,
     load_tokenizer,
 )
 
@@ -57,6 +61,12 @@ INPUT_NAMES = ("input_ids", "attention_mask")
 OUTPUT_NAMES = {"sentiment": "sentiment_logits", "topic": "topic_logits"}
 PARITY_SAMPLES = 64
 PARITY_TOLERANCE = 1e-3
+# Câu tự viết có mảnh BPE nằm ngoài bảng embedding gốc ("đạt_", id 65771): luôn thử khi xuất.
+RARE_PIECE_TEXTS = (
+    "thầy truyền_đạt_kiến thức rất tốt .",
+    "cô truyền_đạt_kiến_thức dễ hiểu .",
+)
+MAX_DATASET_RARE = 16  # thêm tối đa ngần này câu của dữ liệu có id ngoài bảng (chỉ dùng trong RAM)
 GATE_MAX_DROP_POINTS = 1.0
 EVAL_BATCH = 32
 GOLDEN_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "golden_sentences.json"
@@ -141,8 +151,27 @@ def run_logits(
 
 
 def encode(texts: list[str]) -> list[list[int]]:
+    """Id THÔ của tokenizer.json (có thể >= 64.001): đúng thứ mà phía phục vụ đưa vào ONNX."""
     tokenizer = load_tokenizer(MAX_LEN)
     return [e.ids for e in tokenizer.encode_batch(texts)]
+
+
+def unk_alias_gap(session: ort.InferenceSession, rows: int, unk_id: int = UNK_ID) -> float:
+    """Chênh lệch logits lớn nhất giữa id cuối bảng nới và `<unk>`: phải bằng 0 (hàng sao chép)."""
+    last = run_logits(session, [[0, rows - 1, 2]], batch_size=1)
+    unk = run_logits(session, [[0, unk_id, 2]], batch_size=1)
+    return max(float(np.abs(last[t] - unk[t]).max()) for t in TASKS)
+
+
+def find_rare_piece_texts(limit: int = MAX_DATASET_RARE) -> list[str]:
+    """Câu của train/val có id ngoài bảng embedding gốc; chỉ giữ trong RAM để thử parity."""
+    found: list[str] = []
+    for split in ("train", "validation"):
+        texts = load_processed(split)["text_rdr"].tolist()
+        for text, ids in zip(texts, encode(texts), strict=True):
+            if max(ids) >= MODEL_VOCAB_SIZE:
+                found.append(text)
+    return found[:limit]
 
 
 def torch_logits(model: MultiHeadPhoBERT, sequences: list[list[int]]) -> dict[str, np.ndarray]:
@@ -224,23 +253,47 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
             f"chỉ xuất được mô hình đa nhiệm, run này có đầu {list(model.config.task_heads)}"
         )
 
+    # Bảng embedding của bản xuất được nới tới đủ số mục của tokenizer.json (hàng thừa = <unk>);
+    # `model` giữ bảng gốc 64.001 hàng làm tham chiếu torch (nhận id đã đổi mảnh lạ thành <unk>).
+    rows = load_tokenizer(MAX_LEN).get_vocab_size()
+    if rows < MODEL_VOCAB_SIZE:
+        raise RuntimeError(f"tokenizer.json chỉ có {rows} mục, ít hơn bảng embedding gốc")
+    export_model = MultiHeadPhoBERT.from_pretrained(run).eval()
+    expand_word_embeddings(export_model, rows)
+
     val = load_processed("validation")
     sequences = encode(val["text_rdr"].tolist())
     targets = {task: val[task].to_numpy() for task in TASKS}
+    rare_texts = [*RARE_PIECE_TEXTS, *find_rare_piece_texts()]
+    rare_sequences = encode(rare_texts)
+    if not any(max(ids) >= MODEL_VOCAB_SIZE for ids in rare_sequences[: len(RARE_PIECE_TEXTS)]):
+        raise RuntimeError("câu thử mảnh hiếm không còn tạo id ngoài bảng embedding: cập nhật câu")
     out_dir.mkdir(parents=True, exist_ok=True)
     fp32_path, int8_path = out_dir / "model.fp32.onnx", out_dir / "model.int8.onnx"
     timing: dict[str, float] = {}
 
     started = time.time()
-    export_fp32(model, sequences[:2], fp32_path)
+    export_fp32(export_model, sequences[:2], fp32_path)
     timing["export_fp32_s"] = round(time.time() - started, 1)
 
     fp32_session = make_session(fp32_path, threads)
-    reference = torch_logits(model, sequences[:PARITY_SAMPLES])
-    onnx_ref = run_logits(fp32_session, sequences[:PARITY_SAMPLES], batch_size=16)
+    parity_sequences = sequences[:PARITY_SAMPLES]
+    reference = torch_logits(model, [clamp_ids(s) for s in parity_sequences])
+    onnx_ref = run_logits(fp32_session, parity_sequences, batch_size=16)
     max_diff = max(float(np.abs(reference[t] - onnx_ref[t]).max()) for t in TASKS)
     if max_diff >= PARITY_TOLERANCE:
         raise RuntimeError(f"ONNX FP32 lệch torch {max_diff:.2e} >= {PARITY_TOLERANCE:.0e}")
+    # Câu có mảnh hiếm: ONNX nhận id THÔ, torch nhận id đã đổi thành <unk>; hai bên phải khớp.
+    rare_reference = torch_logits(model, [clamp_ids(s) for s in rare_sequences])
+    rare_onnx = run_logits(fp32_session, rare_sequences, batch_size=16)
+    rare_diff = max(float(np.abs(rare_reference[t] - rare_onnx[t]).max()) for t in TASKS)
+    if rare_diff >= PARITY_TOLERANCE:
+        raise RuntimeError(f"ONNX lệch torch ở câu mảnh hiếm: {rare_diff:.2e}")
+    alias_fp32 = unk_alias_gap(fp32_session, rows)
+    if alias_fp32 > 1e-5:
+        raise RuntimeError(
+            f"id {rows - 1} không hành xử như <unk> trong ONNX FP32: {alias_fp32:.2e}"
+        )
 
     started = time.time()
     quantize_int8(fp32_path, int8_path)
@@ -250,6 +303,11 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
     fp32_val = run_logits(fp32_session, sequences)
     timing["val_fp32_s"] = round(time.time() - started, 1)
     int8_session = make_session(int8_path, threads)
+    alias_int8 = unk_alias_gap(int8_session, rows)
+    if alias_int8 > 1e-5:
+        raise RuntimeError(
+            f"id {rows - 1} không hành xử như <unk> trong ONNX int8: {alias_int8:.2e}"
+        )
     # Int8 động tính thang kích hoạt theo CẢ tensor nên logits của một câu phụ thuộc các câu cùng
     # lô (lệch cỡ 0,1 logit). Chuẩn tham chiếu là từng câu một (batch 1): đúng điều kiện của phân
     # tích một câu và của câu vàng, nên hiệu chuẩn và cổng dựa trên đó. Lô 32 (đường phân tích
@@ -296,6 +354,22 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
             "max_abs_logit_diff": max_diff,
             "tolerance": PARITY_TOLERANCE,
             "ok": True,
+        },
+        # Id ngoài bảng embedding gốc: tokenizer.json có `embedding_rows` mục nhưng checkpoint chỉ
+        # `base_vocab_size` hàng. ONNX được nới bảng, hàng thừa = <unk>; train dùng id đã đổi.
+        "embedding": {
+            "base_vocab_size": MODEL_VOCAB_SIZE,
+            "unk_id": UNK_ID,
+            "embedding_rows": rows,
+            "extra_rows": rows - MODEL_VOCAB_SIZE,
+            "unk_alias_max_diff": {"fp32": alias_fp32, "int8": alias_int8},
+            "rare_piece_parity": {
+                "n": len(rare_sequences),
+                "n_out_of_range": sum(max(ids) >= MODEL_VOCAB_SIZE for ids in rare_sequences),
+                "max_abs_logit_diff": rare_diff,
+                "tolerance": PARITY_TOLERANCE,
+                "ok": True,
+            },
         },
         "quantization": QUANTIZATION,
         "fp32": fp32_summary,
