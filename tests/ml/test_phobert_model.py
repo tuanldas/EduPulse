@@ -10,12 +10,21 @@ torch = pytest.importorskip("torch")
 from ml.phobert_model import (  # noqa: E402
     BASE_MODEL,
     BASE_REVISION,
+    MODEL_VOCAB_SIZE,
+    PAD_ID,
+    UNK_ID,
     MultiHeadConfig,
     MultiHeadPhoBERT,
+    clamp_ids,
+    encode_ids,
+    expand_word_embeddings,
     head_sizes,
     load_pretrained,
     load_tokenizer,
 )
+
+# Câu tự viết có mảnh BPE "đạt_" (id 65771) nằm ngoài bảng embedding 64.001 hàng của checkpoint.
+RARE_PIECE_TEXT = "thầy truyền_đạt_kiến thức rất tốt ."
 
 
 def tiny_config(task_heads):
@@ -134,3 +143,67 @@ def test_tokenizer_adds_special_tokens_and_truncates():
     long = tokenizer.encode(" ".join(["nhiệt_tình"] * 100)).ids
     assert len(long) == 16 and long[-1] == 2
     assert np.all(np.array(long) >= 0)
+
+
+# --- Id ngoài bảng embedding gốc ------------------------------------------------------------------
+
+
+def test_clamp_ids_replaces_only_ids_outside_the_embedding_table():
+    ids = [0, 5, MODEL_VOCAB_SIZE - 1, MODEL_VOCAB_SIZE, 66118, 2]
+    assert clamp_ids(ids) == [0, 5, MODEL_VOCAB_SIZE - 1, UNK_ID, UNK_ID, 2]
+
+
+def test_special_token_ids_match_the_tokenizer():
+    tokenizer = load_tokenizer()
+    assert tokenizer.token_to_id("<unk>") == UNK_ID
+    assert tokenizer.token_to_id("<pad>") == PAD_ID
+
+
+def test_tokenizer_has_more_entries_than_the_embedding_table():
+    # Nếu sau này tokenizer.json đổi, bẫy này có thể không còn: khi đó cập nhật cả mô hình lẫn test.
+    assert load_tokenizer().get_vocab_size() == 66119 > MODEL_VOCAB_SIZE
+
+
+def test_rare_piece_text_is_out_of_range_raw_and_in_range_after_encode_ids():
+    tokenizer = load_tokenizer()
+    assert max(tokenizer.encode(RARE_PIECE_TEXT).ids) >= MODEL_VOCAB_SIZE
+    clamped = encode_ids(tokenizer, [RARE_PIECE_TEXT])[0]
+    assert max(clamped) < MODEL_VOCAB_SIZE
+    assert UNK_ID in clamped
+
+
+def test_encode_ids_keeps_ordinary_text_unchanged():
+    tokenizer = load_tokenizer()
+    text = "thầy dạy rất nhiệt_tình ."
+    assert encode_ids(tokenizer, [text])[0] == tokenizer.encode(text).ids
+
+
+def test_expand_word_embeddings_adds_unk_copies_and_keeps_old_rows():
+    torch.manual_seed(1)
+    model = MultiHeadPhoBERT(tiny_config({"sentiment": 3, "topic": 4})).eval()
+    old_weight = model.roberta.embeddings.word_embeddings.weight.detach().clone()
+    ids = torch.tensor([[0, 5, 9, 3, 2]])
+    before = model(input_ids=ids)
+    expand_word_embeddings(model, 150)
+    table = model.roberta.embeddings.word_embeddings
+    assert table.num_embeddings == 150 and model.config.vocab_size == 150
+    assert torch.equal(table.weight[:120], old_weight)
+    assert all(torch.equal(table.weight[i], old_weight[UNK_ID]) for i in (120, 121, 149))
+    after = model(input_ids=ids)
+    for name in before:
+        assert torch.equal(before[name], after[name])  # id cũ chạy y như trước
+
+
+def test_expanded_ids_behave_exactly_like_unk():
+    torch.manual_seed(2)
+    model = MultiHeadPhoBERT(tiny_config({"sentiment": 3})).eval()
+    expand_word_embeddings(model, 150)
+    as_new = model(input_ids=torch.tensor([[0, 149, 7, 2]]))
+    as_unk = model(input_ids=torch.tensor([[0, UNK_ID, 7, 2]]))
+    assert torch.equal(as_new["sentiment"], as_unk["sentiment"])
+
+
+def test_expand_word_embeddings_refuses_to_shrink():
+    model = MultiHeadPhoBERT(tiny_config({"sentiment": 3}))
+    with pytest.raises(ValueError, match="chỉ nới"):
+        expand_word_embeddings(model, 100)
