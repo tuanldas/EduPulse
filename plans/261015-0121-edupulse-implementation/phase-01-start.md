@@ -1,6 +1,6 @@
 ---
 title: "Phase 1: Thiết lập repo & tooling"
-status: todo
+status: completed
 priority: P1
 effort: 4h
 dates: "2026-10-15"
@@ -20,7 +20,7 @@ depends_on: []
 - `.gitignore` hiện có: `/data/`, `/models/`, `/outputs/` (L10–13). Quy trình duyệt: [plan.md § Dependencies](./plan.md) (dừng ở mốc).
 
 ## Overview
-- Ngày: 2026-10-15 (thứ Năm) · Effort: 4h · Priority: P1 (chặn mọi phase) · Trạng thái: chưa bắt đầu.
+- Ngày: 2026-10-15 (thứ Năm) · Effort: 4h · Priority: P1 (chặn mọi phase) · Trạng thái: hoàn thành 2026-10-15.
 - Dựng project uv Python 3.12 (groups `app`/`train`/`dev`/`demo`, pin chính xác), khung package `src/edupulse`, ruff + pytest, `Makefile` làm "vài lệnh" tái lập (đọc `.env`), LICENSE AGPL-3.0 + ghi nguồn, cập nhật `docs/tech-stack.md` theo kiến trúc đã chốt, README khung.
 - Bước [smoke] (1–2, 4, 6) làm trước để phase 2–4 bắt đầu sớm; phần còn lại làm xen kẽ.
 
@@ -126,15 +126,15 @@ Modify:
 12. Kiểm `uv run pytest -q`, `uv run ruff check .`, `make help`; commit `chore: scaffold python project and tooling` + `docs: update tech stack for nextjs, fastapi and docker`.
 
 ## Todo list
-- [ ] `.python-version` + `pyproject.toml` (4 group, pin chính xác) + `uv.lock`
-- [ ] `uv tree` group app: không torch/pandas/pyarrow
-- [ ] `src/edupulse/{__init__,config,labels}.py` + `ml/__init__.py`
-- [ ] ruff + pytest config + `tests/conftest.py` (skip có lý do) + `tests/test_package.py`
-- [ ] `Makefile` đủ target (`report`, `demo-data`, `-include .env`) + `help`
-- [ ] `.gitignore`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.env.example`
-- [ ] Cập nhật `docs/tech-stack.md`
-- [ ] README khung
-- [ ] Kiểm pytest/ruff/make help + commit
+- [x] `.python-version` + `pyproject.toml` (4 group, pin chính xác) + `uv.lock`
+- [x] `uv tree` group app: không torch/pandas/pyarrow
+- [x] `src/edupulse/{__init__,config,labels}.py` + `ml/__init__.py`
+- [x] ruff + pytest config + `tests/conftest.py` (skip có lý do) + `tests/test_package.py`
+- [x] `Makefile` đủ target (`report`, `demo-data`, `-include .env`) + `help`
+- [x] `.gitignore`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `.env.example`
+- [x] Cập nhật `docs/tech-stack.md`
+- [x] README khung
+- [x] Kiểm pytest/ruff/make help + commit
 
 ## Success Criteria
 - `uv sync --all-groups` OK; `uv run python -c "import edupulse, torch, transformers, onnxruntime, tokenizers"` OK.
@@ -157,3 +157,9 @@ Rollback: chỉ là file khung, `git revert` hoặc xoá file; không đụng d�
 
 ## Next steps
 - Phase 2 bắt đầu ngay sau bước 2. Phần Next scaffold/Docker của phase 4 bắt đầu song song khi `pyproject.toml` xong.
+- Bàn giao (đã hiện thực 2026-10-15):
+  - `edupulse.config.load_settings(env=None)` trả `Settings` bất biến: `home`, `data_dir`, `models_dir`, `outputs_dir`, `demo_dir`, `mps_lock_path`, `artifacts_dir(version)` (nơi build/tải bundle theo `home`), `bundle_dir` (bundle mà runtime nạp, ghi đè bằng `EDUPULSE_ARTIFACTS_DIR`), `vncorenlp_dir`, `web_dir`, `ort_threads`, `ner`, `cors_origins`, `source_url`, `job_ttl_min` (số thực, test đặt nhỏ). Biến để trống coi như chưa đặt; giá trị sai ném `ValueError` nêu tên biến. Test truyền mapping `load_settings({...})`, không cần monkeypatch môi trường.
+  - Marker pytest có sẵn: `data`, `java`, `model`, `train`, `slow`. `tests/conftest.py` tự bỏ qua `data`/`model`/`java`/`train` kèm lý do. Cần thêm phụ thuộc, marker hay target: báo lead.
+  - `make demo-data` không truyền `--out`: `edupulse.demo_data` mặc định ghi vào `Settings.demo_dir`. `make docker-build` truyền `--build-context artifacts=<bundle_dir>` (Dockerfile dùng `COPY --from=artifacts`) và `EDUPULSE_BUILD_DEMO` nếu có đặt; `make smoke ARGS="--url ..."`.
+  - `make test`/`make lint` chỉ chạy phần web khi đã có `apps/web/package.json` (`pnpm run --if-present test|lint`, `pnpm exec tsc --noEmit`); `make web` cần script `dev`, `make gen-api` cần script `gen:api`, `make e2e` gọi `pnpm exec playwright test`.
+  - `.env` bị gitignore nên git worktree mới phải sao `.env` sang (hoặc export `EDUPULSE_HOME`). Giá trị trong `.env` thắng biến môi trường cùng tên; muốn đổi tạm thì `make VAR=...`. `.env.example` dùng `your-user` thay `<user>` để `source .env` trong shell không lỗi.
