@@ -1,0 +1,37 @@
+split,chu_de,cam_xuc,so_cau
+train,Giảng viên,Tiêu cực,2909
+train,Giảng viên,Trung tính,186
+train,Giảng viên,Tích cực,5071
+train,Chương trình,Tiêu cực,1716
+train,Chương trình,Trung tính,101
+train,Chương trình,Tích cực,384
+train,Cơ sở vật chất,Tiêu cực,474
+train,Cơ sở vật chất,Trung tính,10
+train,Cơ sở vật chất,Tích cực,13
+train,Khác,Tiêu cực,226
+train,Khác,Trung tính,161
+train,Khác,Tích cực,175
+validation,Giảng viên,Tiêu cực,405
+validation,Giảng viên,Trung tính,32
+validation,Giảng viên,Tích cực,714
+validation,Chương trình,Tiêu cực,196
+validation,Chương trình,Trung tính,14
+validation,Chương trình,Tích cực,57
+validation,Cơ sở vật chất,Tiêu cực,69
+validation,Cơ sở vật chất,Trung tính,1
+validation,Cơ sở vật chất,Tích cực,0
+validation,Khác,Tiêu cực,35
+validation,Khác,Trung tính,26
+validation,Khác,Tích cực,34
+test,Giảng viên,Tiêu cực,791
+test,Giảng viên,Trung tính,74
+test,Giảng viên,Tích cực,1425
+test,Chương trình,Tiêu cực,416
+test,Chương trình,Trung tính,47
+test,Chương trình,Tích cực,109
+test,Cơ sở vật chất,Tiêu cực,138
+test,Cơ sở vật chất,Trung tính,2
+test,Cơ sở vật chất,Tích cực,5
+test,Khác,Tiêu cực,64
+test,Khác,Trung tính,44
+test,Khác,Tích cực,51
