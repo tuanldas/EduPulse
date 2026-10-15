@@ -11,12 +11,7 @@ import pytest
 from tokenizers import Tokenizer
 
 from edupulse.engine.bundle import Bundle
-from edupulse.engine.onnx_model import (
-    EMBEDDING_ROWS,
-    UNK_ID,
-    OnnxModel,
-    clamp_unknown_ids,
-)
+from edupulse.engine.onnx_model import OnnxModel, clamp_unknown_ids
 from edupulse.labels import SENTIMENT, TOPIC
 
 pytestmark = pytest.mark.model
@@ -117,14 +112,15 @@ OUT_OF_TABLE_TEXT = "truyền_đạt_kiến thưc tốt"
 def test_pieces_beyond_the_embedding_table_are_read_as_unknown(model: OnnxModel, bundle: Bundle):
     tokenizer = Tokenizer.from_file(str(bundle.tokenizer_path))
     ids = tokenizer.encode(OUT_OF_TABLE_TEXT).ids
-    assert max(ids) >= EMBEDDING_ROWS, "câu thử không còn chứa mảnh ngoài bảng embedding"
+    base, unk = bundle.manifest.onnx.base_vocab_size, bundle.manifest.onnx.unk_id
+    assert max(ids) >= base, "câu thử không còn chứa mảnh ngoài bảng embedding gốc"
 
     logits = model.predict([OUT_OF_TABLE_TEXT])  # trước đây ORT báo chỉ số ngoài biên
     assert np.isfinite(logits.sentiment).all() and np.isfinite(logits.topic).all()
 
     # Kết quả phải đúng bằng khi chính các id đó được đổi sang <unk> rồi mới chạy mô hình.
-    row = [UNK_ID if i >= EMBEDDING_ROWS else i for i in ids]
-    arr = clamp_unknown_ids(np.array([row], dtype=np.int64))
+    row = [unk if i >= base else i for i in ids]
+    arr = clamp_unknown_ids(np.array([row], dtype=np.int64), base, unk)
     sentiment, topic = model._run(arr, np.ones_like(arr))
     np.testing.assert_array_equal(logits.sentiment, sentiment)
     np.testing.assert_array_equal(logits.topic, topic)
