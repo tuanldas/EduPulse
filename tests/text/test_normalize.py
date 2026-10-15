@@ -179,6 +179,16 @@ def test_normalize_text_keeps_alphanumeric_tokens_whole_next_to_punctuation():
     )
 
 
+@pytest.mark.parametrize("filler", ["a", "a.", "a.b.", "1.2.", ":)", "!", "aáâ", "x-", "..", "1:"])
+def test_pathological_long_inputs_are_normalised_quickly(filler):
+    import time
+
+    text = filler * (5000 // len(filler))
+    start = time.perf_counter()
+    normalize_text(clean_text(text))
+    assert time.perf_counter() - start < 1.0
+
+
 def test_diacritic_ratio_counts_only_plain_alphabetic_syllables():
     assert diacritic_ratio("thầy dạy hay") == (2, 3)
     # Bỏ qua tên thay thế, mã lớp và số.
