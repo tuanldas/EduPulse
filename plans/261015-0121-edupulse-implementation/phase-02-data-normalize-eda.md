@@ -98,16 +98,16 @@ Sinh ra, không commit: `data/raw/*.parquet` + `data/raw/MANIFEST.json`, `data/p
 10. Đối chiếu số với research: phân bố nhãn (r1 L53), 1,8% dấu cũ, p95 token = 30 (r1 L81), mức nền (r3 L62); lệch → điều tra trước khi sang phase 3. Commit (`feat: add shared text normalization and data pipeline`, `feat: add eda figures and tables`).
 
 ## Todo list
-- [ ] Vendor VnCoreNLP @ `62bbc58f…` (3 file + SHA256SUMS + LICENSE.md)
-- [ ] `ml/download_data.py`: assert tree `0000.parquet`, MANIFEST, số dòng đúng
-- [ ] `text/normalize.py` + test golden
-- [ ] `text/pii.py`: regex + luật tên (Must) + NER (Should) + test 22/25 + 0 hit câu thật
-- [ ] `text/segment.py` + test JVM/cwd/đa luồng
-- [ ] `text/pipeline.py` + `NORMALIZER_VERSION` + test parity + test không dấu
-- [ ] `text/ngrams.py` + test đơn vị/parity
-- [ ] `ml/preprocess.py` → parquet + `MANIFEST.json` + `insight_background.json`
-- [ ] `ml/eda.py` → hình/bảng báo cáo
-- [ ] Đối chiếu số với research + commit
+- [x] Vendor VnCoreNLP @ `62bbc58f…` (3 file + SHA256SUMS + LICENSE.md)
+- [x] `ml/download_data.py`: assert tree `0000.parquet`, MANIFEST, số dòng đúng
+- [x] `text/normalize.py` + test golden
+- [x] `text/pii.py`: regex + luật tên (Must) + NER (Should) + test 22/25 + 0 hit câu thật
+- [x] `text/segment.py` + test JVM/cwd/đa luồng
+- [x] `text/pipeline.py` + `NORMALIZER_VERSION` + test parity + test không dấu
+- [x] `text/ngrams.py` + test đơn vị/parity
+- [x] `ml/preprocess.py` → parquet + `MANIFEST.json` + `insight_background.json`
+- [x] `ml/eda.py` → hình/bảng báo cáo
+- [x] Đối chiếu số với research + commit
 
 ## Success Criteria
 - `data/raw/MANIFEST.json` ghi SHA `2d769061…` + sha256; số dòng 11.426 / 1.583 / 3.166; `data/processed/MANIFEST.json` có `normalizer_version` = hằng trong code.

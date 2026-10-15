@@ -1,0 +1,76 @@
+o_chu_de_cam_xuc,n_cau,ngram,so_lan_trong_o,so_lan_ngoai_o,z
+Giảng viên × Tiêu cực,2909,không,1083,948,20.265
+Giảng viên × Tiêu cực,2909,hơi,307,94,16.499
+Giảng viên × Tiêu cực,2909,khó,379,215,15.55
+Giảng viên × Tiêu cực,2909,chưa,365,238,14.264
+Giảng viên × Tiêu cực,2909,khó hiểu,190,63,12.816
+Giảng viên × Tiêu cực,2909,nhanh,195,71,12.765
+Giảng viên × Tiêu cực,2909,nghỉ,160,28,12.251
+Giảng viên × Tiêu cực,2909,nói,208,136,10.736
+Giảng viên × Tiêu cực,2909,quá,312,314,9.445
+Giảng viên × Tiêu cực,2909,nên,483,588,9.225
+Giảng viên × Tiêu cực,2909,hơi khó,93,27,9.129
+Giảng viên × Tiêu cực,2909,trễ,85,17,8.93
+Giảng viên × Tiêu cực,2909,thông_báo,88,27,8.818
+Giảng viên × Tiêu cực,2909,hơi nhanh,76,12,8.414
+Giảng viên × Tiêu cực,2909,ít,141,104,8.224
+Chương trình × Tiêu cực,1716,cần,361,381,17.411
+Chương trình × Tiêu cực,1716,môn_học,334,348,16.856
+Chương trình × Tiêu cực,1716,nên,435,636,15.355
+Chương trình × Tiêu cực,1716,thực_hành,364,492,14.934
+Chương trình × Tiêu cực,1716,lý_thuyết,187,187,12.855
+Chương trình × Tiêu cực,1716,môn,169,183,11.716
+Chương trình × Tiêu cực,1716,thi,143,138,11.432
+Chương trình × Tiêu cực,1716,này,146,174,10.284
+Chương trình × Tiêu cực,1716,nội_dung,159,215,9.837
+Chương trình × Tiêu cực,1716,học,430,925,9.779
+Chương trình × Tiêu cực,1716,phần,130,158,9.581
+Chương trình × Tiêu cực,1716,cần có,69,41,9.363
+Chương trình × Tiêu cực,1716,hình_thức,57,27,8.873
+Chương trình × Tiêu cực,1716,thêm,152,233,8.672
+Chương trình × Tiêu cực,1716,môn này,73,62,8.628
+Cơ sở vật chất × Tiêu cực,474,phòng,284,49,30.057
+Cơ sở vật chất × Tiêu cực,474,máy,107,23,19.158
+Cơ sở vật chất × Tiêu cực,474,thiết_bị,72,23,16.667
+Cơ sở vật chất × Tiêu cực,474,chất_lượng,60,78,15.039
+Cơ sở vật chất × Tiêu cực,474,thực_hành,150,706,14.748
+Cơ sở vật chất × Tiêu cực,474,phòng học,88,8,14.425
+Cơ sở vật chất × Tiêu cực,474,máy_chiếu,77,9,14.329
+Cơ sở vật chất × Tiêu cực,474,phòng thực_hành,68,8,13.484
+Cơ sở vật chất × Tiêu cực,474,phòng máy,52,6,11.735
+Cơ sở vật chất × Tiêu cực,474,máy_tính,33,28,11.692
+Cơ sở vật chất × Tiêu cực,474,lab,30,21,11.233
+Cơ sở vật chất × Tiêu cực,474,trang_bị,32,10,11.071
+Cơ sở vật chất × Tiêu cực,474,bị,39,79,10.949
+Cơ sở vật chất × Tiêu cực,474,mạng,29,36,10.523
+Cơ sở vật chất × Tiêu cực,474,cải_thiện,27,26,10.473
+Khác × Tiêu cực,226,em,47,826,6.472
+Khác × Tiêu cực,226,của em,7,22,5.965
+Khác × Tiêu cực,226,họ,6,2,5.905
+Khác × Tiêu cực,226,báo_cáo đồ_án,5,11,5.443
+Khác × Tiêu cực,226,ngủ,5,13,5.269
+Khác × Tiêu cực,226,này,21,299,5.137
+Khác × Tiêu cực,226,tiền,4,6,5.131
+Khác × Tiêu cực,226,thì,22,368,4.611
+Khác × Tiêu cực,226,nhận,5,22,4.568
+Khác × Tiêu cực,226,server,3,2,4.511
+Khác × Tiêu cực,226,win,3,2,4.511
+Khác × Tiêu cực,226,của nhóm,3,4,4.488
+Khác × Tiêu cực,226,môn,20,332,4.425
+Khác × Tiêu cực,226,buồn,3,5,4.393
+Khác × Tiêu cực,226,sức_khoẻ,3,5,4.393
+Mọi chủ đề × Tích cực,5643,rất,1605,354,34.776
+Mọi chủ đề × Tích cực,5643,nhiệt_tình,1764,84,32.812
+Mọi chủ đề × Tích cực,5643,dễ,1134,142,29.377
+Mọi chủ đề × Tích cực,5643,dạy,1446,717,26.8
+Mọi chủ đề × Tích cực,5643,dễ hiểu,953,51,24.501
+Mọi chủ đề × Tích cực,5643,thầy,1802,1238,24.372
+Mọi chủ đề × Tích cực,5643,hiểu,1115,540,23.738
+Mọi chủ đề × Tích cực,5643,hay,672,254,20.21
+Mọi chủ đề × Tích cực,5643,cô,777,366,20.018
+Mọi chủ đề × Tích cực,5643,giảng_dạy,672,282,19.503
+Mọi chủ đề × Tích cực,5643,thầy dạy,510,133,19.103
+Mọi chủ đề × Tích cực,5643,tận_tâm,538,24,17.841
+Mọi chủ đề × Tích cực,5643,tốt,522,210,17.433
+Mọi chủ đề × Tích cực,5643,giảng_viên,906,704,15.31
+Mọi chủ đề × Tích cực,5643,và,1112,956,15.176

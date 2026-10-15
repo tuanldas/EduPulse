@@ -112,6 +112,16 @@ def test_model_view_removes_non_name_pii_without_gluing_words():
     assert result.types == ("phone", "email")
 
 
+@pytest.mark.parametrize("filler", ["a", "1", "a.", "aa@", "0912 "])
+def test_pathological_long_inputs_are_handled_quickly(filler):
+    import time
+
+    text = filler * (5000 // len(filler))
+    start = time.perf_counter()
+    mask(text)
+    assert time.perf_counter() - start < 1.0
+
+
 def test_plain_domain_is_not_a_url():
     # "uit.edu.vn" có trong dữ liệu thật như một từ (uitdotedudotvn), không phải liên kết cá nhân.
     assert mask("vào uit.edu.vn nhé").types == ()

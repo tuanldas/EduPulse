@@ -102,6 +102,8 @@ def _overlaps(span: Span, taken: Iterable[Span]) -> bool:
 def _regex_spans(text: str) -> list[Span]:
     accepted: list[Span] = []
     for pii_type, pattern in _PATTERNS:
+        if pii_type == EMAIL and "@" not in text:
+            continue  # mẫu email quét tuyến tính nhiều lần trên chuỗi dài không có "@"
         for match in pattern.finditer(text):
             span = Span(match.start(), match.end(), pii_type)
             if not _overlaps(span, accepted):

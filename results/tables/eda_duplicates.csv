@@ -1,0 +1,7 @@
+phep_do,so_cau,nhan_mau_thuan
+trùng trong train,1,1
+trùng trong validation,0,0
+trùng trong test,0,0
+giao train ∩ validation,0,0
+giao train ∩ test,0,0
+giao validation ∩ test,0,0

@@ -1,0 +1,376 @@
+"""Gom bundle triển khai `$EDUPULSE_HOME/artifacts/<version>/` từ kết quả huấn luyện và export.
+
+    python -m ml.build_artifacts --version v0-smoke      # make artifacts BUNDLE_VERSION=v0-smoke
+
+Bundle chỉ gồm mô hình và cấu hình (model.int8.onnx, tokenizer.json, calibration.json,
+model_card.json, insight_background.json, golden_predictions.json, baseline/*.skops, manifest.json).
+Trước khi ghi: mọi JSON phải qua schema `edupulse.bundle_schema`; `normalizer_version` của mã, dữ
+liệu
+đã xử lý, run huấn luyện, đếm nền và dự đoán vàng phải trùng nhau; và 200 câu ngẫu nhiên của
+UIT-VSFC không được xuất hiện nguyên văn trong bất kỳ JSON nào (bundle không chứa câu gốc).
+"""
+
+from __future__ import annotations
+
+import argparse
+import random
+import shutil
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from edupulse.bundle_schema import (
+    BaselineRow,
+    BaseModelInfo,
+    BudgetRow,
+    Calibration,
+    DatasetInfo,
+    GoldenPredictions,
+    InsightBackground,
+    Manifest,
+    ModelCard,
+    ModelCardNotes,
+    OnnxSpec,
+    SplitMetrics,
+    TaskMetrics,
+)
+from edupulse.config import BUDGETS, DEFAULT_BUDGET, REPO_ROOT
+from edupulse.labels import LABELS, TASKS
+from edupulse.text import NORMALIZER_VERSION
+from ml.common import (
+    SPLITS,
+    assert_normalizer,
+    load_processed,
+    read_json,
+    resolve_run,
+    settings,
+    sha256_file,
+    task_metrics,
+    write_json,
+)
+from ml.download_data import DATASET_REPO, load_raw_manifest
+from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, QUANTIZATION
+from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
+from ml.train_baseline import load_model
+
+LOG_PREFIX = "build_artifacts"
+GUARD_SAMPLES = 200
+GUARD_MIN_TOKENS = 4  # câu ngắn hơn có thể trùng một n-gram trong đếm nền
+BASELINE_FILES = tuple(f"baseline/{task}_linearsvc.skops" for task in TASKS)
+BUNDLE_FILES = (
+    "model.int8.onnx",
+    "tokenizer.json",
+    "calibration.json",
+    "model_card.json",
+    "insight_background.json",
+    "golden_predictions.json",
+    *BASELINE_FILES,
+)
+JSON_SCHEMAS = {
+    "calibration.json": Calibration,
+    "model_card.json": ModelCard,
+    "insight_background.json": InsightBackground,
+    "golden_predictions.json": GoldenPredictions,
+}
+
+INTENDED_USE = (
+    "Giúp cán bộ khoa và phòng đảm bảo chất lượng đọc nhanh góp ý của sinh viên: phân loại cảm xúc "
+    "và chủ đề từng câu, gắn cờ câu cần người duyệt, tổng hợp xu hướng theo môn."
+)
+OUT_OF_SCOPE = (
+    "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra "
+    "quyết định tự động khi không có người duyệt."
+)
+LIMITATIONS = [
+    "Lớp Trung tính và chủ đề Khác yếu (recall khoảng 53%).",
+    "Câu gõ không dấu: độ chính xác giảm mạnh (khoảng 13 điểm), hệ thống cảnh báo và gắn cờ.",
+    "Mỉa mai, châm biếm dễ bị hiểu sai.",
+    "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
+    "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
+    "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
+    "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
+    "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt.",
+]
+NOTE_X86 = "Chưa đo trên x86: số đo tốc độ và RAM lấy từ máy Apple M1 (arm64)."
+NOTE_DEMO = (
+    "Dữ liệu demo tính lại lúc build image trên kiến trúc máy build, nên có thể lệch nhẹ so với "
+    "số đo trên M1."
+)
+
+
+class BundleError(RuntimeError):
+    pass
+
+
+def git_commit() -> str:
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    try:
+        return git("rev-parse", "--short=10", "HEAD") + (
+            "+dirty" if git("status", "--porcelain") else ""
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def assert_same_normalizer(
+    history: dict[str, Any], background: InsightBackground, golden: GoldenPredictions
+) -> None:
+    versions = {
+        "mã nguồn": NORMALIZER_VERSION,
+        "dữ liệu đã xử lý": assert_normalizer()["normalizer_version"],
+        "run huấn luyện": history.get("normalizer_version"),
+        "đếm nền insight": background.normalizer_version,
+        "dự đoán vàng": golden.normalizer_version,
+    }
+    if len(set(versions.values())) != 1:
+        raise BundleError(f"normalizer_version không đồng nhất: {versions}")
+
+
+def assert_no_source_sentences(bundle_dir: Path, samples: int = GUARD_SAMPLES) -> int:
+    """Không câu gốc UIT-VSFC nào (mẫu ngẫu nhiên) xuất hiện nguyên văn trong JSON của bundle."""
+    texts = {
+        path.name: path.read_text(encoding="utf-8") for path in sorted(bundle_dir.glob("*.json"))
+    }
+    pool = [
+        sentence
+        for split in SPLITS
+        # Chỉ tìm chuỗi, không tính chỉ số nào trên test.
+        for sentence in load_processed(split, allow_test=True)["sentence"]
+        if len(sentence.split()) >= GUARD_MIN_TOKENS
+    ]
+    for sentence in random.Random(0).sample(pool, samples):
+        for name, text in texts.items():
+            if sentence in text:
+                raise BundleError(f"bundle chứa câu gốc của dữ liệu trong {name}")
+    return samples
+
+
+def model_card(
+    *,
+    bundle_version: str,
+    model_version: str,
+    stage: str,
+    val_logits: dict[str, np.ndarray],
+    targets: dict[str, np.ndarray],
+    calibration: Calibration,
+) -> ModelCard:
+    if stage != "smoke":
+        raise BundleError(
+            "bản release cần số trên test: chạy đánh giá cuối (ml.evaluate) rồi mở rộng bước này"
+        )
+    temperatures = {
+        "sentiment": calibration.sentiment.temperature,
+        "topic": calibration.topic.temperature,
+    }
+    metrics = {
+        task: TaskMetrics(
+            **task_metrics(val_logits[task], targets[task], LABELS[task], temperatures[task])
+        )
+        for task in TASKS
+    }
+    deployed = BaselineRow(
+        name="PhoBERT đa nhiệm · int8",
+        deployed=True,
+        sentiment_accuracy=metrics["sentiment"].accuracy,
+        sentiment_macro_f1=metrics["sentiment"].macro_f1,
+        topic_accuracy=metrics["topic"].accuracy,
+        topic_macro_f1=metrics["topic"].macro_f1,
+        sentiment_ece=metrics["sentiment"].ece,
+    )
+    return ModelCard(
+        model_version=model_version,
+        bundle_version=bundle_version,
+        stage="smoke",
+        metrics=SplitMetrics(
+            split="val",
+            n=len(targets["sentiment"]),
+            sentiment=metrics["sentiment"],
+            topic=metrics["topic"],
+        ),
+        baselines=[*baseline_rows(), deployed],
+        review_budget=[
+            BudgetRow(budget=b, default=(b == DEFAULT_BUDGET), efficiency=calibration.efficiency[b])
+            for b in BUDGETS
+        ],
+        intended_use=INTENDED_USE,
+        out_of_scope=OUT_OF_SCOPE,
+        limitations=LIMITATIONS,
+        notes=ModelCardNotes(x86=NOTE_X86, demo=NOTE_DEMO),
+    )
+
+
+def baseline_rows() -> list[BaselineRow]:
+    path = REPO_ROOT / "results" / "metrics" / "val_baselines.json"
+    if not path.is_file():
+        raise BundleError(f"chưa có {path} — chạy `make baseline`")
+    data = read_json(path)
+    if data["normalizer_version"] != NORMALIZER_VERSION:
+        raise BundleError(
+            "val_baselines.json sinh bởi bản chuẩn hoá khác — chạy lại `make baseline`"
+        )
+    rows = []
+    for name in ("complementnb", "logreg", "linearsvc"):
+        sentiment = data["tasks"]["sentiment"][name]
+        topic = data["tasks"]["topic"][name]
+        rows.append(
+            BaselineRow(
+                name=sentiment["display"],
+                sentiment_accuracy=sentiment["raw"]["accuracy"],
+                sentiment_macro_f1=sentiment["raw"]["macro_f1"],
+                topic_accuracy=topic["raw"]["accuracy"],
+                topic_macro_f1=topic["raw"]["macro_f1"],
+                sentiment_ece=sentiment["calibrated"]["ece"],
+            )
+        )
+    return rows
+
+
+def verify_bundle(bundle_dir: Path) -> Manifest:
+    """Đọc lại bundle như bên chạy thật: sha256, schema, nhãn, tên vào/ra ONNX, nạp baseline."""
+    manifest = Manifest.model_validate_json((bundle_dir / "manifest.json").read_text("utf-8"))
+    if manifest.normalizer_version != NORMALIZER_VERSION:
+        raise BundleError("manifest.normalizer_version lệch mã nguồn")
+    if set(manifest.files) != set(BUNDLE_FILES):
+        raise BundleError(f"tập tệp lệch danh sách cho phép: {sorted(manifest.files)}")
+    for name, digest in manifest.files.items():
+        if sha256_file(bundle_dir / name) != digest:
+            raise BundleError(f"{name}: sha256 không khớp manifest")
+    for name, schema in JSON_SCHEMAS.items():
+        schema.model_validate_json((bundle_dir / name).read_text("utf-8"))
+    import onnxruntime as ort
+
+    session = ort.InferenceSession(
+        str(bundle_dir / "model.int8.onnx"), providers=["CPUExecutionProvider"]
+    )
+    if tuple(i.name for i in session.get_inputs()) != tuple(manifest.onnx.input_names):
+        raise BundleError("tên đầu vào ONNX lệch manifest")
+    if tuple(o.name for o in session.get_outputs()) != tuple(manifest.onnx.output_names):
+        raise BundleError("tên đầu ra ONNX lệch manifest")
+    for name in BASELINE_FILES:
+        load_model(bundle_dir / name)
+    return manifest
+
+
+def build(version: str, run: Path, stage: str, force: bool) -> Path:
+    target = settings().artifacts_dir(version)
+    if target.exists() and not force:
+        raise BundleError(
+            f"{target} đã có (bundle theo phiên bản không ghi đè); dùng --force nếu cố ý"
+        )
+    onnx_dir = settings().outputs_dir / "onnx" / run.name
+    calibration_path = settings().outputs_dir / "calibration" / run.name / "calibration.json"
+    for needed in (
+        onnx_dir / "model.int8.onnx",
+        calibration_path,
+        onnx_dir / "val_logits_int8.npz",
+    ):
+        if not needed.is_file():
+            raise BundleError(f"thiếu {needed} — chạy `make export calibrate`")
+
+    history = read_json(run / "history.json")
+    calibration = Calibration.model_validate_json(calibration_path.read_text("utf-8"))
+    golden = GoldenPredictions.model_validate_json(
+        (onnx_dir / "golden_predictions.json").read_text("utf-8")
+    )
+    background_path = settings().outputs_dir / "data" / "insight_background.json"
+    background = InsightBackground.model_validate_json(background_path.read_text("utf-8"))
+    assert_same_normalizer(history, background, golden)
+
+    logits = np.load(onnx_dir / "val_logits_int8.npz")
+    val_logits = {task: logits[task] for task in TASKS}
+    targets = {task: logits[f"y_{task}"] for task in TASKS}
+    model_version = f"edupulse-{run.name}"
+    card = model_card(
+        bundle_version=version,
+        model_version=model_version,
+        stage=stage,
+        val_logits=val_logits,
+        targets=targets,
+        calibration=calibration,
+    )
+
+    staging = target.with_name(f"{target.name}.building")
+    shutil.rmtree(staging, ignore_errors=True)
+    (staging / "baseline").mkdir(parents=True)
+    try:
+        shutil.copyfile(onnx_dir / "model.int8.onnx", staging / "model.int8.onnx")
+        shutil.copyfile(tokenizer_path(), staging / "tokenizer.json")
+        write_json(staging / "calibration.json", calibration.model_dump(mode="json"))
+        write_json(staging / "model_card.json", card.model_dump(mode="json"))
+        write_json(staging / "insight_background.json", background.model_dump(mode="json"))
+        write_json(staging / "golden_predictions.json", golden.model_dump(mode="json"))
+        for name in BASELINE_FILES:
+            shutil.copyfile(settings().models_dir / name, staging / name)
+
+        raw = load_raw_manifest()
+        manifest = Manifest(
+            bundle_version=version,
+            stage=stage,
+            model_version=model_version,
+            created_at=datetime.now(UTC),
+            git_commit=git_commit(),
+            normalizer_version=NORMALIZER_VERSION,
+            max_len=MAX_LEN,
+            labels={task: list(LABELS[task]) for task in TASKS},
+            onnx=OnnxSpec(
+                input_names=INPUT_NAMES,
+                output_names=tuple(OUTPUT_NAMES[t] for t in TASKS),
+                pad_id=PAD_ID,
+                quantization=QUANTIZATION,
+            ),
+            files={name: sha256_file(staging / name) for name in BUNDLE_FILES},
+            dataset=DatasetInfo(
+                name=DATASET_REPO,
+                revision=raw["revision"],
+                splits={split: info["rows"] for split, info in raw["files"].items()},
+                license_note="Học thuật, phi thương mại; bundle không chứa câu gốc của bộ dữ liệu.",
+            ),
+            base_model=BaseModelInfo(name=BASE_MODEL, revision=BASE_REVISION, license="AGPL-3.0"),
+        )
+        write_json(staging / "manifest.json", manifest.model_dump(mode="json"))
+        verify_bundle(staging)
+        checked = assert_no_source_sentences(staging)
+        print(f"{LOG_PREFIX}: guard câu gốc: {checked} câu ngẫu nhiên, 0 xuất hiện trong bundle")
+        if target.exists():
+            shutil.rmtree(target)
+        staging.rename(target)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return target
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--version", required=True, help="vd. v0-smoke hoặc v1.0")
+    parser.add_argument("--run", default="best", help="'best', tên run hoặc thư mục checkpoint")
+    parser.add_argument(
+        "--stage", choices=["smoke", "release"], help="mặc định: smoke nếu tên có 'smoke'"
+    )
+    parser.add_argument("--force", action="store_true", help="ghi đè bundle cùng phiên bản")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    stage = args.stage or ("smoke" if "smoke" in args.version else "release")
+    try:
+        target = build(args.version, resolve_run(args.run), stage, args.force)
+    except BundleError as error:
+        print(f"{LOG_PREFIX}: {error}", file=sys.stderr)
+        return 1
+    manifest = read_json(target / "manifest.json")
+    print(f"{LOG_PREFIX}: {target} · stage={manifest['stage']} · {len(manifest['files'])} tệp")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

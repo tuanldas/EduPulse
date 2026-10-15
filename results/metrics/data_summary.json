@@ -1,0 +1,299 @@
+{
+  "normalizer_version": "1",
+  "dataset_revision": "2d76906157232f87e9883fa37ebfc91ffdee1f83",
+  "phobert_revision": "86cd7fd4c148980922ac11a2cf5e257f2ba639e1",
+  "rows": {
+    "train": 11426,
+    "validation": 1583,
+    "test": 3166
+  },
+  "inter_annotator_agreement": {
+    "sentiment": 0.91,
+    "topic": 0.71
+  },
+  "labels": {
+    "sentiment": {
+      "train": {
+        "counts": [
+          5325,
+          458,
+          5643
+        ],
+        "shares": [
+          0.466,
+          0.0401,
+          0.4939
+        ]
+      },
+      "validation": {
+        "counts": [
+          705,
+          73,
+          805
+        ],
+        "shares": [
+          0.4454,
+          0.0461,
+          0.5085
+        ]
+      },
+      "test": {
+        "counts": [
+          1409,
+          167,
+          1590
+        ],
+        "shares": [
+          0.445,
+          0.0527,
+          0.5022
+        ]
+      }
+    },
+    "topic": {
+      "train": {
+        "counts": [
+          8166,
+          2201,
+          497,
+          562
+        ],
+        "shares": [
+          0.7147,
+          0.1926,
+          0.0435,
+          0.0492
+        ]
+      },
+      "validation": {
+        "counts": [
+          1151,
+          267,
+          70,
+          95
+        ],
+        "shares": [
+          0.7271,
+          0.1687,
+          0.0442,
+          0.06
+        ]
+      },
+      "test": {
+        "counts": [
+          2290,
+          572,
+          145,
+          159
+        ],
+        "shares": [
+          0.7233,
+          0.1807,
+          0.0458,
+          0.0502
+        ]
+      }
+    }
+  },
+  "topic_base_rates": {
+    "Giảng viên": {
+      "so_cau_train": 8166,
+      "ti_trong_chu_de": 0.7147,
+      "muc_nen_tieu_cuc": 0.3562,
+      "muc_nen_trung_tinh": 0.0228,
+      "muc_nen_tich_cuc": 0.621
+    },
+    "Chương trình": {
+      "so_cau_train": 2201,
+      "ti_trong_chu_de": 0.1926,
+      "muc_nen_tieu_cuc": 0.7796,
+      "muc_nen_trung_tinh": 0.0459,
+      "muc_nen_tich_cuc": 0.1745
+    },
+    "Cơ sở vật chất": {
+      "so_cau_train": 497,
+      "ti_trong_chu_de": 0.0435,
+      "muc_nen_tieu_cuc": 0.9537,
+      "muc_nen_trung_tinh": 0.0201,
+      "muc_nen_tich_cuc": 0.0262
+    },
+    "Khác": {
+      "so_cau_train": 562,
+      "ti_trong_chu_de": 0.0492,
+      "muc_nen_tieu_cuc": 0.4021,
+      "muc_nen_trung_tinh": 0.2865,
+      "muc_nen_tich_cuc": 0.3114
+    }
+  },
+  "length": {
+    "syllables": {
+      "p50": 11.0,
+      "p95": 33.0,
+      "p99": 52.0,
+      "mean": 14.23,
+      "max": 161
+    },
+    "words": {
+      "p50": 9.0,
+      "p95": 27.0,
+      "p99": 42.0,
+      "mean": 11.13,
+      "max": 134
+    },
+    "tokens": {
+      "p50": 11.0,
+      "p95": 30.0,
+      "p99": 45.26000000000022,
+      "mean": 13.39,
+      "max": 136
+    }
+  },
+  "old_style_tone": {
+    "sentences_affected": 284,
+    "share": 0.01756,
+    "by_split": {
+      "train": 215,
+      "validation": 29,
+      "test": 40
+    },
+    "top_words": {
+      "hòa": 94,
+      "họa": 52,
+      "khóa": 48,
+      "tụy": 38,
+      "hóa": 15,
+      "khỏe": 13,
+      "tùy": 6,
+      "thỏa": 6
+    }
+  },
+  "no_diacritics_sentences": 8,
+  "special_tokens": {
+    "Tên người (wzjwz<N>)": {
+      "so_cau": 301,
+      "so_lan": 333
+    },
+    "Emoticon (colon...)": {
+      "so_cau": 126,
+      "so_lan": 126
+    },
+    "Dấu hai chấm (doubledot)": {
+      "so_cau": 118,
+      "so_lan": 125
+    },
+    "Viết tắt v.v (vdotv)": {
+      "so_cau": 12,
+      "so_lan": 12
+    },
+    "Dấu ba chấm (dotdotdot)": {
+      "so_cau": 6,
+      "so_lan": 6
+    },
+    "Số/tên miền chứa dấu chấm (…dot…)": {
+      "so_cau": 17,
+      "so_lan": 17
+    }
+  },
+  "duplicates": {
+    "trùng trong train": {
+      "so_cau": 1,
+      "nhan_mau_thuan": 1
+    },
+    "trùng trong validation": {
+      "so_cau": 0,
+      "nhan_mau_thuan": 0
+    },
+    "trùng trong test": {
+      "so_cau": 0,
+      "nhan_mau_thuan": 0
+    },
+    "giao train ∩ validation": {
+      "so_cau": 0,
+      "nhan_mau_thuan": 0
+    },
+    "giao train ∩ test": {
+      "so_cau": 0,
+      "nhan_mau_thuan": 0
+    },
+    "giao validation ∩ test": {
+      "so_cau": 0,
+      "nhan_mau_thuan": 0
+    }
+  },
+  "checks": [
+    {
+      "check": "train: số câu cảm xúc",
+      "observed": [
+        5325,
+        458,
+        5643
+      ],
+      "expected": [
+        5325,
+        458,
+        5643
+      ],
+      "tolerance": 0.0,
+      "ok": true
+    },
+    {
+      "check": "train: số câu chủ đề",
+      "observed": [
+        8166,
+        2201,
+        497,
+        562
+      ],
+      "expected": [
+        8166,
+        2201,
+        497,
+        562
+      ],
+      "tolerance": 0.0,
+      "ok": true
+    },
+    {
+      "check": "câu có dấu thanh kiểu cũ",
+      "observed": 284,
+      "expected": 284,
+      "tolerance": 0.0,
+      "ok": true
+    },
+    {
+      "check": "p95 token PhoBERT",
+      "observed": 30.0,
+      "expected": 30,
+      "tolerance": 1,
+      "ok": true
+    },
+    {
+      "check": "mức nền tiêu cực: Giảng viên",
+      "observed": 0.3562,
+      "expected": 0.356,
+      "tolerance": 0.001,
+      "ok": true
+    },
+    {
+      "check": "mức nền tiêu cực: Chương trình",
+      "observed": 0.7796,
+      "expected": 0.78,
+      "tolerance": 0.001,
+      "ok": true
+    },
+    {
+      "check": "mức nền tiêu cực: Cơ sở vật chất",
+      "observed": 0.9537,
+      "expected": 0.954,
+      "tolerance": 0.001,
+      "ok": true
+    },
+    {
+      "check": "mức nền tiêu cực: Khác",
+      "observed": 0.4021,
+      "expected": 0.402,
+      "tolerance": 0.001,
+      "ok": true
+    }
+  ]
+}
