@@ -1,0 +1,26 @@
+{
+  "source": "Tự viết cho kiểm thử, không trích từ UIT-VSFC. Nội dung thuộc dự án EduPulse (AGPL-3.0).",
+  "note": "`intended` là nhãn người viết dự định, chỉ để kiểm tra hợp lý; dự đoán dùng so khớp hồi quy nằm trong golden_predictions.json của bundle.",
+  "items": [
+    {"id": "g01", "text": "Thầy giảng bài rất dễ hiểu và luôn [đã gỡ câu UIT-VSFC].", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": []},
+    {"id": "g02", "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.", "intended": {"sentiment": "negative", "topic": "lecturer"}, "covers": []},
+    {"id": "g03", "text": "Thầy dạy vào thứ ba và thứ năm hằng tuần, mỗi buổi kéo dài ba tiết.", "intended": {"sentiment": "neutral", "topic": "lecturer"}, "covers": []},
+    {"id": "g04", "text": "Chương trình học có nhiều bài thực hành, nội dung sát với yêu cầu của doanh nghiệp.", "intended": {"sentiment": "positive", "topic": "training_program"}, "covers": []},
+    {"id": "g05", "text": "Môn học này nặng lý thuyết, giáo trình đã cũ và bài tập thực hành quá ít.", "intended": {"sentiment": "negative", "topic": "training_program"}, "covers": []},
+    {"id": "g06", "text": "Môn này có hai bài kiểm tra giữa kỳ và một bài thi cuối kỳ.", "intended": {"sentiment": "neutral", "topic": "training_program"}, "covers": []},
+    {"id": "g07", "text": "Phòng học nóng, máy chiếu mờ và micro thường xuyên bị rè nên rất khó nghe.", "intended": {"sentiment": "negative", "topic": "facility"}, "covers": []},
+    {"id": "g08", "text": "Thư viện mới rất rộng rãi, có máy lạnh và ổ cắm điện ở mọi chỗ ngồi.", "intended": {"sentiment": "positive", "topic": "facility"}, "covers": []},
+    {"id": "g09", "text": "Phòng thực hành nằm ở tầng ba của tòa nhà B.", "intended": {"sentiment": "neutral", "topic": "facility"}, "covers": []},
+    {"id": "g10", "text": "Phòng đào tạo hỗ trợ đăng ký môn học rất nhanh, em rất hài lòng.", "intended": {"sentiment": "positive", "topic": "others"}, "covers": []},
+    {"id": "g11", "text": "Thủ tục xin giấy xác nhận quá rườm rà, em phải đi lại nhiều lần.", "intended": {"sentiment": "negative", "topic": "others"}, "covers": []},
+    {"id": "g12", "text": "Em nộp học phí qua ngân hàng vào đầu học kỳ.", "intended": {"sentiment": "neutral", "topic": "others"}, "covers": []},
+    {"id": "g13", "text": "thay day rat de hieu va nhiet tinh voi sinh vien", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": ["no_diacritics"]},
+    {"id": "g14", "text": "Thầy giảng hay, em xin liên hệ 0912345678 để hỏi thêm về bài tập.", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": ["phone"]},
+    {"id": "g15", "text": "Thầy Nam giảng bài rất dễ hiểu và nhiệt tình.", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": ["name"]},
+    {"id": "g16", "text": "Cô dạy vui lắm :) em rất thích học môn này.", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": ["emoticon"]},
+    {"id": "g17", "text": "Em thấy môn học này có nhiều nội dung quan trọng nhưng thầy trình bày quá nhanh, tài liệu tham khảo không đầy đủ, bài tập về nhà nhiều hơn thời gian em có, các buổi thực hành lại diễn ra vào cuối tuần nên em không thể tham gia đầy đủ, mong khoa xem xét điều chỉnh lịch học và giảm bớt khối lượng bài tập cho hợp lý hơn.", "intended": {"sentiment": "negative", "topic": "training_program"}, "covers": ["long"]},
+    {"id": "g18", "text": "Thầy cho nộp bài lúc 11:55 tối nên em không kịp hoàn thành hết các câu hỏi.", "intended": {"sentiment": "negative", "topic": "training_program"}, "covers": ["time"]},
+    {"id": "g19", "text": "Cô giảng môn thủy văn rất hòa nhã, khóa học này em thấy rất bổ ích.", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": ["old_tone_marks"]},
+    {"id": "g20", "text": "Phòng máy hay hỏng, wifi yếu, máy chiếu mờ v.v... Nhà trường nên sửa sớm!!!", "intended": {"sentiment": "negative", "topic": "facility"}, "covers": ["abbreviation", "ellipsis", "repeated_punctuation"]}
+  ]
+}
