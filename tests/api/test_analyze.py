@@ -4,6 +4,7 @@ Cờ, nhãn và độ tin cậy phụ thuộc mô hình nên test chỉ kiểm t
 lệ: hợp đồng dữ liệu, luật (ẩn PII, không dấu, giới hạn độ dài) và sự nhất quán giữa hai endpoint.
 """
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import get_args
 
@@ -141,6 +142,41 @@ def test_explain_refuses_long_sentences_with_a_stable_code(live_client: TestClie
     detail = schemas.ErrorResponse.model_validate(response.json()).detail
     assert detail.code == "xai_too_long"
     assert str(XAI_MAX_WORDS) in detail.message
+
+
+HOSTILE_TEXTS = {
+    "nul": "a\x00b thầy dạy hay",
+    "lone surrogate": "thầy \ude00 dạy",
+    "emoji flood": "😀" * 120,
+    "right-to-left": "‮ thầy dạy hay",
+    "zero width": "​" * 400,
+    "combining marks": "a" + "́" * 400,
+    "markup": "<script>alert(1)</script> thầy dạy hay",
+    "template": "{{7*7}} ${jndi:ldap://x} %s%s%s%n",
+    "one huge token": "x" * MAX_CHARS,
+    "punctuation only": '!?.,;()"' * 60,
+    "digits only": "1" * MAX_CHARS,
+    "other scripts": "老师讲得很好 المعلم ممتاز ครูสอนดี",
+    "top code point": "\U0010ffff thầy",
+    "only a phone number": "0912345678",
+    "emoticon flood": ":) " * 150,
+    "dots": "." * MAX_CHARS,
+}
+
+
+@pytest.mark.model
+@pytest.mark.parametrize("path", ["/api/analyze", "/api/explain"])
+@pytest.mark.parametrize("text", list(HOSTILE_TEXTS.values()), ids=list(HOSTILE_TEXTS))
+def test_hostile_text_is_answered_or_rejected_but_never_a_server_error(
+    live_client: TestClient, path: str, text: str
+):
+    # json.dumps giữ nguyên ký tự lạ (kể cả nửa cặp thay thế) thành \uXXXX như trình duyệt gửi.
+    response = live_client.post(
+        path, content=json.dumps({"text": text}), headers={"Content-Type": "application/json"}
+    )
+    assert response.status_code in (200, 422), response.text[:200]
+    if response.status_code == 422:
+        assert response.json()["detail"]["code"] in ("validation_error", "xai_too_long")
 
 
 @pytest.mark.model
