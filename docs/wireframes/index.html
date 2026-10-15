@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EduPulse · Wireframe mid-fi (mục lục)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=block" rel="stylesheet">
+<style>
+/* ============ EduPulse wireframe · tokens (mirror docs/design-guidelines.md) ============ */
+:root{
+  color-scheme:light;
+  --bg:#FAFAF8; --bg2:#F3F3EE; --raised:#FFFFFF; --hover:#E7E6E0;
+  --text:#14171E; --muted:#5B6170;
+  --border:#918F87; --divider:#DCDAD2; --grid:#E4E2DB;
+  --primary:#3A4BD0; --primary-hover:#2F3EBB; --primary-soft:#E8EAFB; --on-primary:#FFFFFF; --link:#3A4BD0;
+  --focus:rgba(58,75,208,.45);
+  /* data fills: same in both themes (Altair does not follow theme) */
+  --neg:#C94827; --neu:#8B909A; --pos:#1B9A6E;
+  --gv:#0167BB; --ct:#944A76; --csvc:#B88818; --khac:#66837A; --flag:#F2C230;
+  /* text + soft background per semantic colour (badges, markdown :color[...]) */
+  --neg-fg:#C0401E; --neg-bg:#FDEBE5;
+  --neu-fg:#62666F; --neu-bg:#EDEEF1;
+  --pos-fg:#007752; --pos-bg:#DDF4E9;
+  --gv-fg:#0F64B4; --gv-bg:#E5EFFC;
+  --ct-fg:#93496F; --ct-bg:#F9E8F1;
+  --csvc-fg:#835F00; --csvc-bg:#FBEFD3;
+  --khac-fg:#62666F; --khac-bg:#EDEEF1;   /* Streamlit has one gray badge: same as neutral */
+  --flag-fg:#7A5E00; --flag-bg:#FCEFC4;
+  --info-fg:#1D4E89; --info-bg:#E6EFFA;
+  --warn-fg:#6F5300; --warn-bg:#FCF0C8;
+  --ok-fg:#0B6B4B; --ok-bg:#E0F3EA;
+  --err-fg:#A3341A; --err-bg:#FCE7E1;
+  /* XAI highlight: native :color[..]{background=rgba} — one alpha set for both themes */
+  --xai-3:rgba(91,104,238,.45); --xai-2:rgba(91,104,238,.30); --xai-1:rgba(91,104,238,.18);
+  --xai-opp:rgba(139,144,154,.30);
+  /* wireframe-only annotation colour */
+  --anno:#B8177E; --anno-bg:#FFE7F5; --anno-line:rgba(184,23,126,.55);
+  --font:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:8px; --r-lg:12px; --sb-w:288px;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111419; --bg2:#1A1E25; --raised:#1E232B; --hover:#262B34;
+  --text:#E7E9EE; --muted:#A2A8B4;
+  --border:#5F6573; --divider:#2C313A; --grid:#272C35;
+  --primary:#5B68EE; --primary-hover:#6D79F2; --primary-soft:#22284F; --on-primary:#FFFFFF; --link:#8B96FF;
+  --focus:rgba(139,150,255,.55);
+  --neg-fg:#EF6C4B; --neg-bg:#41201A;
+  --neu-fg:#A3A8B2; --neu-bg:#2A2D33;
+  --pos-fg:#3DB083; --pos-bg:#0E3326;
+  --gv-fg:#5AA2F2; --gv-bg:#132C47;
+  --ct-fg:#CF84AF; --ct-bg:#3B2130;
+  --csvc-fg:#CFA03A; --csvc-bg:#382809;
+  --khac-fg:#A3A8B2; --khac-bg:#2A2D33;
+  --flag-fg:#E3B52B; --flag-bg:#352905;
+  --info-fg:#8DB9F4; --info-bg:#15263C;
+  --warn-fg:#E8C25C; --warn-bg:#33290C;
+  --ok-fg:#5CC79B; --ok-bg:#0F2C21;
+  --err-fg:#F28C70; --err-bg:#3B1C14;
+  --anno:#FF7DCD; --anno-bg:#3A1430; --anno-line:rgba(255,125,205,.6);
+}
+
+/* ============ base ============ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.6 var(--font);font-feature-settings:"tnum" 0}
+a{color:var(--link)}
+code,.mono{font-family:var(--mono);font-size:.85em}
+.mi{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;font-size:20px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:"FILL" 0,"wght" 400,"GRAD" 0,"opsz" 24;vertical-align:-4px;flex:none}
+.mi.sm{font-size:18px;vertical-align:-3px}.mi.xs{font-size:16px;vertical-align:-3px}.mi.fill{font-variation-settings:"FILL" 1,"wght" 400,"GRAD" 0,"opsz" 24}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3,h4,p{margin:0}
+
+/* ============ wireframe meta bar (not part of the app) ============ */
+.wfbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 16px;background:#1C1F27;color:#E9EAF0;font:500 12px/1.4 var(--mono)}
+.wfbar b{color:#fff;font-weight:600}
+.wfbar .sp{flex:1}
+.wfbar .pill{border:1px solid #4A4F5C;border-radius:999px;padding:2px 9px;color:#C9CCD6}
+.wfbar .pill.warn{border-color:#C9A227;color:#F2D16B}
+.wfbar button{font:inherit;color:#fff;background:#2E3340;border:1px solid #4A4F5C;border-radius:6px;padding:4px 10px;cursor:pointer;min-height:28px}
+.wfbar button:hover{background:#3A4050}
+.wfbar a{color:#AEB8FF}
+body.clean .wfbar{display:none}
+
+/* ============ Streamlit app shell ============ */
+.app{display:grid;grid-template-columns:var(--sb-w) minmax(0,1fr);min-height:100vh;background:linear-gradient(90deg,var(--bg2) calc(var(--sb-w) - 1px),var(--divider) calc(var(--sb-w) - 1px),var(--divider) var(--sb-w),var(--bg) var(--sb-w))}
+.sb{background:var(--bg2);border-right:1px solid var(--divider);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow:visible}
+.sb-top{display:flex;align-items:center;justify-content:space-between;min-height:40px;margin-bottom:6px}
+.sb-top svg{height:32px;width:auto;display:block}
+.sb-collapse{color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r);color:var(--text);text-decoration:none;font-size:15px;min-height:40px}
+.nav-i .mi{color:var(--muted)}
+.nav-i.on{background:var(--hover);font-weight:600}
+.nav-i.on .mi{color:var(--text)}
+.sb hr{border:0;border-top:1px solid var(--divider);margin:4px 0;width:100%}
+.sb-k{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;text-transform:uppercase}
+.sb-v{font-size:14px;line-height:1.45}
+.sb-cap{font-size:13px;line-height:1.5;color:var(--muted)}
+.sb-note{display:flex;gap:8px;font-size:13px;line-height:1.5;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.sb-note .mi{color:var(--flag-fg)}
+.sb-foot{margin-top:auto;font-size:12px;color:var(--muted);line-height:1.5}
+.main{min-width:0;position:relative}
+.hdr{height:56px;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 20px;color:var(--muted)}
+.mhdr{display:none}
+.bc{padding:24px 80px 120px;max-width:none}
+.v{display:flex;flex-direction:column;gap:16px}          /* vertical block, Streamlit gap 1rem */
+.v.tight{gap:8px}
+.row{display:flex;gap:16px;align-items:flex-start;min-width:0}
+.row > *{min-width:0}
+.cols{display:grid;gap:16px;align-items:start}
+.c2{grid-template-columns:repeat(2,minmax(0,1fr))}.c3{grid-template-columns:repeat(3,minmax(0,1fr))}.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.c21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}.c12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.c32{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+.end{align-items:end}
+.sp1{flex:1}
+
+/* ============ typography (st.title / header / subheader / caption) ============ */
+.t1{font-size:32px;line-height:1.25;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.t1 .mi{font-size:32px;color:var(--primary)}
+.t2{font-size:24px;line-height:1.33;font-weight:600;margin-top:16px;display:flex;align-items:center;gap:8px}
+.t3{font-size:20px;line-height:1.4;font-weight:600;display:flex;align-items:center;gap:8px}
+.t2 .mi,.t3 .mi{color:var(--muted)}
+.cap{font-size:14px;line-height:1.55;color:var(--muted)}
+.lbl{font-size:14px;line-height:1.4;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.lbl .mi{font-size:16px;color:var(--muted)}
+.over{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.big{font-size:28px;line-height:1.2;font-weight:700;display:flex;align-items:center;gap:8px}
+.big .mi{font-size:28px}
+hr.div{border:0;border-top:1px solid var(--divider);margin:8px 0}
+p.body{max-width:72ch}
+ul.tight{margin:0;padding-left:20px}ul.tight li{margin:2px 0}
+
+/* ============ widgets ============ */
+.box{border:1px solid var(--border);border-radius:var(--r);padding:16px}       /* st.container(border=True) */
+.box.pad-s{padding:12px}
+.ta{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;min-height:96px;font-size:16px;position:relative}
+.ta .cnt{position:absolute;right:12px;bottom:6px;font-size:12px;color:var(--muted)}
+.ta.focus{box-shadow:0 0 0 2px var(--focus);border-color:var(--primary)}
+.sel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:40px;padding:0 10px 0 14px;display:flex;align-items:center;gap:8px;font-size:15px}
+.sel .mi{margin-left:auto;color:var(--muted)}
+.sel .ph{color:var(--muted)}
+.chip-x{display:inline-flex;align-items:center;gap:4px;background:var(--primary-soft);color:var(--text);border-radius:6px;padding:1px 4px 1px 8px;font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:6px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text);font:500 15px/1.2 var(--font);white-space:nowrap;cursor:pointer;text-decoration:none}
+.btn.p{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.t{border-color:transparent;background:transparent;color:var(--text);padding:6px 8px}
+.btn.sm{min-height:32px;padding:4px 12px;font-size:14px}
+.btn.full{width:100%}
+.btn .mi{font-size:18px}
+.btn.dis{opacity:.45;cursor:not-allowed}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:14px;line-height:1.35;background:var(--bg);min-height:34px}
+.pill.on{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);font-weight:500}
+.pill .n{color:var(--muted);font-size:12px}
+.pill.on .n{color:inherit}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;flex-wrap:wrap;max-width:100%}
+.seg > span{padding:7px 14px;font-size:14px;border-right:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;min-height:38px}
+.seg > span:last-child{border-right:0}
+.seg > span.on{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.seg > span.dis{color:var(--muted);opacity:.6}
+.tog{display:inline-flex;align-items:center;gap:10px;font-size:15px}
+.tog i{width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;flex:none}
+.tog i::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+.tog.on i{background:var(--primary)}.tog.on i::after{left:19px}
+.slider{padding:26px 8px 6px}
+.slider .track{height:4px;border-radius:2px;background:var(--grid);position:relative}
+.slider .fill{position:absolute;left:0;top:0;bottom:0;background:var(--primary);border-radius:2px}
+.slider .thumb{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--bg)}
+.slider .val{position:absolute;bottom:14px;transform:translateX(-50%);font-size:14px;font-weight:600;color:var(--primary);white-space:nowrap}
+.slider .ticks{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:10px}
+.prog{height:8px;border-radius:4px;background:var(--grid);overflow:hidden}
+.prog > i{display:block;height:100%;background:var(--primary);border-radius:4px}
+.chk{display:inline-flex;width:18px;height:18px;border:1.5px solid var(--border);border-radius:4px;align-items:center;justify-content:center;background:var(--bg)}
+.chk.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.chk.on::after{content:"check";font-family:"Material Symbols Rounded";font-size:15px;line-height:1}
+
+/* st.badge + markdown colour helpers */
+.bd{flex:none;display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 8px;font-size:14px;font-weight:500;line-height:1.6;white-space:nowrap;vertical-align:middle}
+.bd .mi{font-size:16px;vertical-align:-3px}
+.bd.lg{font-size:15px;padding:3px 10px}
+.bd-neg{color:var(--neg-fg);background:var(--neg-bg)}.bd-neu{color:var(--neu-fg);background:var(--neu-bg)}.bd-pos{color:var(--pos-fg);background:var(--pos-bg)}
+.bd-gv{color:var(--gv-fg);background:var(--gv-bg)}.bd-ct{color:var(--ct-fg);background:var(--ct-bg)}.bd-csvc{color:var(--csvc-fg);background:var(--csvc-bg)}.bd-khac{color:var(--khac-fg);background:var(--khac-bg)}
+.bd-flag{color:var(--flag-fg);background:var(--flag-bg)}.bd-gray{color:var(--neu-fg);background:var(--neu-bg)}.bd-pri{color:var(--primary);background:var(--primary-soft)}
+.fg-neg{color:var(--neg-fg)}.fg-neu{color:var(--neu-fg)}.fg-pos{color:var(--pos-fg)}.fg-gv{color:var(--gv-fg)}.fg-ct{color:var(--ct-fg)}.fg-csvc{color:var(--csvc-fg)}.fg-khac{color:var(--khac-fg)}.fg-flag{color:var(--flag-fg)}.fg-mut{color:var(--muted)}
+.pii{font-family:var(--mono);font-size:.82em;font-weight:500;color:var(--neu-fg);background:var(--neu-bg);border-radius:4px;padding:1px 5px;white-space:nowrap}
+
+/* st.info / warning / success / error */
+.al{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r);padding:14px 16px;font-size:15px;line-height:1.55}
+.al > .mi{margin-top:1px}
+.al.info{background:var(--info-bg);color:var(--info-fg)}.al.warn{background:var(--warn-bg);color:var(--warn-fg)}
+.al.ok{background:var(--ok-bg);color:var(--ok-fg)}.al.err{background:var(--err-bg);color:var(--err-fg)}
+.al b{font-weight:600}
+.al .alc{color:var(--text)}
+
+/* st.metric */
+.met{display:flex;flex-direction:column;gap:2px}
+.met .ml{font-size:14px;color:var(--text);display:flex;align-items:center;gap:6px}
+.met .ml .mi{font-size:16px;color:var(--muted)}
+.met .mv{font-size:32px;line-height:1.25;font-weight:600;font-variant-numeric:tabular-nums}
+.met .md{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:500;border-radius:999px;padding:1px 8px 1px 4px}
+.met .md.up-bad{color:var(--neg-fg);background:var(--neg-bg)}.met .md.down-bad{color:var(--neg-fg);background:var(--neg-bg)}.met .md.flat{color:var(--neu-fg);background:var(--neu-bg)}
+.met .md .mi{font-size:16px}
+.box.met{padding:14px 16px}
+
+/* st.tabs */
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--divider);overflow-x:auto;scrollbar-width:none}
+.tabs > span{padding:8px 0 10px;font-size:15px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs > span.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+
+/* st.expander / st.status */
+.exp{border:1px solid var(--border);border-radius:var(--r)}
+.exp > .eh{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:15px;min-height:44px}
+.exp > .eh .chev{margin-left:auto;color:var(--muted)}
+.exp > .eb{padding:4px 16px 16px;border-top:1px solid var(--divider)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--grid);border-top-color:var(--primary);display:inline-block;flex:none}
+
+/* st.file_uploader (built-in strings are English and cannot be localised) */
+.up{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.up .mi.big{font-size:36px;color:var(--muted)}
+.up .sp1{min-width:150px}
+.up .ut{font-size:15px}.up .us{font-size:13px;color:var(--muted)}
+.upf{display:flex;align-items:center;gap:10px;padding:8px 4px 0;font-size:14px}
+.upf .mi{color:var(--muted)}
+
+/* st.dataframe / st.data_editor (canvas grid look) */
+.dfw{border:1px solid var(--border);border-radius:var(--r);overflow:auto;position:relative;max-width:100%}
+.df{border-collapse:separate;border-spacing:0;width:100%;font-size:14px;line-height:1.4}
+.df th{position:sticky;top:0;background:var(--bg2);color:var(--muted);font-weight:500;text-align:left;padding:7px 10px;border-bottom:1px solid var(--grid);border-right:1px solid var(--grid);white-space:nowrap;font-size:13px}
+.df th .mi{font-size:15px;vertical-align:-3px}
+.df td{padding:7px 10px;border-bottom:1px solid var(--grid);border-right:1px solid var(--grid);vertical-align:middle;white-space:nowrap}
+.df.fixed{table-layout:fixed}
+.df.fixed td,.df.fixed th{overflow:hidden;text-overflow:ellipsis}
+.df tr:last-child td{border-bottom:0}
+.df td:last-child,.df th:last-child{border-right:0}
+.df td.ro{color:var(--text)}
+.df td.idx,.df th.idx{color:var(--muted);text-align:right;width:1%}
+.df td.r{text-align:right;font-variant-numeric:tabular-nums}
+.df tr.hl td{background:color-mix(in srgb,var(--primary) 6%,transparent)}
+.df .sb-cell{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:118px}
+.df .sb-cell .mi{color:var(--muted);font-size:18px}
+.df .ph{color:var(--muted)}
+.pc{display:flex;align-items:center;gap:8px;min-width:112px;font-variant-numeric:tabular-nums}
+.pc .bar{flex:1;height:6px;border-radius:3px;background:var(--grid);overflow:hidden;min-width:48px}
+.pc .bar i{display:block;height:100%;background:var(--primary)}
+.pc.low .bar i{background:var(--flag)}
+.dft{position:absolute;right:6px;top:4px;display:flex;gap:2px;background:var(--bg);border:1px solid var(--grid);border-radius:6px;padding:2px 4px;color:var(--muted)}
+.dft .mi{font-size:18px;padding:2px}
+
+/* st.code */
+.code{background:var(--bg2);border-radius:var(--r);padding:12px 14px;font:400 13px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;position:relative;overflow:auto}
+.code .cp{position:absolute;right:8px;top:8px;color:var(--muted);font-size:18px}
+
+/* st.dialog + st.toast */
+.dlg-stage{position:relative;border-radius:var(--r-lg);background:rgba(10,12,16,.55);padding:40px 24px;display:flex;justify-content:center;overflow:hidden}
+.dlg{background:var(--raised);color:var(--text);border-radius:var(--r-lg);box-shadow:0 18px 50px rgba(0,0,0,.35);width:min(750px,100%);padding:24px}
+.dlg .dh{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.dlg .dh .x{margin-left:auto;color:var(--muted)}
+.dlg-stage.drawer{justify-content:flex-end;padding:0;min-height:520px}
+.dlg-stage.drawer .dlg{border-radius:var(--r-lg) 0 0 var(--r-lg);width:min(560px,100%)}
+.dlg-stage.drawer .ghost{flex:1;padding:24px;opacity:.35;display:flex;flex-direction:column;gap:10px}
+.dlg-stage.drawer .ghost i{display:block;height:14px;border-radius:4px;background:#C9CCD3}
+.toast{display:inline-flex;align-items:center;gap:10px;background:var(--raised);border:1px solid var(--divider);box-shadow:0 8px 24px rgba(0,0,0,.18);border-radius:var(--r);padding:12px 16px;font-size:15px}
+
+/* ============ charts (Altair approximations) ============ */
+.chart-t{font-size:15px;font-weight:600;margin-bottom:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend .tick{display:inline-block;width:3px;height:14px;background:var(--text);margin-right:6px;vertical-align:-2px;border-radius:1px}
+.pb{display:grid;grid-template-columns:minmax(92px,auto) minmax(0,1fr) 44px;gap:6px 10px;align-items:center;font-size:14px}
+.pb .bt{height:14px;border-radius:3px;background:var(--grid);overflow:hidden}
+.pb .bt i{display:block;height:100%}
+.pb .pv{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pb .pk{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pb .pk.top{font-weight:600}
+.stk{display:grid;grid-template-columns:132px minmax(0,1fr) 52px;gap:10px 12px;align-items:center;font-size:14px}
+.stk .sbar{position:relative;display:flex;height:28px;border-radius:4px;overflow:visible}
+.stk .sbar > i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:600;color:#fff;height:100%;overflow:hidden;white-space:nowrap}
+.stk .sbar > i:first-child{border-radius:4px 0 0 4px}.stk .sbar > i:last-child{border-radius:0 4px 4px 0}
+.stk .sbar > i.dk{color:#14171E}
+.stk .base{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--text);border-radius:2px;box-shadow:0 0 0 1.5px var(--bg)}
+.stk .tn{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hm{display:grid;gap:3px;font-size:13px}
+.hm .hc{border-radius:4px;min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;line-height:1.2;color:#14171E}
+.hm .hc b{font-size:14px;font-weight:600}
+.hm .hc small{font-size:11px;opacity:.85}
+.hm .hc.w{color:#fff}
+.hm .hc.na{background:transparent;color:var(--muted);border:1.5px dashed var(--border)}
+.hm .hh{font-size:12px;color:var(--muted);text-align:center;align-self:end;padding-bottom:2px;line-height:1.3}
+.hm .hr{font-size:13px;display:flex;align-items:center;justify-content:flex-end;text-align:right;padding-right:6px;line-height:1.3}
+
+/* ============ XAI sentence ============ */
+.xs{font-size:21px;line-height:2.15;font-weight:400;letter-spacing:.005em}
+.xs .w{border-radius:5px;padding:2px 3px;position:relative}
+.xs .s3{background:var(--xai-3);font-weight:600}.xs .s2{background:var(--xai-2);font-weight:600}.xs .s1{background:var(--xai-1);font-weight:600}
+.xs .o{background:var(--xai-opp);font-style:italic}
+.xs sup{font-size:11px;font-weight:700;color:var(--primary);margin-left:1px;top:-.75em}
+.xs .o sup{color:var(--muted)}
+.xl{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);align-items:center}
+.xl .k{display:inline-block;padding:0 6px;border-radius:4px;color:var(--text);font-weight:600}
+.xl .k.s{background:var(--xai-3)}.xl .k.o{background:var(--xai-opp);font-weight:400;font-style:italic}
+.kw{font-weight:600;background:var(--xai-1);border-radius:3px;padding:0 2px}
+
+/* ============ cards: alerts, recommendations, quotes ============ */
+.acard{border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;height:100%}
+.acard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc,var(--neg))}
+.acard .ah{display:flex;gap:8px;align-items:flex-start;font-weight:600;font-size:16px;line-height:1.4}
+.acard .ah .mi{color:var(--acc-fg,var(--neg-fg))}
+.acard .ab{font-size:15px;line-height:1.55}
+.acard .ae{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.quote{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--divider);font-size:15px;line-height:1.55}
+.quote:last-child{border-bottom:0}
+.quote .mi{color:var(--muted)}
+.rec{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--divider)}
+.rec:last-child{border-bottom:0}
+.rec > .mi{color:var(--primary);margin-top:2px}
+.rec .rt{font-weight:600;font-size:15px;line-height:1.45}
+.rec .re{grid-column:2;font-size:14px;color:var(--muted);line-height:1.5}
+.rec .rb{grid-row:1/span 2;grid-column:3;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.dl{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;font-size:15px;line-height:1.55}
+.dl > dt{font-weight:600;padding:12px 16px 12px 0;border-top:1px solid var(--divider);display:flex;gap:8px;align-items:flex-start}
+.dl > dt .mi{color:var(--muted);font-size:18px;margin-top:2px}
+.dl > dd{margin:0;padding:12px 0;border-top:1px solid var(--divider)}
+.dl > dt:first-of-type,.dl > dt:first-of-type + dd{border-top:0}
+.feat{display:flex;flex-direction:column;gap:8px}
+.feat .fi{width:36px;height:36px;border-radius:8px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.feat h4{font-size:16px;font-weight:600}
+.feat p{font-size:14px;line-height:1.55;color:var(--muted)}
+.toc{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
+.toc a{text-decoration:none;display:inline-flex;gap:4px;align-items:center}
+
+/* ============ annotations (wireframe only) ============ */
+.a{position:relative}
+body.anno .a{outline:1.5px dashed var(--anno-line);outline-offset:3px;border-radius:4px}
+body.anno .a::after{content:attr(data-st);position:absolute;top:-12px;right:6px;z-index:5;font:600 11px/1 var(--mono);color:var(--anno);background:var(--anno-bg);border:1px solid var(--anno-line);border-radius:4px;padding:3px 6px;white-space:nowrap;pointer-events:none}
+body.anno .v.tight{gap:14px}
+body.anno .a.al-l::after{left:6px;right:auto}
+.note{display:none}
+body.anno .note{display:flex;gap:6px;align-items:flex-start;font:500 12px/1.5 var(--mono);color:var(--anno);background:var(--anno-bg);border:1px dashed var(--anno-line);border-radius:6px;padding:6px 10px}
+body.anno .note .mi{font-size:16px;color:var(--anno)}
+.opt{border:2px dashed var(--anno-line);border-radius:var(--r-lg);padding:28px 16px 16px;position:relative}
+.opt > .opt-t{position:absolute;top:-12px;left:14px;font:700 12px/1 var(--mono);letter-spacing:.03em;color:#fff;background:var(--anno);border-radius:4px;padding:5px 8px}
+.states{margin-top:48px;border-top:2px dashed var(--anno-line);padding-top:24px}
+.states > .st-h{font:700 13px/1.4 var(--mono);color:var(--anno);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.state{border:1px solid var(--divider);border-radius:var(--r-lg);padding:16px;background:var(--bg)}
+.state > .sh{font:600 12px/1.4 var(--mono);color:var(--anno);margin-bottom:12px;display:flex;gap:6px;align-items:center}
+.illus{font:600 11px/1 var(--mono);color:var(--anno);background:var(--anno-bg);border:1px solid var(--anno-line);border-radius:4px;padding:3px 6px;white-space:nowrap}
+body:not(.anno) .illus{display:none}
+
+/* ============ responsive: Streamlit stacks columns below 640px ============ */
+@media (max-width:640px){
+  .app{display:block;background:var(--bg)}
+  .sb{display:none}
+  .mhdr{display:flex;align-items:center;gap:10px;height:56px;padding:0 12px;border-bottom:1px solid var(--divider);position:sticky;top:0;background:var(--bg);z-index:20}
+  .mhdr svg{height:28px;width:auto}
+  .mhdr .sp{flex:1}
+  .hdr{display:none}
+  .bc{padding:20px 16px 96px}
+  .cols,.c2,.c3,.c4,.c21,.c12,.c32{grid-template-columns:minmax(0,1fr)}
+  .row.wrap-m{flex-wrap:wrap}
+  .t1{font-size:26px}.t1 .mi{font-size:26px}
+  .t2{font-size:21px}
+  .xs{font-size:18px}
+  .stk{grid-template-columns:96px minmax(0,1fr) 40px}
+  .dl{grid-template-columns:minmax(0,1fr)}
+  .dl > dt{padding-bottom:0}.dl > dd{border-top:0;padding-top:4px}
+  .rec{grid-template-columns:auto minmax(0,1fr)}
+  .rec .rb{grid-row:auto;grid-column:2;flex-direction:row;align-items:center}
+  .dlg-stage{padding:16px 8px}
+  .dlg-stage.drawer .ghost{display:none}
+  .wfbar .hide-m{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="anno">
+<div class="wfbar"><b>EduPulse</b><span class="hide-m">Wireframe mid-fi · Streamlit 1.65 · 15/10/2026</span><span class="pill">Mục lục</span><span class="pill warn">Số liệu minh hoạ</span><span class="sp"></span><a href="index.html">Mục lục</a><button data-act="anno">Chú thích: Bật</button><button data-act="theme">Giao diện: Sáng</button></div>
+<style>
+.ix{max-width:1180px;margin:0 auto;padding:40px 24px 96px;display:flex;flex-direction:column;gap:20px}
+.ix-hero{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.ix-hero svg.logo{height:48px;width:auto}
+.pane svg.logo,.pane svg.mark{height:32px;width:auto}
+.ix h2{font-size:22px;font-weight:600;margin-top:20px;display:flex;align-items:center;gap:8px}
+.ix h2 .mi{color:var(--primary)}
+.pg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pgc{border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:var(--text);background:var(--bg)}
+.pgc:hover{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.pgc .h{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600}
+.pgc .h .n{font:600 12px/1 var(--mono);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:4px 6px}
+.pgc .h .mi{color:var(--primary);font-size:24px}
+.pgc ul{margin:0;padding-left:18px;font-size:14px;color:var(--muted);line-height:1.6}
+.pgc .lk{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.swc{border:1px solid var(--divider);border-radius:10px;overflow:hidden;font-size:13px;background:var(--bg)}
+.swc .c{height:44px;display:flex;align-items:flex-end;padding:6px 8px;font:600 11px/1 var(--mono);color:#fff}
+.swc .t{padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.swc .t b{font-size:14px}
+.swc code{font-size:11.5px;color:var(--muted)}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pane{border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--divider)}
+.pane.l{background:#FAFAF8;color:#14171E}.pane.d{background:#111419;color:#E7E9EE}
+.pane .row{flex-wrap:wrap;gap:8px}
+.chipx{font:500 12px/1 var(--mono);padding:6px 8px;border-radius:6px;border:1px solid rgba(128,128,128,.35)}
+.type-s{display:flex;flex-direction:column;gap:6px}
+.type-s .r{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:baseline;border-top:1px solid var(--divider);padding-top:8px}
+.type-s .r code{color:var(--muted)}
+.scale{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;font:500 12px/1.2 var(--mono);color:var(--muted)}
+.scale i{display:block;background:var(--primary-soft);border:1px solid var(--primary);margin-bottom:6px}
+@media (max-width:640px){.pg,.duo{grid-template-columns:minmax(0,1fr)}.type-s .r{grid-template-columns:minmax(0,1fr)}.ix{padding:24px 16px 72px}}
+</style>
+<div class="ix">
+  <div class="ix-hero">
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 253 64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+  <path fill="#727886" d="M78.74 43.6V15.48H97.58V19.96H83.9V27.11H95.87V31.48H83.9V39.12H97.77V43.6Z M110.69 43.98Q108.45 43.98 106.78 43.09Q105.11 42.19 103.99 40.69Q102.87 39.19 102.31 37.33Q101.76 35.47 101.76 33.53Q101.76 31.59 102.31 29.73Q102.87 27.87 103.99 26.37Q105.11 24.87 106.78 23.97Q108.45 23.08 110.69 23.08Q112.63 23.08 113.89 23.71Q115.14 24.33 115.86 25.08Q116.58 25.82 116.85 26.27H117.08V14.72H122.13V43.6H117.08V40.79H116.85Q116.58 41.24 115.86 42Q115.14 42.76 113.89 43.37Q112.63 43.98 110.69 43.98ZM112.02 39.84Q113.73 39.84 114.87 38.91Q116.01 37.98 116.58 36.53Q117.15 35.09 117.15 33.53Q117.15 31.97 116.58 30.53Q116.01 29.08 114.87 28.15Q113.73 27.22 112.02 27.22Q110.31 27.22 109.16 28.15Q108 29.08 107.43 30.53Q106.86 31.97 106.86 33.53Q106.86 35.09 107.43 36.53Q108 37.98 109.16 38.91Q110.31 39.84 112.02 39.84Z M133.61 43.98Q130.45 43.98 128.84 42.04Q127.22 40.1 127.22 37.06V23.46H132.24V36.23Q132.24 37.86 133.11 38.83Q133.99 39.8 135.58 39.8Q136.99 39.8 137.86 39.08Q138.74 38.36 139.14 37.22Q139.54 36.08 139.54 34.86V23.46H144.59V43.6H139.54V40.71H139.31Q138.93 41.4 138.22 42.16Q137.52 42.92 136.4 43.45Q135.28 43.98 133.61 43.98Z"/>
+  <path fill="#5B68EE" d="M150.13 43.6V15.48H161.72Q165.18 15.48 167.48 16.85Q169.78 18.22 170.94 20.36Q172.09 22.51 172.09 24.83Q172.09 27.22 170.94 29.37Q169.78 31.52 167.48 32.88Q165.18 34.25 161.72 34.25H155.98V43.6ZM161.72 20.61H155.98V29.16H161.72Q163.2 29.16 164.19 28.53Q165.18 27.91 165.69 26.94Q166.2 25.97 166.2 24.87Q166.2 23.8 165.69 22.81Q165.18 21.83 164.19 21.22Q163.2 20.61 161.72 20.61Z M181.82 43.98Q179.69 43.98 178.31 43.07Q176.92 42.16 176.24 40.62Q175.55 39.08 175.55 37.14V23.46H181.29V36Q181.29 37.44 182.05 38.34Q182.81 39.23 184.29 39.23Q185.55 39.23 186.29 38.62Q187.03 38.01 187.37 37.06Q187.71 36.11 187.71 35.05V23.46H193.49V43.6H187.71V40.75H187.48Q186.84 41.93 185.49 42.95Q184.14 43.98 181.82 43.98Z M198.28 43.6V14.72H204.05V43.6Z M217.31 43.98Q214.81 43.98 213.17 43.3Q211.54 42.61 210.57 41.61Q209.6 40.6 209.12 39.59Q208.65 38.58 208.52 37.9Q208.38 37.22 208.38 37.22H213.74Q213.74 37.22 213.86 37.6Q213.97 37.98 214.37 38.47Q214.77 38.96 215.53 39.34Q216.29 39.72 217.58 39.72Q219.18 39.72 219.76 39.08Q220.35 38.43 220.35 37.79Q220.35 36.42 218.11 35.96L215.38 35.43Q213.63 35.09 212.09 34.42Q210.55 33.76 209.62 32.56Q208.69 31.36 208.69 29.46Q208.69 27.64 209.64 26.2Q210.59 24.75 212.35 23.92Q214.12 23.08 216.59 23.08Q218.91 23.08 220.45 23.71Q221.99 24.33 222.9 25.27Q223.81 26.2 224.27 27.13Q224.72 28.06 224.86 28.69Q224.99 29.31 224.99 29.31H219.82Q219.82 29.31 219.59 28.8Q219.37 28.29 218.66 27.77Q217.96 27.26 216.52 27.26Q215.03 27.26 214.46 27.85Q213.89 28.44 213.89 29.08Q213.89 29.84 214.56 30.22Q215.22 30.6 216.29 30.83L218.91 31.36Q221.8 31.93 223.66 33.36Q225.52 34.78 225.52 37.48Q225.52 39.31 224.57 40.79Q223.62 42.27 221.8 43.12Q219.97 43.98 217.31 43.98Z M239.13 43.98Q236.47 43.98 234.53 43.09Q232.59 42.19 231.34 40.69Q230.08 39.19 229.45 37.33Q228.83 35.47 228.83 33.49Q228.83 31.59 229.42 29.75Q230.01 27.91 231.24 26.39Q232.48 24.87 234.39 23.97Q236.31 23.08 238.94 23.08Q241.71 23.08 243.86 24.3Q246 25.51 247.22 27.89Q248.44 30.26 248.44 33.64V35.05H234.64Q234.76 36.87 235.91 38.2Q237.07 39.53 239.13 39.53Q240.3 39.53 241.04 39.17Q241.79 38.81 242.2 38.34Q242.62 37.86 242.77 37.48Q242.93 37.1 242.93 37.1H248.25Q248.25 37.1 248.07 37.81Q247.9 38.51 247.37 39.53Q246.84 40.56 245.83 41.59Q244.83 42.61 243.19 43.3Q241.56 43.98 239.13 43.98ZM234.64 31.55H242.89Q242.77 29.46 241.63 28.44Q240.49 27.41 238.82 27.41Q237.15 27.41 235.97 28.5Q234.79 29.58 234.64 31.55Z"/>
+</svg>
+    <div class="v tight" style="gap:4px">
+      <h1 class="t1" style="font-size:28px">Wireframe mid-fi · 4 trang Streamlit</h1>
+      <p class="cap">Bản để duyệt trước khi lập kế hoạch code. Bố cục, chữ và màu là thật; biểu đồ vẽ xấp xỉ; số liệu là minh hoạ trừ khi ghi “số thật”. Design guidelines: <code>docs/design-guidelines.md</code>.</p>
+    </div>
+  </div>
+
+  <div class="al info"><span class="mi">info</span><div><b>Cách đọc.</b> Thẻ hồng (vd. <span class="chipx" style="color:var(--anno);background:var(--anno-bg);border-color:var(--anno-line)">st.data_editor</span>) ghi component Streamlit 1.65 tương ứng; ô ghi chú hồng là lưu ý cho dev. Khung nét đứt hồng “TUỲ CHỌN · CHỜ DUYỆT” là phần cần người dùng quyết định. Cuối mỗi trang có mục “Các trạng thái khác”. Nút trên thanh đen: bật/tắt chú thích, đổi sáng/tối. Thêm <code>?theme=dark</code>, <code>?anno=0</code> vào URL để mở sẵn.</div></div>
+
+  <h2><span class="mi">web</span>Các trang</h2>
+  <div class="pg">
+    <a class="pgc" href="01-phan-tich-cau.html">
+      <span class="h"><span class="n">01</span><span class="mi">rate_review</span>Phân tích câu</span>
+      <ul><li>Ô nhập + chip câu mẫu thật từ UIT-VSFC</li><li>Cảm xúc &amp; chủ đề + độ tin cậy đã hiệu chỉnh, badge “Cần xem xét” kèm lý do</li><li>Tô từ quyết định (top-3 ủng hộ + 1 phản đối), cảnh báo không dấu, ẩn PII</li><li>So sánh PhoBERT ↔ LinearSVC <b>(tuỳ chọn, chờ duyệt)</b></li></ul>
+      <span class="lk"><span>Ảnh:</span><span>screenshots/01-phan-tich-cau-1440.png · -390.png · -1440-dark.png</span></span>
+    </a>
+    <a class="pgc" href="02-phan-tich-hang-loat.html">
+      <span class="h"><span class="n">02</span><span class="mi">upload_file</span>Phân tích hàng loạt</span>
+      <ul><li>Tải CSV/XLSX (10 MB, tối đa 2.000 câu/lần), chọn cột văn bản và cột nhóm</li><li>Ngân sách duyệt 5/10/20/30% (mặc định 10%) + hiệu quả ước tính: lỗi được bắt, độ chính xác phần không cờ</li><li>Bảng duyệt st.data_editor: sửa nhãn; top-20 câu cờ có giải thích sẵn, câu khác tick “Giải thích” → st.dialog</li><li>Xuất CSV + nhắc tải trước khi đóng tab</li></ul>
+      <span class="lk"><span>Ảnh:</span><span>screenshots/02-phan-tich-hang-loat-1440.png · -390.png · -1440-dark.png</span></span>
+    </a>
+    <a class="pgc" href="03-dashboard-insight.html">
+      <span class="h"><span class="n">03</span><span class="mi">insights</span>Dashboard &amp; insight</span>
+      <ul><li>KPI, cột chồng chủ đề × cảm xúc có vạch mức nền</li><li>Heatmap môn × chủ đề tô theo chênh lệch so với mức nền</li><li>Thẻ cảnh báo bằng lời, từ khoá, câu tiêu biểu, khuyến nghị có căn cứ</li><li>Trạng thái mặc định với dữ liệu demo (số thật tập test)</li></ul>
+      <span class="lk"><span>Ảnh:</span><span>screenshots/03-dashboard-insight-1440.png · -390.png · -1440-dark.png</span></span>
+    </a>
+    <a class="pgc" href="04-mo-hinh-dao-duc.html">
+      <span class="h"><span class="n">04</span><span class="mi">balance</span>Mô hình &amp; đạo đức</span>
+      <ul><li>Chỉ số từng lớp, confusion matrix, reliability diagram</li><li>Bảng so sánh 3 baseline với PhoBERT đơn/đa nhiệm</li><li>Model card, disclaimer, quyền riêng tư</li><li>Giấy phép, link mã nguồn, trích dẫn BibTeX</li></ul>
+      <span class="lk"><span>Ảnh:</span><span>screenshots/04-mo-hinh-dao-duc-1440.png · -390.png · -1440-dark.png</span></span>
+    </a>
+  </div>
+
+  <h2><span class="mi">palette</span>Màu ngữ nghĩa</h2>
+  <p class="cap">Màu fill dùng chung cho cả theme sáng và tối (biểu đồ Altair không tự đổi theo theme): mỗi màu ≥ 3:1 trên cả hai nền. Badge dùng cặp chữ/nền riêng theo theme (≥ 4,5:1) qua khoá <code>{màu}TextColor</code>/<code>{màu}BackgroundColor</code> trong <code>[theme.light]</code>/<code>[theme.dark]</code>. Luôn đi kèm icon + chữ, không dùng màu làm tín hiệu duy nhất. Mô phỏng mù màu (protan/deutan/tritan): ΔE00 nhỏ nhất 15,8 giữa 3 cảm xúc, 11,0 giữa 4 chủ đề.</p>
+  <div class="sw">
+    <div class="swc"><div class="c" style="background:#C94827">#C94827</div><div class="t"><b><span class="mi xs fg-neg">sentiment_dissatisfied</span> Tiêu cực</b><span class="bd bd-neg" style="align-self:flex-start">badge</span><code>st: red</code></div></div>
+    <div class="swc"><div class="c" style="background:#8B909A">#8B909A</div><div class="t"><b><span class="mi xs fg-neu">sentiment_neutral</span> Trung tính</b><span class="bd bd-neu" style="align-self:flex-start">badge</span><code>st: gray</code></div></div>
+    <div class="swc"><div class="c" style="background:#1B9A6E">#1B9A6E</div><div class="t"><b><span class="mi xs fg-pos">sentiment_satisfied</span> Tích cực</b><span class="bd bd-pos" style="align-self:flex-start">badge</span><code>st: green</code></div></div>
+    <div class="swc"><div class="c" style="background:#F2C230;color:#14171E">#F2C230</div><div class="t"><b><span class="mi xs fill fg-flag">flag</span> Cần xem xét</b><span class="bd bd-flag" style="align-self:flex-start">badge</span><code>st: yellow</code></div></div>
+    <div class="swc"><div class="c" style="background:#0167BB">#0167BB</div><div class="t"><b><span class="mi xs fg-gv">co_present</span> Giảng viên</b><span class="bd bd-gv" style="align-self:flex-start">badge</span><code>st: blue</code></div></div>
+    <div class="swc"><div class="c" style="background:#944A76">#944A76</div><div class="t"><b><span class="mi xs fg-ct">menu_book</span> Chương trình</b><span class="bd bd-ct" style="align-self:flex-start">badge</span><code>st: violet</code></div></div>
+    <div class="swc"><div class="c" style="background:#B88818">#B88818</div><div class="t"><b><span class="mi xs fg-csvc">domain</span> Cơ sở vật chất</b><span class="bd bd-csvc" style="align-self:flex-start">badge</span><code>st: orange</code></div></div>
+    <div class="swc"><div class="c" style="background:#66837A">#66837A</div><div class="t"><b><span class="mi xs fg-khac">more_horiz</span> Khác</b><span class="bd bd-neu" style="align-self:flex-start">badge xám</span><code>st: gray*</code></div></div>
+  </div>
+  <p class="cap">* Theme Streamlit chỉ có một cặp màu gray cho badge/markdown: “Khác” và “Trung tính” dùng chung badge xám, phân biệt bằng icon + chữ; trong biểu đồ “Khác” dùng fill xanh xám #66837A.</p>
+
+  <h2><span class="mi">contrast</span>Nền, chữ, primary · sáng / tối</h2>
+  <div class="duo">
+    <div class="pane l">
+      <b>Light</b>
+      <div class="row"><span class="chipx" style="background:#FAFAF8">bg #FAFAF8</span><span class="chipx" style="background:#F3F3EE">bg2 #F3F3EE</span><span class="chipx" style="background:#14171E;color:#fff">text #14171E</span><span class="chipx" style="color:#5B6170">muted #5B6170</span><span class="chipx" style="border-color:#918F87">border #918F87</span><span class="chipx" style="background:#3A4BD0;color:#fff">primary #3A4BD0</span></div>
+      <div class="row" style="align-items:center"><span class="btn p" style="background:#3A4BD0;border-color:#3A4BD0">Phân tích</span><span class="btn" style="background:#FAFAF8;color:#14171E;border-color:#918F87">Tải CSV</span><span class="bd" style="color:#7A5E00;background:#FCEFC4"><span class="mi fill">flag</span>Cần xem xét</span></div>
+    </div>
+    <div class="pane d">
+      <b>Dark</b>
+      <div class="row"><span class="chipx" style="background:#111419">bg #111419</span><span class="chipx" style="background:#1A1E25">bg2 #1A1E25</span><span class="chipx" style="background:#E7E9EE;color:#111419">text #E7E9EE</span><span class="chipx" style="color:#A2A8B4">muted #A2A8B4</span><span class="chipx" style="border-color:#5F6573">border #5F6573</span><span class="chipx" style="background:#5B68EE;color:#fff">primary #5B68EE</span></div>
+      <div class="row" style="align-items:center"><span class="btn p" style="background:#5B68EE;border-color:#5B68EE">Phân tích</span><span class="btn" style="background:#111419;color:#E7E9EE;border-color:#5F6573">Tải CSV</span><span class="bd" style="color:#E3B52B;background:#352905"><span class="mi fill">flag</span>Cần xem xét</span></div>
+    </div>
+  </div>
+
+  <h2><span class="mi">text_fields</span>Chữ, khoảng cách, bo góc</h2>
+  <div class="type-s">
+    <div class="r"><code>title 32/40 · 700</code><span style="font-size:32px;font-weight:700;line-height:1.25">Phân tích góp ý</span></div>
+    <div class="r"><code>header 24/32 · 600</code><span style="font-size:24px;font-weight:600">Cảnh báo so với mức nền</span></div>
+    <div class="r"><code>subheader 20/28 · 600</code><span style="font-size:20px;font-weight:600">Vì sao mô hình đoán như vậy?</span></div>
+    <div class="r"><code>body 16/24 · 400</code><span>[đã gỡ câu UIT-VSFC].</span></div>
+    <div class="r"><code>caption 14/22 · 400</code><span class="cap">Độ tin cậy đã hiệu chỉnh: ấ ầ ẩ ẫ ậ · ắ ằ ẳ ẵ ặ · ế ề ể ễ ệ · ố ồ ổ ỗ ộ · ớ ờ ở ỡ ợ · ứ ừ ử ữ ự · Đ đ</span></div>
+    <div class="r"><code>code 13/20 · mono</code><code style="font-size:13px;color:var(--text)">edupulse-mtl v1.0 · JetBrains Mono</code></div>
+  </div>
+  <div class="scale"><span><i style="width:4px;height:4px"></i>4</span><span><i style="width:8px;height:8px"></i>8</span><span><i style="width:12px;height:12px"></i>12</span><span><i style="width:16px;height:16px"></i>16</span><span><i style="width:24px;height:24px"></i>24</span><span><i style="width:32px;height:32px"></i>32</span><span><i style="width:48px;height:48px"></i>48 px</span><span style="margin-left:24px"><i style="width:40px;height:28px;border-radius:6px"></i>badge 6</span><span><i style="width:40px;height:28px;border-radius:8px"></i>widget/container 8</span><span><i style="width:40px;height:28px;border-radius:12px"></i>dialog 12</span></div>
+
+  <h2><span class="mi">branding_watermark</span>Logo</h2>
+  <div class="duo">
+    <div class="pane l"><div class="row" style="align-items:center;gap:24px"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 253 64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+  <path fill="#727886" d="M78.74 43.6V15.48H97.58V19.96H83.9V27.11H95.87V31.48H83.9V39.12H97.77V43.6Z M110.69 43.98Q108.45 43.98 106.78 43.09Q105.11 42.19 103.99 40.69Q102.87 39.19 102.31 37.33Q101.76 35.47 101.76 33.53Q101.76 31.59 102.31 29.73Q102.87 27.87 103.99 26.37Q105.11 24.87 106.78 23.97Q108.45 23.08 110.69 23.08Q112.63 23.08 113.89 23.71Q115.14 24.33 115.86 25.08Q116.58 25.82 116.85 26.27H117.08V14.72H122.13V43.6H117.08V40.79H116.85Q116.58 41.24 115.86 42Q115.14 42.76 113.89 43.37Q112.63 43.98 110.69 43.98ZM112.02 39.84Q113.73 39.84 114.87 38.91Q116.01 37.98 116.58 36.53Q117.15 35.09 117.15 33.53Q117.15 31.97 116.58 30.53Q116.01 29.08 114.87 28.15Q113.73 27.22 112.02 27.22Q110.31 27.22 109.16 28.15Q108 29.08 107.43 30.53Q106.86 31.97 106.86 33.53Q106.86 35.09 107.43 36.53Q108 37.98 109.16 38.91Q110.31 39.84 112.02 39.84Z M133.61 43.98Q130.45 43.98 128.84 42.04Q127.22 40.1 127.22 37.06V23.46H132.24V36.23Q132.24 37.86 133.11 38.83Q133.99 39.8 135.58 39.8Q136.99 39.8 137.86 39.08Q138.74 38.36 139.14 37.22Q139.54 36.08 139.54 34.86V23.46H144.59V43.6H139.54V40.71H139.31Q138.93 41.4 138.22 42.16Q137.52 42.92 136.4 43.45Q135.28 43.98 133.61 43.98Z"/>
+  <path fill="#5B68EE" d="M150.13 43.6V15.48H161.72Q165.18 15.48 167.48 16.85Q169.78 18.22 170.94 20.36Q172.09 22.51 172.09 24.83Q172.09 27.22 170.94 29.37Q169.78 31.52 167.48 32.88Q165.18 34.25 161.72 34.25H155.98V43.6ZM161.72 20.61H155.98V29.16H161.72Q163.2 29.16 164.19 28.53Q165.18 27.91 165.69 26.94Q166.2 25.97 166.2 24.87Q166.2 23.8 165.69 22.81Q165.18 21.83 164.19 21.22Q163.2 20.61 161.72 20.61Z M181.82 43.98Q179.69 43.98 178.31 43.07Q176.92 42.16 176.24 40.62Q175.55 39.08 175.55 37.14V23.46H181.29V36Q181.29 37.44 182.05 38.34Q182.81 39.23 184.29 39.23Q185.55 39.23 186.29 38.62Q187.03 38.01 187.37 37.06Q187.71 36.11 187.71 35.05V23.46H193.49V43.6H187.71V40.75H187.48Q186.84 41.93 185.49 42.95Q184.14 43.98 181.82 43.98Z M198.28 43.6V14.72H204.05V43.6Z M217.31 43.98Q214.81 43.98 213.17 43.3Q211.54 42.61 210.57 41.61Q209.6 40.6 209.12 39.59Q208.65 38.58 208.52 37.9Q208.38 37.22 208.38 37.22H213.74Q213.74 37.22 213.86 37.6Q213.97 37.98 214.37 38.47Q214.77 38.96 215.53 39.34Q216.29 39.72 217.58 39.72Q219.18 39.72 219.76 39.08Q220.35 38.43 220.35 37.79Q220.35 36.42 218.11 35.96L215.38 35.43Q213.63 35.09 212.09 34.42Q210.55 33.76 209.62 32.56Q208.69 31.36 208.69 29.46Q208.69 27.64 209.64 26.2Q210.59 24.75 212.35 23.92Q214.12 23.08 216.59 23.08Q218.91 23.08 220.45 23.71Q221.99 24.33 222.9 25.27Q223.81 26.2 224.27 27.13Q224.72 28.06 224.86 28.69Q224.99 29.31 224.99 29.31H219.82Q219.82 29.31 219.59 28.8Q219.37 28.29 218.66 27.77Q217.96 27.26 216.52 27.26Q215.03 27.26 214.46 27.85Q213.89 28.44 213.89 29.08Q213.89 29.84 214.56 30.22Q215.22 30.6 216.29 30.83L218.91 31.36Q221.8 31.93 223.66 33.36Q225.52 34.78 225.52 37.48Q225.52 39.31 224.57 40.79Q223.62 42.27 221.8 43.12Q219.97 43.98 217.31 43.98Z M239.13 43.98Q236.47 43.98 234.53 43.09Q232.59 42.19 231.34 40.69Q230.08 39.19 229.45 37.33Q228.83 35.47 228.83 33.49Q228.83 31.59 229.42 29.75Q230.01 27.91 231.24 26.39Q232.48 24.87 234.39 23.97Q236.31 23.08 238.94 23.08Q241.71 23.08 243.86 24.3Q246 25.51 247.22 27.89Q248.44 30.26 248.44 33.64V35.05H234.64Q234.76 36.87 235.91 38.2Q237.07 39.53 239.13 39.53Q240.3 39.53 241.04 39.17Q241.79 38.81 242.2 38.34Q242.62 37.86 242.77 37.48Q242.93 37.1 242.93 37.1H248.25Q248.25 37.1 248.07 37.81Q247.9 38.51 247.37 39.53Q246.84 40.56 245.83 41.59Q244.83 42.61 243.19 43.3Q241.56 43.98 239.13 43.98ZM234.64 31.55H242.89Q242.77 29.46 241.63 28.44Q240.49 27.41 238.82 27.41Q237.15 27.41 235.97 28.5Q234.79 29.58 234.64 31.55Z"/>
+</svg><svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+</svg></div><span class="cap" style="color:#5B6170">assets/logo.svg (st.logo, cao 32px) · assets/logo-mark.svg (icon_image khi sidebar thu gọn)</span></div>
+    <div class="pane d"><div class="row" style="align-items:center;gap:24px"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 253 64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+  <path fill="#727886" d="M78.74 43.6V15.48H97.58V19.96H83.9V27.11H95.87V31.48H83.9V39.12H97.77V43.6Z M110.69 43.98Q108.45 43.98 106.78 43.09Q105.11 42.19 103.99 40.69Q102.87 39.19 102.31 37.33Q101.76 35.47 101.76 33.53Q101.76 31.59 102.31 29.73Q102.87 27.87 103.99 26.37Q105.11 24.87 106.78 23.97Q108.45 23.08 110.69 23.08Q112.63 23.08 113.89 23.71Q115.14 24.33 115.86 25.08Q116.58 25.82 116.85 26.27H117.08V14.72H122.13V43.6H117.08V40.79H116.85Q116.58 41.24 115.86 42Q115.14 42.76 113.89 43.37Q112.63 43.98 110.69 43.98ZM112.02 39.84Q113.73 39.84 114.87 38.91Q116.01 37.98 116.58 36.53Q117.15 35.09 117.15 33.53Q117.15 31.97 116.58 30.53Q116.01 29.08 114.87 28.15Q113.73 27.22 112.02 27.22Q110.31 27.22 109.16 28.15Q108 29.08 107.43 30.53Q106.86 31.97 106.86 33.53Q106.86 35.09 107.43 36.53Q108 37.98 109.16 38.91Q110.31 39.84 112.02 39.84Z M133.61 43.98Q130.45 43.98 128.84 42.04Q127.22 40.1 127.22 37.06V23.46H132.24V36.23Q132.24 37.86 133.11 38.83Q133.99 39.8 135.58 39.8Q136.99 39.8 137.86 39.08Q138.74 38.36 139.14 37.22Q139.54 36.08 139.54 34.86V23.46H144.59V43.6H139.54V40.71H139.31Q138.93 41.4 138.22 42.16Q137.52 42.92 136.4 43.45Q135.28 43.98 133.61 43.98Z"/>
+  <path fill="#5B68EE" d="M150.13 43.6V15.48H161.72Q165.18 15.48 167.48 16.85Q169.78 18.22 170.94 20.36Q172.09 22.51 172.09 24.83Q172.09 27.22 170.94 29.37Q169.78 31.52 167.48 32.88Q165.18 34.25 161.72 34.25H155.98V43.6ZM161.72 20.61H155.98V29.16H161.72Q163.2 29.16 164.19 28.53Q165.18 27.91 165.69 26.94Q166.2 25.97 166.2 24.87Q166.2 23.8 165.69 22.81Q165.18 21.83 164.19 21.22Q163.2 20.61 161.72 20.61Z M181.82 43.98Q179.69 43.98 178.31 43.07Q176.92 42.16 176.24 40.62Q175.55 39.08 175.55 37.14V23.46H181.29V36Q181.29 37.44 182.05 38.34Q182.81 39.23 184.29 39.23Q185.55 39.23 186.29 38.62Q187.03 38.01 187.37 37.06Q187.71 36.11 187.71 35.05V23.46H193.49V43.6H187.71V40.75H187.48Q186.84 41.93 185.49 42.95Q184.14 43.98 181.82 43.98Z M198.28 43.6V14.72H204.05V43.6Z M217.31 43.98Q214.81 43.98 213.17 43.3Q211.54 42.61 210.57 41.61Q209.6 40.6 209.12 39.59Q208.65 38.58 208.52 37.9Q208.38 37.22 208.38 37.22H213.74Q213.74 37.22 213.86 37.6Q213.97 37.98 214.37 38.47Q214.77 38.96 215.53 39.34Q216.29 39.72 217.58 39.72Q219.18 39.72 219.76 39.08Q220.35 38.43 220.35 37.79Q220.35 36.42 218.11 35.96L215.38 35.43Q213.63 35.09 212.09 34.42Q210.55 33.76 209.62 32.56Q208.69 31.36 208.69 29.46Q208.69 27.64 209.64 26.2Q210.59 24.75 212.35 23.92Q214.12 23.08 216.59 23.08Q218.91 23.08 220.45 23.71Q221.99 24.33 222.9 25.27Q223.81 26.2 224.27 27.13Q224.72 28.06 224.86 28.69Q224.99 29.31 224.99 29.31H219.82Q219.82 29.31 219.59 28.8Q219.37 28.29 218.66 27.77Q217.96 27.26 216.52 27.26Q215.03 27.26 214.46 27.85Q213.89 28.44 213.89 29.08Q213.89 29.84 214.56 30.22Q215.22 30.6 216.29 30.83L218.91 31.36Q221.8 31.93 223.66 33.36Q225.52 34.78 225.52 37.48Q225.52 39.31 224.57 40.79Q223.62 42.27 221.8 43.12Q219.97 43.98 217.31 43.98Z M239.13 43.98Q236.47 43.98 234.53 43.09Q232.59 42.19 231.34 40.69Q230.08 39.19 229.45 37.33Q228.83 35.47 228.83 33.49Q228.83 31.59 229.42 29.75Q230.01 27.91 231.24 26.39Q232.48 24.87 234.39 23.97Q236.31 23.08 238.94 23.08Q241.71 23.08 243.86 24.3Q246 25.51 247.22 27.89Q248.44 30.26 248.44 33.64V35.05H234.64Q234.76 36.87 235.91 38.2Q237.07 39.53 239.13 39.53Q240.3 39.53 241.04 39.17Q241.79 38.81 242.2 38.34Q242.62 37.86 242.77 37.48Q242.93 37.1 242.93 37.1H248.25Q248.25 37.1 248.07 37.81Q247.9 38.51 247.37 39.53Q246.84 40.56 245.83 41.59Q244.83 42.61 243.19 43.3Q241.56 43.98 239.13 43.98ZM234.64 31.55H242.89Q242.77 29.46 241.63 28.44Q240.49 27.41 238.82 27.41Q237.15 27.41 235.97 28.5Q234.79 29.58 234.64 31.55Z"/>
+</svg><svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+</svg></div><span class="cap" style="color:#A2A8B4">Cùng một file dùng cho cả hai theme: màu chữ trung gian đạt ≥ 3,7:1 trên sidebar sáng và tối.</span></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var q=new URLSearchParams(location.search),root=document.documentElement,b=document.body;
+  function theme(t){root.setAttribute('data-theme',t);var x=document.querySelector('[data-act=theme]');if(x)x.textContent='Giao diện: '+(t==='dark'?'Tối':'Sáng');}
+  function anno(on){b.classList.toggle('anno',on);var x=document.querySelector('[data-act=anno]');if(x)x.textContent='Chú thích: '+(on?'Bật':'Tắt');}
+  theme(q.get('theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  anno(q.get('anno')!=='0');
+  if(q.has('clean'))b.classList.add('clean');
+  document.addEventListener('click',function(e){var a=e.target.closest('[data-act]');if(!a)return;
+    if(a.getAttribute('data-act')==='theme')theme(root.getAttribute('data-theme')==='dark'?'light':'dark');else anno(!b.classList.contains('anno'));});
+})();
+</script>
+</body>
+</html>
