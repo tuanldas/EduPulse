@@ -1,0 +1,21 @@
+# Danh sách cho phép: chỉ file mà Dockerfile cần mới vào build context. Nhờ vậy dữ liệu, model,
+# kết quả huấn luyện, demo-data, .env* và file làm việc không bao giờ lọt vào image.
+*
+
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!LICENSE
+!src
+!vendor
+!apps/web
+
+# Thứ sinh ra khi dev/build, nằm bên trong các thư mục được cho phép ở trên.
+apps/web/node_modules
+apps/web/.next
+apps/web/out
+**/__pycache__
+**/*.pyc
+**/.env*
+**/.DS_Store
