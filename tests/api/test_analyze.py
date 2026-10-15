@@ -61,12 +61,21 @@ def test_flag_and_its_reasons_agree(live_client: TestClient):
 
 
 @pytest.mark.model
-@pytest.mark.parametrize("body", [{"text": ""}, {"text": "   \n\t "}, {}, {"text": 5}, {"x": "y"}])
-def test_invalid_bodies_are_422_with_the_standard_error_shape(live_client: TestClient, body):
+@pytest.mark.parametrize(
+    ("body", "code"),
+    [
+        ({"text": ""}, "text_empty"),
+        ({"text": "   \n\t "}, "text_empty"),
+        ({}, "validation_error"),
+        ({"text": 5}, "validation_error"),
+        ({"x": "y"}, "validation_error"),
+    ],
+)
+def test_invalid_bodies_are_422_with_the_standard_error_shape(live_client: TestClient, body, code):
     response = live_client.post("/api/analyze", json=body)
     assert response.status_code == 422
     detail = schemas.ErrorResponse.model_validate(response.json()).detail
-    assert detail.code == "validation_error"
+    assert detail.code == code
     assert detail.fields[0].loc[:2] == ["body", "text"]
 
 
@@ -76,7 +85,10 @@ def test_length_limit_is_500_characters(live_client: TestClient):
     assert ok.status_code == 200
     too_long = post(live_client, "/api/analyze", "a" * (MAX_CHARS + 1))
     assert too_long.status_code == 422
-    assert too_long.json()["detail"]["fields"][0]["type"] == "string_too_long"
+    detail = too_long.json()["detail"]
+    assert detail["code"] == "text_too_long"
+    assert detail["params"] == {"max_chars": MAX_CHARS}
+    assert detail["fields"][0]["type"] == "text_too_long"
     assert "a" * 20 not in too_long.text  # lỗi không lặp lại nội dung đã gửi
 
 
