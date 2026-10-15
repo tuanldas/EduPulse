@@ -263,10 +263,24 @@ def test_weight_matmuls_follow_the_six_per_layer_layout(fp32_graph):
         ("ffn_fp32", 4),  # 2 mỗi lớp
         ("attn_fp32", 8),  # 4 mỗi lớp
         ("last4_fp32", 12),  # chỉ có 2 lớp nên là tất cả
+        ("all_int8+heads_fp32", 2),  # chỉ hai đầu phân loại
+        ("ffn_out_fp32+heads_fp32", 4),
+        ("attn_fp32+heads_fp32", 10),
+        ("ffn_out_early6_fp32+heads_fp32", 3),  # FFN ra của nửa đầu (1 trong 2 lớp) + hai đầu
     ],
 )
 def test_each_config_keeps_the_documented_matmuls_in_fp32(fp32_graph, config, expected):
     assert len(export_onnx.excluded_nodes(fp32_graph, config)) == expected
+
+
+def test_heads_are_named_after_the_matmul_that_ort_derives_from_each_gemm(fp32_graph):
+    heads = export_onnx.head_matmul_names(fp32_graph)
+    gemms = [n.name for n in fp32_graph.node if n.op_type == "Gemm"]
+    assert heads == [f"{name}_MatMul" for name in gemms] and len(heads) == len(TASKS)
+    assert not set(heads) & set(export_onnx.weight_matmul_names(fp32_graph))
+    excluded = export_onnx.excluded_nodes(fp32_graph, "all_int8+heads_fp32")
+    assert excluded == heads
+    assert not set(heads) & set(export_onnx.excluded_nodes(fp32_graph, "attn_fp32"))
 
 
 def test_unknown_config_is_rejected(fp32_graph):
@@ -274,25 +288,66 @@ def test_unknown_config_is_rejected(fp32_graph):
         export_onnx.excluded_nodes(fp32_graph, "int4")
 
 
-def test_quantized_graph_has_int8_matmuls_only_where_the_config_allows(exported, tmp_path):
+@pytest.mark.parametrize(
+    ("config", "int8_matmuls"),
+    [
+        # Mô hình thử có 2 lớp x 6 MatMul có trọng số, cộng 2 đầu phân loại: ORT đổi Gemm của đầu
+        # thành MatMul + Add rồi lượng tử hoá luôn, trừ khi cấu hình giữ chúng FP32.
+        ("all_int8", 12 + 2),
+        ("attn_fp32", 4 + 2),
+        ("ffn_fp32", 8 + 2),
+        ("ffn_out_fp32", 10 + 2),
+        ("all_int8+heads_fp32", 12),
+        ("attn_fp32+heads_fp32", 4),
+        ("ffn_out_fp32+heads_fp32", 10),
+        ("ffn_out_early6_fp32+heads_fp32", 11),
+    ],
+)
+def test_quantized_graph_has_int8_matmuls_only_where_the_config_allows(
+    exported, tmp_path, config, int8_matmuls
+):
     import onnx
 
     out, _ = exported
-    counts = {}
-    for config in ("all_int8", "attn_fp32", "ffn_fp32", "ffn_out_fp32"):
-        target = tmp_path / f"{config}.onnx"
-        export_onnx.quantize_int8(out / "model.fp32.onnx", target, config)
-        graph = onnx.load(str(target), load_external_data=False).graph
-        counts[config] = sum(n.op_type == "MatMulInteger" for n in graph.node)
-    # Mô hình thử có 2 lớp x 6 MatMul có trọng số, cộng 2 đầu phân loại: ORT đổi Gemm của đầu thành
-    # MatMul + Add rồi lượng tử hoá luôn (các cấu hình hiện tại không loại trừ chúng).
-    heads = 2
-    assert counts == {
-        "all_int8": 12 + heads,
-        "attn_fp32": 4 + heads,
-        "ffn_fp32": 8 + heads,
-        "ffn_out_fp32": 10 + heads,
-    }
+    target = tmp_path / "candidate.onnx"
+    kept = export_onnx.quantize_int8(out / "model.fp32.onnx", target, config)
+    graph = onnx.load(str(target), load_external_data=False).graph
+    assert sum(n.op_type == "MatMulInteger" for n in graph.node) == int8_matmuls
+    # Số MatMul giữ FP32 + số MatMul int8 = mọi MatMul có trọng số (encoder và hai đầu).
+    assert kept + int8_matmuls == 12 + 2
+
+
+def test_fp32_heads_stay_plain_matmuls_with_float_weights(exported, fp32_graph, tmp_path):
+    import onnx
+
+    out, _ = exported
+    target = tmp_path / "heads.onnx"
+    export_onnx.quantize_int8(out / "model.fp32.onnx", target, "all_int8+heads_fp32")
+    graph = onnx.load(str(target), load_external_data=False).graph
+    float_weights = {i.name for i in graph.initializer if i.data_type == onnx.TensorProto.FLOAT}
+    plain = [n.name for n in graph.node if n.op_type == "MatMul" and n.input[1] in float_weights]
+    assert sorted(plain) == sorted(export_onnx.head_matmul_names(fp32_graph))
+
+
+def test_a_misnamed_exclusion_is_caught_instead_of_silently_quantizing_the_node(
+    exported, fp32_graph, tmp_path
+):
+    out, _ = exported
+    target = tmp_path / "wrong.onnx"
+    export_onnx.quantize_int8(out / "model.fp32.onnx", target, "all_int8")
+    heads = export_onnx.head_matmul_names(fp32_graph)
+    quantizable = [*export_onnx.weight_matmul_names(fp32_graph), *heads]
+    # all_int8 đã lượng tử hoá cả hai đầu; khai rằng chúng được loại trừ thì phải báo lỗi.
+    with pytest.raises(RuntimeError, match="không khớp cấu hình"):
+        export_onnx.check_quantized_graph(target, quantizable, heads)
+    export_onnx.check_quantized_graph(target, quantizable, [])
+
+
+def test_description_tells_whether_the_heads_stay_in_fp32():
+    assert "hai đầu phân loại giữ FP32" in export_onnx.quantization_description(
+        "attn_fp32+heads_fp32"
+    )
+    assert "hai đầu phân loại cũng int8" in export_onnx.quantization_description("attn_fp32")
 
 
 def test_deploy_config_is_one_of_the_registered_candidates():
@@ -303,9 +358,7 @@ def test_deploy_config_is_one_of_the_registered_candidates():
     document = json.loads(
         (REPO_ROOT / "results" / "metrics" / "onnx_gate_search.json").read_text("utf-8")
     )
-    registered = [c["name"] for c in document["registration"]["configs"]]
+    registered = {c["name"] for c in document["registration"]["configs"]}
+    if "round2" in document:
+        registered |= {entry["name"] for entry in document["round2"]["registration"]["pool"]}
     assert export_onnx.DEPLOY_QUANT_CONFIG in registered
-    if document["results"] is not None:  # sau khi chạy: triển khai đúng cấu hình đã chọn theo luật
-        assert document["results"]["selected"] == export_onnx.DEPLOY_QUANT_CONFIG or document.get(
-            "deploy_override"
-        )

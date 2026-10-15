@@ -381,5 +381,131 @@
       "title": "Lô 32 chỉ để tham khảo",
       "detail": "attn_fp32 đạt cổng ở batch=1 (-0,41/-0,38) nhưng ở lô 32 cảm xúc giảm 1,95 điểm; chỉ phục vụ từng câu một (batch=1) ở mọi đường thì nhãn nhất quán giữa xem một câu và xem lô."
     }
-  ]
+  ],
+  "round2": {
+    "status": "registered",
+    "registered_at": "2026-10-15T14:21:47+0700",
+    "registration_sha256": "cf52156a5faed6ff43e2b3cc87e1f5afbf0691a32c18061a5046cf5fba072959",
+    "registration": {
+      "purpose": "Vòng 2: tìm MỘT cấu hình int8 phục vụ vừa đạt cổng chất lượng (macro-F1 val giảm <= 1,0 điểm so với FP32 ở cả hai tác vụ, chạy từng câu một) vừa NHANH nhất, sau khi sửa tiền đề sai của vòng 1 (hai đầu phân loại bị lượng tử hoá ngoài ý muốn).",
+      "decided_by": "lead, trước khi chạy: duyệt vòng 2 (tối đa 4 cấu hình mới, cả hai đầu phân loại giữ FP32), pool chọn, luật v2 và cách đo; cấu hình thứ tư do dev-ml chọn theo ủy quyền của lead",
+      "why_a_second_round": [
+        "Luật chọn vòng 1 ('tệp model NHỎ nhất') mơ hồ giữa 'nhỏ' và 'nhanh': attn_fp32 thắng ffn_out_fp32 chỉ vì nhỏ hơn 19.924 byte (0,005%) với tốc độ như nhau (10,4 so với 10,2 ms/câu), trong khi số nhãn đổi so với FP32 của nó gần gấp đôi (cảm xúc/chủ đề 16/34 so với 9/14).",
+        "Đăng ký vòng 1 dựa trên tiền đề sai: hai đầu phân loại là nút Gemm nhưng quantize_dynamic đổi Gemm thành MatMul + Add rồi lượng tử hoá, nên cả bốn ứng viên vòng 1 và all_int8 đều lượng tử hoá hai đầu (all_int8 có 74 MatMulInteger = 72 của encoder + node_linear_72_MatMul + node_linear_73_MatMul).",
+        "Mã đã sửa: cấu hình có hậu tố +heads_fp32 đưa hai MatMul đó vào danh sách loại trừ và mỗi lần lượng tử hoá mã kiểm lại đồ thị int8 (tập MatMulInteger phải khớp đúng cấu hình). Đã kiểm CẤU TRÚC trên đồ thị thật trước khi đăng ký (all_int8+heads_fp32: 72 MatMulInteger, hai MatMul FP32 còn lại là hai đầu; ffn_out_early6_fp32+heads_fp32: 66 MatMulInteger); chưa chấm bất kỳ metric nào của vòng 2."
+      ],
+      "model": {
+        "run": "mtl-s42",
+        "fp32_onnx": "outputs/onnx/mtl-s42/model.fp32.onnx (xuất từ checkpoint epoch 4, embedding 66.119 hàng)"
+      },
+      "gate": {
+        "metric": "macro-F1 trên tập validation, từng tác vụ",
+        "max_drop_points": 1.0,
+        "reference": "FP32 ONNX trên cùng 1.583 câu val (FP32 không phụ thuộc lô)",
+        "evaluated_at": "batch=1: mỗi lần gọi ONNX Runtime một câu, không đệm",
+        "both_tasks_required": true,
+        "not_lowered_after_seeing_results": true,
+        "test_split_untouched": true
+      },
+      "selection_rule_lead_verbatim": {
+        "steps": [
+          "lọc cấu hình đạt cổng ở batch=1 cả 2 task (giảm ≤1,0 điểm mF1 so với FP32);",
+          "chọn cấu hình có ms/câu batch=1 thấp nhất;",
+          "nếu các ứng viên chênh tốc độ ≤5% so với cấu hình nhanh nhất thì chọn cấu hình có TỔNG số nhãn đổi (so FP32, 2 task) ít nhất;",
+          "ghi kích thước để tham khảo."
+        ],
+        "reason_for_changing_the_rule": "Lý do đổi luật: luật vòng 1 mơ hồ giữa \"nhỏ\" và \"nhanh\" và dựa trên tiền đề sai (đầu phân loại bị lượng tử hoá)."
+      },
+      "selection_rule": "Trong pool, giữ các cấu hình ĐẠT cổng ở batch=1 cho cả hai tác vụ. Gọi F là ms/câu thấp nhất (batch=1, 2 luồng, trung vị các vòng đo xen kẽ) trong số đó. Mọi cấu hình đạt cổng có ms/câu không quá F x 1,05 họp thành nhóm hoà; chọn trong nhóm cấu hình có TỔNG số nhãn đổi so với FP32 (cảm xúc + chủ đề, batch=1) ít nhất. Nếu vẫn hoà tổng số nhãn đổi thì chọn ms/câu thấp hơn, rồi theo thứ tự trong `pool`. Kích thước tệp chỉ ghi để tham khảo, không dùng để chọn. Không cấu hình nào đạt thì không đóng gói, báo lead kèm bảng kết quả.",
+      "speed_tie_fraction": 0.05,
+      "pool": [
+        {
+          "name": "ffn_out_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "ffn_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "attn_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "all_int8+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "ffn_out_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "attn_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "ffn_out_early6_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        }
+      ],
+      "new_configs": [
+        {
+          "name": "all_int8+heads_fp32",
+          "exclude": "72 MatMul có trọng số của encoder đều int8; chỉ hai đầu phân loại (node_linear_72_MatMul 768x3 và node_linear_73_MatMul 768x4, tên sau khi ORT đổi Gemm) giữ FP32",
+          "rationale": "đối chứng của all_int8 vòng 1 (trượt cổng: -1,131/-0,909) chỉ khác ở hai đầu: cho biết hai đầu int8 gây bao nhiêu phần sai số; nếu đạt cổng thì đây là cấu hình nhanh nhất có thể (6,9 ms/câu ở vòng 1)"
+        },
+        {
+          "name": "ffn_out_fp32+heads_fp32",
+          "exclude": "12 phép chiếu ra của FFN (trọng số 3072x768) ở mọi lớp giữ FP32, cộng hai đầu phân loại giữ FP32",
+          "rationale": "ffn_out_fp32 vòng 1 có số nhãn đổi thấp hơn all_int8 (16/31) và attn_fp32 (16/34) (9/14) mà vẫn nhanh (10,2 ms/câu); thêm hai đầu FP32 theo gợi ý của lead"
+        },
+        {
+          "name": "attn_fp32+heads_fp32",
+          "exclude": "Q/K/V và phép chiếu ra của attention (768x768) ở mọi lớp giữ FP32, cộng hai đầu phân loại giữ FP32",
+          "rationale": "cấu hình mà luật vòng 1 chọn, nhưng hai đầu vẫn int8 và số nhãn đổi cao (16/34): xem hai đầu FP32 có giảm số nhãn đổi không; theo gợi ý của lead"
+        },
+        {
+          "name": "ffn_out_early6_fp32+heads_fp32",
+          "exclude": "phép chiếu ra của FFN (3072x768) ở 6 lớp đầu (lớp 0-5) giữ FP32; 6 lớp sau và mọi MatMul có trọng số khác của encoder int8; hai đầu phân loại giữ FP32",
+          "rationale": "cấu hình thứ tư do dev-ml chọn (lead cho phép +1), chọn TRƯỚC khi chạy bất kỳ metric vòng 2: trong các số đo vòng 1, thêm lượng tử hoá phép chiếu ra của FFN là bước làm tăng số nhãn đổi nhiều nhất (ffn_fp32 4/10 -> ffn_out_fp32 9/14 -> all_int8 16/31), còn giữ FP32 1, 2 hoặc 4 lớp CUỐI không giảm đáng kể số nhãn đổi (thăm dò trước đăng ký vòng 1 và last4_fp32), nên thử nửa đầu; chỉ giữ FP32 nửa số phép chiếu ra của FFN nên tốn khoảng nửa chi phí tốc độ của ffn_out_fp32, nằm giữa all_int8+heads_fp32 và ffn_out_fp32+heads_fp32"
+        }
+      ],
+      "reference_configs": [
+        {
+          "name": "all_int8",
+          "note": "cấu hình hiện tại của vòng 1 (hai đầu int8, trượt cổng) đo lại cùng phiên để thấy riêng tác động của việc giữ hai đầu FP32 so với all_int8+heads_fp32; KHÔNG phải ứng viên"
+        }
+      ],
+      "reference_rows": [
+        "fp32: mốc so sánh trong cùng phiên, không phải ứng viên",
+        "all_int8: mốc vòng 1 đo lại (hai đầu int8), không phải ứng viên"
+      ],
+      "measurement": {
+        "quality": "Chấm macro-F1, accuracy, ECE, F1 lớp trung tính / lớp 'khác' và số nhãn đổi so với FP32 trên cùng 1.583 câu val ở batch=1 (mỗi lần gọi ORT một câu, không đệm); lô 32 chỉ ghi để tham khảo. Ba cấu hình vòng 1 được lượng tử hoá và chấm lại trong phiên này; kết quả tất định nên phải trùng vòng 1, sai lệch (nếu có) được ghi vào reproduction_of_round_one nhưng luật chọn dùng số của phiên vòng 2.",
+        "timing": {
+          "metric": "ms/câu = thời gian chạy 200 câu val đầu tiên (đúng thứ tự tệp) ở batch 1 chia 200, gồm cả bước đệm và gọi ORT",
+          "sentences": 200,
+          "warmup_sentences": 10,
+          "rounds": 5,
+          "threads": 2,
+          "models_timed": "FP32, all_int8 (mốc) và mọi ứng viên trong pool",
+          "interleaved": "mỗi vòng đo lần lượt TẤT CẢ mô hình, thứ tự xoay một bước sau mỗi vòng (mô hình nào cũng có lúc đứng đầu, giữa và cuối), mỗi lần tạo phiên ORT mới rồi khởi động",
+          "statistic": "trung vị của 5 vòng",
+          "conditions": "một phiên duy nhất, cùng 2 luồng ORT; Docker và tiến trình khác vẫn chạy nhưng tác động như nhau lên mọi mô hình nhờ đo xen kẽ; đo đúng một lần, không đo lại hay chỉnh sau khi xem kết quả"
+        }
+      },
+      "common_settings": {
+        "tool": "onnxruntime.quantization.quantize_dynamic sau quant_pre_process",
+        "weight_type": "QInt8",
+        "per_channel": true,
+        "reduce_range": true,
+        "op_types_to_quantize": [
+          "MatMul"
+        ],
+        "note": "Hai đầu phân loại là nút Gemm nhưng quantize_dynamic đổi Gemm thành MatMul + Add rồi lượng tử hoá cả hai (đính chính ghi chú sai của vòng 1); hậu tố +heads_fp32 loại trừ hai MatMul đó. Lớp embedding là Gather nên không bao giờ bị lượng tử hoá; các MatMul kích hoạt x kích hoạt (QK^T, attn.V) không có trọng số hằng nên không bị lượng tử hoá động."
+      },
+      "noise_note": "Pool 7 ứng viên cùng chấm trên 1.583 câu val: 'đạt cổng' (ngưỡng 1,0 điểm macro-F1) là phép đo nhiễu vì lớp trung tính chỉ có 73 câu val và mỗi nhãn đổi ở lớp này làm macro-F1 cảm xúc xê dịch cỡ vài phần mười điểm. Vì vậy số nhãn đổi so với FP32 được ghi cho mọi ứng viên để đánh giá độ vững, và luật v2 dùng nó khi tốc độ gần nhau. Tập test không được dùng để chọn."
+    },
+    "results": null
+  }
 }
