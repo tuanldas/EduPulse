@@ -1,0 +1,81 @@
+[project]
+name = "edupulse"
+version = "0.1.0"
+description = "Phân loại cảm xúc và chủ đề góp ý của sinh viên (UIT-VSFC) bằng PhoBERT đa nhiệm, kèm giải thích và gợi ý duyệt."
+readme = "README.md"
+requires-python = "==3.12.*"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+# Phụ thuộc nằm hết ở [dependency-groups] để mỗi nơi chạy chỉ cài đúng group của mình.
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11.22,<0.12"]
+build-backend = "uv_build"
+
+# Pin chính xác để tái lập. Phụ thuộc gián tiếp do uv.lock giữ.
+[dependency-groups]
+# Runtime (image cuối): không torch, pandas, pyarrow.
+app = [
+    "fastapi==0.143.1",
+    "uvicorn==0.54.0",
+    "python-multipart==0.0.32",
+    "onnxruntime==1.31.0",
+    "tokenizers==0.23.3",
+    "numpy==2.5.4",
+    "py-vncorenlp==0.1.4",
+    "pyjnius==1.9.0",
+    "python-calamine==0.8.3",
+    "scikit-learn==1.9.1",
+    "skops==0.16.0",
+    "underthesea==9.5.0",
+]
+# Chỉ stage Docker `demo` (tính dữ liệu demo lúc build) và máy dev.
+demo = [
+    "pyarrow==26.0.0",
+    "huggingface-hub==2.2.0",
+]
+# Huấn luyện, đánh giá, export (Mac, Colab).
+train = [
+    "torch==2.14.1",
+    "transformers==5.19.0",
+    "accelerate==1.15.0",
+    "safetensors==0.8.0",
+    "huggingface-hub==2.2.0",
+    "pandas==3.0.6",
+    "pyarrow==26.0.0",
+    "scipy==1.18.1",
+    "onnx==1.23.2",
+    "onnxscript==0.7.2",
+    "matplotlib==3.11.2",
+]
+dev = [
+    "pytest==9.1.1",
+    "httpx==0.28.1",
+    "ruff==0.17.0",
+]
+
+[tool.uv]
+# Máy dev cài đủ; Docker chọn group bằng --no-default-groups --group app.
+default-groups = ["app", "demo", "train", "dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `ml/` nằm ngoài package nên cần gốc repo trên sys.path để test import được.
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "data: cần data/processed (chạy `make data`)",
+    "java: cần JRE để tách từ VnCoreNLP",
+    "model: cần bundle trong artifacts/ (chạy `make artifacts`)",
+    "train: cần group train (torch, transformers)",
+    "slow: chạy lâu (NER, đo hiệu năng)",
+]

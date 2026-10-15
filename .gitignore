@@ -11,6 +11,16 @@ __pycache__/
 /data/
 /models/
 /outputs/
+/artifacts/
+/demo-data/
+/.mps.lock
+
+# Web (Next.js)
+node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/playwright-report/
+apps/web/test-results/
 
 # Secrets
 .env
