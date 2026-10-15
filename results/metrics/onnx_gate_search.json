@@ -1,0 +1,112 @@
+{
+  "status": "registered_before_run",
+  "registered_at": "2026-10-15T13:51:42+0700",
+  "registration_sha256": "306762f86241015a2c32f9d2ec2214691fe40058f92e4b431d801f58b0a240fa",
+  "registration": {
+    "purpose": "Tìm MỘT cấu hình int8 phục vụ đạt cổng chất lượng (macro-F1 val giảm <= 1,0 điểm so với FP32 ở cả hai tác vụ) khi chạy từng câu một (batch 1), chế độ sẽ phục vụ ở mọi đường.",
+    "model": {
+      "run": "mtl-s42",
+      "fp32_onnx": "outputs/onnx/mtl-s42/model.fp32.onnx (xuất từ checkpoint epoch 4, embedding 66.119 hàng)"
+    },
+    "gate": {
+      "metric": "macro-F1 trên tập validation, từng tác vụ",
+      "max_drop_points": 1.0,
+      "reference": "FP32 ONNX trên cùng 1.583 câu val (FP32 không phụ thuộc lô)",
+      "evaluated_at": "batch=1: mỗi lần gọi ONNX Runtime một câu, không đệm",
+      "both_tasks_required": true,
+      "not_lowered_after_seeing_results": true,
+      "test_split_untouched": true
+    },
+    "selection_rule": "Trong các cấu hình ĐẠT cổng ở batch=1 cho cả hai tác vụ, chọn cấu hình có tệp model NHỎ nhất; hoà thì chọn cấu hình có ms/câu (batch=1, 2 luồng) thấp hơn. Không cấu hình nào đạt thì không đóng gói, báo lead kèm bảng kết quả và phương án (FP32 hoặc khác).",
+    "common_settings": {
+      "tool": "onnxruntime.quantization.quantize_dynamic sau quant_pre_process",
+      "weight_type": "QInt8",
+      "per_channel": true,
+      "reduce_range": true,
+      "op_types_to_quantize": [
+        "MatMul"
+      ],
+      "note": "Hai đầu phân loại là nút Gemm và lớp embedding là Gather nên KHÔNG BAO GIỜ bị lượng tử hoá với op_types_to_quantize=['MatMul']; các MatMul kích hoạt x kích hoạt (QK^T, attn.V) cũng không có trọng số hằng nên không bị lượng tử hoá động."
+    },
+    "configs": [
+      {
+        "name": "ffn_out_fp32",
+        "exclude": "12 phép chiếu ra của FFN (trọng số 3072x768) ở mọi lớp giữ FP32",
+        "rationale": "đầu vào là đầu ra GELU, có giá trị ngoại lai lớn nên thang kích hoạt động theo cả tensor thô nhất"
+      },
+      {
+        "name": "ffn_fp32",
+        "exclude": "cả hai phép chiếu của FFN (768x3072 và 3072x768) ở mọi lớp giữ FP32; chỉ Q/K/V/O của attention là int8",
+        "rationale": "loại hẳn FFN (2/3 trọng số mỗi lớp) khỏi lượng tử hoá"
+      },
+      {
+        "name": "attn_fp32",
+        "exclude": "Q/K/V và phép chiếu ra của attention (768x768) ở mọi lớp giữ FP32; chỉ FFN là int8",
+        "rationale": "đối chứng của ffn_fp32: xác định nhánh nào gây sai số"
+      },
+      {
+        "name": "last4_fp32",
+        "exclude": "mọi MatMul có trọng số của 4 lớp encoder cuối giữ FP32",
+        "rationale": "ví dụ của lead (k=4); k=2 đã được thử thăm dò trước đăng ký và không đạt"
+      }
+    ],
+    "reference_rows": [
+      "fp32: mốc so sánh, không phải ứng viên",
+      "all_int8: cấu hình hiện tại (72 MatMul có trọng số đều int8) đã đo ở lần export, không phải ứng viên mới"
+    ]
+  },
+  "exploration_before_registration": {
+    "note": "Ba lần chạy thăm dò (cùng checkpoint, cùng 1.583 câu val) được làm TRƯỚC khi đăng ký; ghi lại để minh bạch. Chúng cho thấy loại trừ 1-2 lớp cuối không cải thiện batch=1.",
+    "runs": [
+      {
+        "name": "A all_int8 (hiện tại)",
+        "size_mb": 290.9,
+        "delta_macro_f1_batch1": {
+          "sentiment": -1.13,
+          "topic": -0.91
+        },
+        "delta_macro_f1_batch32": {
+          "sentiment": -0.08,
+          "topic": -0.32
+        },
+        "label_flips_vs_fp32_batch1": {
+          "sentiment": 16,
+          "topic": 31
+        }
+      },
+      {
+        "name": "B last1_fp32",
+        "size_mb": 312.1,
+        "delta_macro_f1_batch1": {
+          "sentiment": -1.13,
+          "topic": -0.91
+        },
+        "delta_macro_f1_batch32": {
+          "sentiment": -0.08,
+          "topic": -0.57
+        },
+        "label_flips_vs_fp32_batch1": {
+          "sentiment": 16,
+          "topic": 31
+        }
+      },
+      {
+        "name": "C last2_fp32",
+        "size_mb": 333.3,
+        "delta_macro_f1_batch1": {
+          "sentiment": -1.18,
+          "topic": -0.94
+        },
+        "delta_macro_f1_batch32": {
+          "sentiment": -0.18,
+          "topic": 0.91
+        },
+        "label_flips_vs_fp32_batch1": {
+          "sentiment": 17,
+          "topic": 31
+        }
+      }
+    ]
+  },
+  "results": null
+}
