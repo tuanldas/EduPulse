@@ -1,0 +1,3690 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EduPulse API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Giới hạn, ngân sách duyệt, câu mẫu và trạng thái demo",
+        "operationId": "app_config",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/model-card": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Model card của bundle đang phục vụ",
+        "operationId": "model_card",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "model_card_unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sample.csv": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Tải file mẫu",
+        "operationId": "sample_csv",
+        "responses": {
+          "200": {
+            "description": "File mẫu 200 câu, dựng lúc build image.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "demo_unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "tags": [
+          "analyze"
+        ],
+        "summary": "Analyze",
+        "operationId": "analyze",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/explain": {
+      "post": {
+        "tags": [
+          "analyze"
+        ],
+        "summary": "Explain",
+        "operationId": "explain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Tải file CSV/XLSX lên",
+        "operationId": "upload_batch",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_batch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUpload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "too_many_rows (params n_rows, max_rows) | no_rows | decode_failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "file_too_large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "unsupported_file_type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "busy (đã đủ số batch, hoặc hàng đợi đầy)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/sample": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Tạo batch từ file mẫu dựng lúc build image",
+        "operationId": "create_sample_batch",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUpload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "demo_unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "busy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/run": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Chạy phân tích nền",
+        "operationId": "run_batch",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid_column | no_text_column | too_many_groups (params n_groups, max_groups)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "already_running | batch_readonly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "busy (hàng đợi chạy đầy)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}": {
+      "get": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Trạng thái và tiến độ",
+        "operationId": "batch_status",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Xoá batch",
+        "operationId": "delete_batch",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/heartbeat": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Gia hạn batch khi tab còn mở",
+        "operationId": "heartbeat",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/close": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Xoá batch khi đóng tab (navigator.sendBeacon chỉ gửi được POST)",
+        "operationId": "close_batch",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/results": {
+      "get": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Kết quả từng dòng và thống kê",
+        "operationId": "batch_results",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_done | batch_readonly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/rows/{index}/explain": {
+      "get": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Giải thích một dòng (tính khi mở nếu chưa có sẵn)",
+        "operationId": "explain_row",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "xai_too_long (params n_words, max_words) | no_content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "batch_not_found | row_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_done | batch_readonly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/insights": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Dashboard & insight, lọc nhóm qua thân yêu cầu",
+        "operationId": "batch_insights",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsightsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{batch_id}/export": {
+      "post": {
+        "tags": [
+          "batches"
+        ],
+        "summary": "Xuất CSV: toàn bộ kết quả hoặc chỉ nhãn đã sửa",
+        "operationId": "export_batch",
+        "parameters": [
+          {
+            "name": "batch_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Id batch, hoặc `demo`.",
+              "title": "Batch Id"
+            },
+            "description": "Id batch, hoặc `demo`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CSV UTF-8 có BOM, mở thẳng được bằng Excel.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "invalid_override (index không có trong batch, hoặc trùng)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "batch_not_found (không có hoặc đã hết hạn)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "not_done | batch_readonly",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Alert": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "negative_rate",
+              "topic_share"
+            ],
+            "title": "Kind"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/AlertEvidence"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "highlight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GroupHighlight"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "topic",
+          "group",
+          "title",
+          "summary",
+          "evidence",
+          "keywords",
+          "note",
+          "highlight"
+        ],
+        "title": "Alert"
+      },
+      "AlertEvidence": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "k": {
+            "type": "integer",
+            "title": "K"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "ci_low": {
+            "type": "number",
+            "title": "Ci Low"
+          },
+          "baseline": {
+            "type": "number",
+            "title": "Baseline"
+          },
+          "delta_points": {
+            "type": "number",
+            "title": "Delta Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "k",
+          "rate",
+          "ci_low",
+          "baseline",
+          "delta_points"
+        ],
+        "title": "AlertEvidence",
+        "description": "Căn cứ của một cảnh báo. `negative_rate`: k câu tiêu cực trong n câu của chủ đề (hoặc của\nchủ đề × nhóm). `topic_share`: k câu thuộc chủ đề trong n câu của cả tập."
+      },
+      "AnalyzeRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "compare": {
+            "type": "boolean",
+            "title": "Compare",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnalyzeRequest"
+      },
+      "AnalyzeResponse": {
+        "properties": {
+          "display_text": {
+            "type": "string",
+            "title": "Display Text"
+          },
+          "pii_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "name",
+                "phone",
+                "email",
+                "url",
+                "student_id",
+                "national_id"
+              ]
+            },
+            "type": "array",
+            "title": "Pii Types"
+          },
+          "no_diacritics": {
+            "type": "boolean",
+            "title": "No Diacritics"
+          },
+          "n_words": {
+            "type": "integer",
+            "title": "N Words"
+          },
+          "xai_available": {
+            "type": "boolean",
+            "title": "Xai Available"
+          },
+          "sentiment": {
+            "$ref": "#/components/schemas/SentimentPrediction"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/TopicPrediction"
+          },
+          "flag": {
+            "$ref": "#/components/schemas/Flag"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BaselineComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_text",
+          "pii_types",
+          "no_diacritics",
+          "n_words",
+          "xai_available",
+          "sentiment",
+          "topic",
+          "flag",
+          "baseline"
+        ],
+        "title": "AnalyzeResponse"
+      },
+      "AppConfig": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo"
+          },
+          "ner_enabled": {
+            "type": "boolean",
+            "title": "Ner Enabled"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/Limits"
+          },
+          "budgets": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetOption"
+            },
+            "type": "array",
+            "title": "Budgets"
+          },
+          "default_budget": {
+            "type": "integer",
+            "enum": [
+              5,
+              10,
+              20,
+              30
+            ],
+            "title": "Default Budget"
+          },
+          "heartbeat_s": {
+            "type": "integer",
+            "title": "Heartbeat S"
+          },
+          "ui_samples": {
+            "items": {
+              "$ref": "#/components/schemas/UiSample"
+            },
+            "type": "array",
+            "title": "Ui Samples"
+          },
+          "demo_available": {
+            "type": "boolean",
+            "title": "Demo Available"
+          },
+          "demo_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo Reason"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "ner_enabled",
+          "limits",
+          "budgets",
+          "default_budget",
+          "heartbeat_s",
+          "ui_samples",
+          "demo_available",
+          "demo_reason",
+          "source_url"
+        ],
+        "title": "AppConfig"
+      },
+      "ArchitectureRow": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "seeds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Seeds"
+          },
+          "sentiment_macro_f1": {
+            "$ref": "#/components/schemas/SeedStat"
+          },
+          "topic_macro_f1": {
+            "$ref": "#/components/schemas/SeedStat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "seeds",
+          "sentiment_macro_f1",
+          "topic_macro_f1"
+        ],
+        "title": "ArchitectureRow",
+        "description": "Đa nhiệm so với đơn nhiệm, trung bình theo seed."
+      },
+      "BaselineComparison": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "sentiment": {
+            "$ref": "#/components/schemas/BaselineSentiment"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/BaselineTopic"
+          },
+          "agree_sentiment": {
+            "type": "boolean",
+            "title": "Agree Sentiment"
+          },
+          "agree_topic": {
+            "type": "boolean",
+            "title": "Agree Topic"
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "title": "Elapsed Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "sentiment",
+          "topic",
+          "agree_sentiment",
+          "agree_topic",
+          "elapsed_ms"
+        ],
+        "title": "BaselineComparison",
+        "description": "Kết quả của mô hình cơ sở trên cùng câu, để so với PhoBERT."
+      },
+      "BaselineRow": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "deployed": {
+            "type": "boolean",
+            "title": "Deployed",
+            "default": false
+          },
+          "sentiment_accuracy": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Sentiment Accuracy"
+          },
+          "sentiment_macro_f1": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Sentiment Macro F1"
+          },
+          "topic_accuracy": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Topic Accuracy"
+          },
+          "topic_macro_f1": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Topic Macro F1"
+          },
+          "sentiment_ece": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiment Ece"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "sentiment_accuracy",
+          "sentiment_macro_f1",
+          "topic_accuracy",
+          "topic_macro_f1"
+        ],
+        "title": "BaselineRow"
+      },
+      "BaselineSentiment": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "negative",
+              "neutral",
+              "positive"
+            ],
+            "title": "Label"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "top_terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "confidence",
+          "top_terms"
+        ],
+        "title": "BaselineSentiment"
+      },
+      "BaselineTopic": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Label"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "top_terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "confidence",
+          "top_terms"
+        ],
+        "title": "BaselineTopic"
+      },
+      "BatchStatus": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "uploaded",
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "State"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "prepare",
+                  "predict",
+                  "flag",
+                  "explain"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "done": {
+            "type": "integer",
+            "title": "Done"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "progress": {
+            "type": "number",
+            "title": "Progress"
+          },
+          "eta_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta S"
+          },
+          "n_rows": {
+            "type": "integer",
+            "title": "N Rows"
+          },
+          "pii_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pii Rows"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "illustrative_groups": {
+            "type": "boolean",
+            "title": "Illustrative Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "step",
+          "done",
+          "total",
+          "progress",
+          "eta_s",
+          "n_rows",
+          "pii_rows",
+          "error_code",
+          "illustrative_groups"
+        ],
+        "title": "BatchStatus"
+      },
+      "BatchUpload": {
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "title": "Batch Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "n_rows": {
+            "type": "integer",
+            "title": "N Rows"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "preview": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Preview"
+          },
+          "suggested_text_col": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Text Col"
+          },
+          "suggested_group_col": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Group Col"
+          },
+          "encoding": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "utf-8",
+                  "utf-8-sig",
+                  "cp1258"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoding"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/BatchWarning"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "illustrative_groups": {
+            "type": "boolean",
+            "title": "Illustrative Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batch_id",
+          "filename",
+          "n_rows",
+          "columns",
+          "preview",
+          "suggested_text_col",
+          "suggested_group_col",
+          "encoding",
+          "warnings",
+          "illustrative_groups"
+        ],
+        "title": "BatchUpload",
+        "description": "Kết quả tải file hoặc tạo batch từ file mẫu; chưa có phân tích nào được chạy."
+      },
+      "BatchWarning": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "encoding_fallback",
+              "blank_rows_skipped",
+              "other_sheets_ignored",
+              "columns_renamed"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "count"
+        ],
+        "title": "BatchWarning"
+      },
+      "Body_upload_batch": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "CSV hoặc XLSX, tối đa 10MB và 2.000 dòng."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_batch"
+      },
+      "BudgetEfficiency": {
+        "properties": {
+          "flagged_share": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Flagged Share"
+          },
+          "caught_sentiment_errors": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Caught Sentiment Errors"
+          },
+          "caught_topic_errors": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Caught Topic Errors"
+          },
+          "accept_accuracy_both": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Accept Accuracy Both"
+          },
+          "all_accuracy_both": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "All Accuracy Both"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "flagged_share",
+          "caught_sentiment_errors",
+          "caught_topic_errors",
+          "accept_accuracy_both",
+          "all_accuracy_both"
+        ],
+        "title": "BudgetEfficiency",
+        "description": "Hiệu quả của ngân sách duyệt, tính trên val bằng `scoring.rank_batch`."
+      },
+      "BudgetOption": {
+        "properties": {
+          "budget": {
+            "type": "integer",
+            "enum": [
+              5,
+              10,
+              20,
+              30
+            ],
+            "title": "Budget"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          },
+          "efficiency": {
+            "$ref": "#/components/schemas/BudgetEfficiency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "budget",
+          "default",
+          "efficiency"
+        ],
+        "title": "BudgetOption"
+      },
+      "BudgetRow": {
+        "properties": {
+          "budget": {
+            "type": "integer",
+            "title": "Budget"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default",
+            "default": false
+          },
+          "efficiency": {
+            "$ref": "#/components/schemas/BudgetEfficiency"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "budget",
+          "efficiency"
+        ],
+        "title": "BudgetRow"
+      },
+      "Candidate": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "probability"
+        ],
+        "title": "Candidate"
+      },
+      "ChecklistRow": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "invariance",
+              "directional",
+              "robustness"
+            ],
+            "title": "Kind"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "n"
+        ],
+        "title": "ChecklistRow"
+      },
+      "ClassMetrics": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "precision": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Precision"
+          },
+          "recall": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Recall"
+          },
+          "f1": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "F1"
+          },
+          "support": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Support"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "precision",
+          "recall",
+          "f1",
+          "support"
+        ],
+        "title": "ClassMetrics"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse"
+      },
+      "ExplainResponse": {
+        "properties": {
+          "n_forwards": {
+            "type": "integer",
+            "title": "N Forwards"
+          },
+          "sentiment": {
+            "$ref": "#/components/schemas/HeadExplanation"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/HeadExplanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n_forwards",
+          "sentiment",
+          "topic"
+        ],
+        "title": "ExplainResponse"
+      },
+      "ExportRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "all",
+              "corrected"
+            ],
+            "title": "Kind",
+            "default": "all"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/LabelOverride"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Overrides",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExportRequest"
+      },
+      "FieldError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Loc"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "type"
+        ],
+        "title": "FieldError",
+        "description": "Một trường không hợp lệ; không kèm giá trị gửi lên để không lặp lại nội dung người dùng."
+      },
+      "Flag": {
+        "properties": {
+          "needs_review": {
+            "type": "boolean",
+            "title": "Needs Review"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/FlagReason"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "needs_review",
+          "reasons"
+        ],
+        "title": "Flag"
+      },
+      "FlagReason": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "low_confidence",
+              "no_diacritics"
+            ],
+            "title": "Code"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sentiment",
+                  "topic"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "task",
+          "candidates",
+          "message"
+        ],
+        "title": "FlagReason"
+      },
+      "GroupHighlight": {
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "k": {
+            "type": "integer",
+            "title": "K"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group",
+          "k",
+          "n",
+          "rate"
+        ],
+        "title": "GroupHighlight",
+        "description": "Nhóm có tỉ lệ tiêu cực cao nhất trong một cảnh báo theo chủ đề."
+      },
+      "GroupOption": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "n"
+        ],
+        "title": "GroupOption"
+      },
+      "HeadExplanation": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenEffect"
+            },
+            "type": "array",
+            "title": "Tokens"
+          },
+          "support": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Support"
+          },
+          "oppose": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Oppose"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "probability",
+          "tokens",
+          "support",
+          "oppose"
+        ],
+        "title": "HeadExplanation"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "bundle_version": {
+            "type": "string",
+            "title": "Bundle Version"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "smoke",
+                  "release"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "ner_enabled": {
+            "type": "boolean",
+            "title": "Ner Enabled"
+          },
+          "rss_mb": {
+            "type": "number",
+            "title": "Rss Mb"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "bundle_version",
+          "model_version",
+          "stage",
+          "ner_enabled",
+          "rss_mb"
+        ],
+        "title": "Health"
+      },
+      "Heatmap": {
+        "properties": {
+          "groups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "topics": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "lecturer",
+                "training_program",
+                "facility",
+                "others"
+              ]
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "baseline_negative_rate": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Baseline Negative Rate"
+          },
+          "min_n": {
+            "type": "integer",
+            "title": "Min N"
+          },
+          "cells": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/HeatmapCell"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groups",
+          "topics",
+          "baseline_negative_rate",
+          "min_n",
+          "cells"
+        ],
+        "title": "Heatmap"
+      },
+      "HeatmapCell": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "negative_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Rate"
+          },
+          "delta_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Points"
+          },
+          "shaded": {
+            "type": "boolean",
+            "title": "Shaded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "negative_rate",
+          "delta_points",
+          "shaded"
+        ],
+        "title": "HeatmapCell"
+      },
+      "InsightsRequest": {
+        "properties": {
+          "groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 100,
+                  "minLength": 1
+                },
+                "type": "array",
+                "maxItems": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groups"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InsightsRequest"
+      },
+      "InsightsResponse": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "demo",
+              "batch"
+            ],
+            "title": "Source"
+          },
+          "illustrative_groups": {
+            "type": "boolean",
+            "title": "Illustrative Groups"
+          },
+          "groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GroupOption"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groups"
+          },
+          "selected_groups": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Groups"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/Kpis"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicStat"
+            },
+            "type": "array",
+            "title": "Topics"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/Alert"
+            },
+            "type": "array",
+            "title": "Alerts"
+          },
+          "heatmap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Heatmap"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/TopicKeywords"
+            },
+            "type": "array",
+            "title": "Keywords"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/TopicQuotes"
+            },
+            "type": "array",
+            "title": "Quotes"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "illustrative_groups",
+          "groups",
+          "selected_groups",
+          "kpis",
+          "topics",
+          "alerts",
+          "heatmap",
+          "keywords",
+          "quotes",
+          "recommendations"
+        ],
+        "title": "InsightsResponse"
+      },
+      "Keyword": {
+        "properties": {
+          "term": {
+            "type": "string",
+            "title": "Term"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "n",
+          "score"
+        ],
+        "title": "Keyword"
+      },
+      "Kpis": {
+        "properties": {
+          "n_rows": {
+            "type": "integer",
+            "title": "N Rows"
+          },
+          "n_groups": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Groups"
+          },
+          "shares": {
+            "$ref": "#/components/schemas/SentimentShares"
+          },
+          "baseline_shares": {
+            "$ref": "#/components/schemas/SentimentShares"
+          },
+          "delta_points": {
+            "$ref": "#/components/schemas/SentimentShares"
+          },
+          "n_flagged": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Flagged"
+          },
+          "flagged_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagged Share"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n_rows",
+          "n_groups",
+          "shares",
+          "baseline_shares",
+          "delta_points",
+          "n_flagged",
+          "flagged_share"
+        ],
+        "title": "Kpis"
+      },
+      "LabelOverride": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index"
+          },
+          "sentiment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "negative",
+                  "neutral",
+                  "positive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiment"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "lecturer",
+                  "training_program",
+                  "facility",
+                  "others"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index"
+        ],
+        "title": "LabelOverride",
+        "description": "Nhãn do người duyệt sửa; trường để trống là giữ nhãn của mô hình."
+      },
+      "Limits": {
+        "properties": {
+          "max_chars": {
+            "type": "integer",
+            "title": "Max Chars"
+          },
+          "max_upload_mb": {
+            "type": "integer",
+            "title": "Max Upload Mb"
+          },
+          "max_rows": {
+            "type": "integer",
+            "title": "Max Rows"
+          },
+          "max_groups": {
+            "type": "integer",
+            "title": "Max Groups"
+          },
+          "xai_max_words": {
+            "type": "integer",
+            "title": "Xai Max Words"
+          },
+          "auto_xai_top": {
+            "type": "integer",
+            "title": "Auto Xai Top"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_chars",
+          "max_upload_mb",
+          "max_rows",
+          "max_groups",
+          "xai_max_words",
+          "auto_xai_top"
+        ],
+        "title": "Limits"
+      },
+      "ModelCard": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "bundle_version": {
+            "type": "string",
+            "title": "Bundle Version"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "smoke",
+              "release"
+            ],
+            "title": "Stage"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/SplitMetrics"
+          },
+          "baselines": {
+            "items": {
+              "$ref": "#/components/schemas/BaselineRow"
+            },
+            "type": "array",
+            "title": "Baselines",
+            "default": []
+          },
+          "architectures": {
+            "items": {
+              "$ref": "#/components/schemas/ArchitectureRow"
+            },
+            "type": "array",
+            "title": "Architectures",
+            "default": []
+          },
+          "review_budget": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetRow"
+            },
+            "type": "array",
+            "title": "Review Budget",
+            "default": []
+          },
+          "checklist": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistRow"
+            },
+            "type": "array",
+            "title": "Checklist",
+            "default": []
+          },
+          "intended_use": {
+            "type": "string",
+            "title": "Intended Use"
+          },
+          "out_of_scope": {
+            "type": "string",
+            "title": "Out Of Scope"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/ModelCardNotes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_version",
+          "bundle_version",
+          "stage",
+          "metrics",
+          "intended_use",
+          "out_of_scope",
+          "limitations",
+          "notes"
+        ],
+        "title": "ModelCard"
+      },
+      "ModelCardNotes": {
+        "properties": {
+          "x86": {
+            "type": "string",
+            "title": "X86"
+          },
+          "demo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "x86"
+        ],
+        "title": "ModelCardNotes"
+      },
+      "ModelInfo": {
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "bundle_version": {
+            "type": "string",
+            "title": "Bundle Version"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "smoke",
+              "release"
+            ],
+            "title": "Stage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_version",
+          "bundle_version",
+          "stage"
+        ],
+        "title": "ModelInfo"
+      },
+      "PiiCount": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "name",
+              "phone",
+              "email",
+              "url",
+              "student_id",
+              "national_id"
+            ],
+            "title": "Type"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "rows"
+        ],
+        "title": "PiiCount"
+      },
+      "Quote": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "negative",
+              "neutral",
+              "positive"
+            ],
+            "title": "Sentiment"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "matched": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "sentiment",
+          "confidence",
+          "group",
+          "matched"
+        ],
+        "title": "Quote"
+      },
+      "Recommendation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "evidence": {
+            "type": "string",
+            "title": "Evidence"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Terms"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "topic",
+          "action",
+          "evidence",
+          "n",
+          "terms",
+          "note"
+        ],
+        "title": "Recommendation"
+      },
+      "ReliabilityBin": {
+        "properties": {
+          "lower": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Lower"
+          },
+          "upper": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Upper"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lower",
+          "upper",
+          "n",
+          "confidence",
+          "accuracy"
+        ],
+        "title": "ReliabilityBin"
+      },
+      "ResultRow": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "source_row": {
+            "type": "integer",
+            "title": "Source Row"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "n_words": {
+            "type": "integer",
+            "title": "N Words"
+          },
+          "no_diacritics": {
+            "type": "boolean",
+            "title": "No Diacritics"
+          },
+          "pii_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "name",
+                "phone",
+                "email",
+                "url",
+                "student_id",
+                "national_id"
+              ]
+            },
+            "type": "array",
+            "title": "Pii Types"
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "negative",
+              "neutral",
+              "positive"
+            ],
+            "title": "Sentiment"
+          },
+          "sentiment_confidence": {
+            "type": "number",
+            "title": "Sentiment Confidence"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "topic_confidence": {
+            "type": "number",
+            "title": "Topic Confidence"
+          },
+          "needs_review": {
+            "type": "boolean",
+            "title": "Needs Review"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/FlagReason"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "flag",
+              "audit",
+              "none"
+            ],
+            "title": "Source"
+          },
+          "in_review": {
+            "type": "boolean",
+            "title": "In Review"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "has_explanation": {
+            "type": "boolean",
+            "title": "Has Explanation"
+          },
+          "explainable": {
+            "type": "boolean",
+            "title": "Explainable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "source_row",
+          "text",
+          "n_words",
+          "no_diacritics",
+          "pii_types",
+          "sentiment",
+          "sentiment_confidence",
+          "topic",
+          "topic_confidence",
+          "needs_review",
+          "reasons",
+          "source",
+          "in_review",
+          "group",
+          "has_explanation",
+          "explainable"
+        ],
+        "title": "ResultRow"
+      },
+      "ResultsResponse": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ResultsSummary"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ResultRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "review_order": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Review Order"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRow"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "rows",
+          "review_order",
+          "skipped"
+        ],
+        "title": "ResultsResponse"
+      },
+      "ResultsSummary": {
+        "properties": {
+          "n_rows": {
+            "type": "integer",
+            "title": "N Rows"
+          },
+          "n_analyzed": {
+            "type": "integer",
+            "title": "N Analyzed"
+          },
+          "n_skipped": {
+            "type": "integer",
+            "title": "N Skipped"
+          },
+          "n_flagged": {
+            "type": "integer",
+            "title": "N Flagged"
+          },
+          "flagged_share": {
+            "type": "number",
+            "title": "Flagged Share"
+          },
+          "n_audit": {
+            "type": "integer",
+            "title": "N Audit"
+          },
+          "n_review": {
+            "type": "integer",
+            "title": "N Review"
+          },
+          "budget": {
+            "type": "integer",
+            "enum": [
+              5,
+              10,
+              20,
+              30
+            ],
+            "title": "Budget"
+          },
+          "budget_target": {
+            "type": "integer",
+            "title": "Budget Target"
+          },
+          "n_no_diacritics": {
+            "type": "integer",
+            "title": "N No Diacritics"
+          },
+          "pii_rows": {
+            "type": "integer",
+            "title": "Pii Rows"
+          },
+          "pii_counts": {
+            "items": {
+              "$ref": "#/components/schemas/PiiCount"
+            },
+            "type": "array",
+            "title": "Pii Counts"
+          },
+          "n_truncated": {
+            "type": "integer",
+            "title": "N Truncated"
+          },
+          "n_explained": {
+            "type": "integer",
+            "title": "N Explained"
+          },
+          "n_groups": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Groups"
+          },
+          "elapsed_s": {
+            "type": "number",
+            "title": "Elapsed S"
+          },
+          "illustrative_groups": {
+            "type": "boolean",
+            "title": "Illustrative Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n_rows",
+          "n_analyzed",
+          "n_skipped",
+          "n_flagged",
+          "flagged_share",
+          "n_audit",
+          "n_review",
+          "budget",
+          "budget_target",
+          "n_no_diacritics",
+          "pii_rows",
+          "pii_counts",
+          "n_truncated",
+          "n_explained",
+          "n_groups",
+          "elapsed_s",
+          "illustrative_groups"
+        ],
+        "title": "ResultsSummary"
+      },
+      "RunRequest": {
+        "properties": {
+          "text_col": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text Col"
+          },
+          "group_col": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Col"
+          },
+          "review_budget": {
+            "type": "integer",
+            "enum": [
+              5,
+              10,
+              20,
+              30
+            ],
+            "title": "Review Budget",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text_col"
+        ],
+        "title": "RunRequest"
+      },
+      "SeedStat": {
+        "properties": {
+          "mean": {
+            "type": "number",
+            "title": "Mean"
+          },
+          "std": {
+            "type": "number",
+            "title": "Std"
+          },
+          "n": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "N"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mean",
+          "std",
+          "n"
+        ],
+        "title": "SeedStat"
+      },
+      "SentimentPrediction": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "negative",
+              "neutral",
+              "positive"
+            ],
+            "title": "Label"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "probs": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Probs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "confidence",
+          "probs"
+        ],
+        "title": "SentimentPrediction"
+      },
+      "SentimentShares": {
+        "properties": {
+          "negative": {
+            "type": "number",
+            "title": "Negative"
+          },
+          "neutral": {
+            "type": "number",
+            "title": "Neutral"
+          },
+          "positive": {
+            "type": "number",
+            "title": "Positive"
+          }
+        },
+        "type": "object",
+        "required": [
+          "negative",
+          "neutral",
+          "positive"
+        ],
+        "title": "SentimentShares"
+      },
+      "SkippedRow": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "source_row": {
+            "type": "integer",
+            "title": "Source Row"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "source_row",
+          "text"
+        ],
+        "title": "SkippedRow",
+        "description": "Dòng không còn từ nào để phân tích (chỉ có thông tin cá nhân hoặc ký hiệu)."
+      },
+      "SplitMetrics": {
+        "properties": {
+          "split": {
+            "type": "string",
+            "enum": [
+              "val",
+              "test"
+            ],
+            "title": "Split"
+          },
+          "n": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "N"
+          },
+          "sentiment": {
+            "$ref": "#/components/schemas/TaskMetrics"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/TaskMetrics"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "split",
+          "n",
+          "sentiment",
+          "topic"
+        ],
+        "title": "SplitMetrics"
+      },
+      "TaskMetrics": {
+        "properties": {
+          "accuracy": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Accuracy"
+          },
+          "macro_f1": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Macro F1"
+          },
+          "weighted_f1": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Weighted F1"
+          },
+          "ece": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Ece"
+          },
+          "nll": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nll"
+          },
+          "per_class": {
+            "items": {
+              "$ref": "#/components/schemas/ClassMetrics"
+            },
+            "type": "array",
+            "title": "Per Class"
+          },
+          "confusion": {
+            "items": {
+              "items": {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Confusion"
+          },
+          "reliability": {
+            "items": {
+              "$ref": "#/components/schemas/ReliabilityBin"
+            },
+            "type": "array",
+            "title": "Reliability"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accuracy",
+          "macro_f1",
+          "weighted_f1",
+          "ece",
+          "per_class",
+          "confusion",
+          "reliability"
+        ],
+        "title": "TaskMetrics"
+      },
+      "TextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextRequest"
+      },
+      "TokenEffect": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "delta": {
+            "type": "number",
+            "title": "Delta"
+          },
+          "p_without": {
+            "type": "number",
+            "title": "P Without"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "delta",
+          "p_without"
+        ],
+        "title": "TokenEffect"
+      },
+      "TopicKeywords": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "n_negative": {
+            "type": "integer",
+            "title": "N Negative"
+          },
+          "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
+            "type": "array",
+            "title": "Keywords"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "n_negative",
+          "keywords"
+        ],
+        "title": "TopicKeywords"
+      },
+      "TopicPrediction": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Label"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "probs": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Probs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "confidence",
+          "probs"
+        ],
+        "title": "TopicPrediction"
+      },
+      "TopicQuotes": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/Quote"
+            },
+            "type": "array",
+            "title": "Quotes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "quotes"
+        ],
+        "title": "TopicQuotes"
+      },
+      "TopicStat": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "lecturer",
+              "training_program",
+              "facility",
+              "others"
+            ],
+            "title": "Topic"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "share": {
+            "type": "number",
+            "title": "Share"
+          },
+          "baseline_share": {
+            "type": "number",
+            "title": "Baseline Share"
+          },
+          "sentiment_shares": {
+            "$ref": "#/components/schemas/SentimentShares"
+          },
+          "negative_n": {
+            "type": "integer",
+            "title": "Negative N"
+          },
+          "baseline_negative_rate": {
+            "type": "number",
+            "title": "Baseline Negative Rate"
+          },
+          "negative_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Ci Low"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "n",
+          "share",
+          "baseline_share",
+          "sentiment_shares",
+          "negative_n",
+          "baseline_negative_rate",
+          "negative_ci_low"
+        ],
+        "title": "TopicStat"
+      },
+      "UiSample": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "no_diacritics": {
+            "type": "boolean",
+            "title": "No Diacritics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "no_diacritics"
+        ],
+        "title": "UiSample"
+      }
+    }
+  }
+}

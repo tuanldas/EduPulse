@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "eslint"
+    "lint": "eslint",
+    "gen:api": "openapi-typescript openapi.json -o src/lib/api/schema.d.ts"
   },
   "dependencies": {
     "next": "16.4.1",
@@ -23,6 +24,7 @@
     "@types/react-dom": "19.3.0",
     "eslint": "10.12.0",
     "eslint-config-next": "16.4.1",
+    "openapi-typescript": "7.13.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3"
   }

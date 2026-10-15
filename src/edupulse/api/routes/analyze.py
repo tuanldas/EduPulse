@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 from edupulse.api import schemas
 from edupulse.api.deps import AnalyzerDep
-from edupulse.api.errors import ApiError
+from edupulse.api.errors import ApiError, not_implemented
 from edupulse.config import XAI_MAX_WORDS
 from edupulse.engine import explain as xai
 from edupulse.engine import flags
@@ -66,6 +66,7 @@ def to_analyze_response(analysis: Analysis) -> schemas.AnalyzeResponse:
             needs_review=analysis.flag.needs_review,
             reasons=[_reason(r) for r in analysis.flag.reasons],
         ),
+        baseline=None,
     )
 
 
@@ -96,7 +97,9 @@ NO_CONTENT_MESSAGE = (
 
 
 @router.post("/analyze")
-def analyze(body: schemas.TextRequest, analyzer: AnalyzerDep) -> schemas.AnalyzeResponse:
+def analyze(body: schemas.AnalyzeRequest, analyzer: AnalyzerDep) -> schemas.AnalyzeResponse:
+    if body.compare:
+        raise not_implemented()
     try:
         analysis = analyzer.analyze(body.text)
     except NoContent as exc:
@@ -115,5 +118,6 @@ def explain(body: schemas.TextRequest, analyzer: AnalyzerDep) -> schemas.Explain
             422,
             exc.code,
             f"Câu có {exc.n_words} từ, giải thích chỉ hỗ trợ tối đa {exc.max_words} từ.",
+            params={"n_words": exc.n_words, "max_words": exc.max_words},
         ) from exc
     return to_explain_response(explanation)
