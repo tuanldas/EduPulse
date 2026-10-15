@@ -1,0 +1,373 @@
+{
+  "date": "2026-10-15",
+  "arch": "arm64",
+  "commit": "d858f07",
+  "host": {
+    "platform": "Darwin arm64",
+    "loadavg_start": [
+      4.0,
+      4.9,
+      5.7
+    ],
+    "docker_server": "29.8.2",
+    "docker_cpus": 10,
+    "docker_mem_gb": 7.7,
+    "other_containers": 0,
+    "loadavg_end": [
+      5.2,
+      7.4,
+      6.9
+    ]
+  },
+  "image": {
+    "tag": "edupulse:smoke",
+    "size_mb": 1210,
+    "compressed_mb": 570,
+    "build_s": 26.2
+  },
+  "runs": [
+    {
+      "label": "gate",
+      "cpus": 2.0,
+      "memory": "1536m",
+      "startup_s": 2.29,
+      "health": {
+        "status": "ok",
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "stage": "smoke",
+        "ner_enabled": false,
+        "rss_mb": 527.6
+      },
+      "first_analyze_s": 0.024,
+      "latency_idle": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.028,
+          "p95_s": 0.052,
+          "max_s": 0.058
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.234,
+          "p95_s": 0.994,
+          "max_s": 1.383
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.258,
+          "p95_s": 1.089,
+          "max_s": 1.563
+        }
+      },
+      "latency_idle_long": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.053,
+          "p95_s": 0.074,
+          "max_s": 0.081
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 1.165,
+          "p95_s": 1.585,
+          "max_s": 1.892
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 1.21,
+          "p95_s": 1.711,
+          "max_s": 1.996
+        }
+      },
+      "latency_under_load": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.07,
+          "p95_s": 0.106,
+          "max_s": 0.113
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.26,
+          "p95_s": 1.094,
+          "max_s": 1.463
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.303,
+          "p95_s": 1.15,
+          "max_s": 1.521
+        }
+      },
+      "load": {
+        "workers": 2,
+        "requests": 248,
+        "errors": 0,
+        "req_per_s": 9.5
+      },
+      "checks": {
+        "api_unknown_is_json_404": true,
+        "root_is_html": true,
+        "unknown_page_is_html_404": true,
+        "wrong_method_is_405": true,
+        "logs_have_no_request_content": true,
+        "logs_have_route_template": true
+      },
+      "bench": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 1,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 182,
+        "steps_s": {
+          "prepare": 0.368,
+          "predict": 23.54,
+          "flags": 0.002,
+          "explain": 3.429
+        },
+        "total_s": 27.339,
+        "per_sentence_ms": 27.34,
+        "load_s": 1.29,
+        "rss_mb": 538.4,
+        "cgroup_memory_peak_mb": 573.3,
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "bench_batched": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 32,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 267,
+        "steps_s": {
+          "prepare": 0.308,
+          "predict": 19.837,
+          "flags": 0.002,
+          "explain": 7.869
+        },
+        "total_s": 28.017,
+        "per_sentence_ms": 28.02,
+        "load_s": 1.19,
+        "rss_mb": 604.2,
+        "cgroup_memory_peak_mb": 573.0,
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "server_memory_peak_mb": 618.4,
+      "server_state": {
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      }
+    },
+    {
+      "label": "1cpu",
+      "cpus": 1.0,
+      "memory": "1536m",
+      "startup_s": 2.31,
+      "health": {
+        "status": "ok",
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "stage": "smoke",
+        "ner_enabled": false,
+        "rss_mb": 530.1
+      },
+      "first_analyze_s": 0.021,
+      "latency_idle": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.049,
+          "p95_s": 0.112,
+          "max_s": 0.112
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.467,
+          "p95_s": 2.166,
+          "max_s": 3.283
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.574,
+          "p95_s": 2.22,
+          "max_s": 3.017
+        }
+      },
+      "latency_idle_long": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.107,
+          "p95_s": 0.184,
+          "max_s": 0.196
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 2.489,
+          "p95_s": 3.927,
+          "max_s": 5.185
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 2.669,
+          "p95_s": 3.699,
+          "max_s": 4.514
+        }
+      },
+      "latency_under_load": {
+        "analyze": {
+          "n": 30,
+          "p50_s": 0.181,
+          "p95_s": 0.278,
+          "max_s": 0.283
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.64,
+          "p95_s": 2.386,
+          "max_s": 3.422
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.651,
+          "p95_s": 2.593,
+          "max_s": 3.267
+        }
+      },
+      "load": {
+        "workers": 2,
+        "requests": 227,
+        "errors": 0,
+        "req_per_s": 3.9
+      },
+      "checks": {
+        "api_unknown_is_json_404": true,
+        "root_is_html": true,
+        "unknown_page_is_html_404": true,
+        "wrong_method_is_405": true,
+        "logs_have_no_request_content": true,
+        "logs_have_route_template": true
+      },
+      "bench": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 1,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 182,
+        "steps_s": {
+          "prepare": 0.729,
+          "predict": 52.997,
+          "flags": 0.002,
+          "explain": 7.29
+        },
+        "total_s": 61.018,
+        "per_sentence_ms": 61.02,
+        "load_s": 2.09,
+        "rss_mb": 548.2,
+        "cgroup_memory_peak_mb": 572.9,
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "bench_batched": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 32,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 267,
+        "steps_s": {
+          "prepare": 0.719,
+          "predict": 44.012,
+          "flags": 0.002,
+          "explain": 16.792
+        },
+        "total_s": 61.525,
+        "per_sentence_ms": 61.53,
+        "load_s": 1.71,
+        "rss_mb": 601.6,
+        "cgroup_memory_peak_mb": 572.8,
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v0-smoke",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "server_memory_peak_mb": 589.6,
+      "server_state": {
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      }
+    }
+  ],
+  "verdict": [
+    {
+      "metric": "OOM-kill",
+      "threshold": "0",
+      "value": 0,
+      "ok": true
+    },
+    {
+      "metric": "memory.peak (MB)",
+      "threshold": "≤ 1200",
+      "value": 618.4,
+      "ok": true
+    },
+    {
+      "metric": "1 câu + giải thích, p95 (s)",
+      "threshold": "≤ 0.6",
+      "value": 1.089,
+      "ok": false
+    },
+    {
+      "metric": "1.000 câu end-to-end (s)",
+      "threshold": "≤ 30",
+      "value": 27.339,
+      "ok": true
+    },
+    {
+      "metric": "Khởi động tới health 200 (s)",
+      "threshold": "≤ 20",
+      "value": 2.29,
+      "ok": true
+    },
+    {
+      "metric": "Hành vi API và nhật ký",
+      "threshold": "tất cả đạt",
+      "value": "6/6",
+      "ok": true
+    }
+  ],
+  "go": false,
+  "thresholds": {
+    "memory_peak_mb": 1200,
+    "single_p95_s": 0.6,
+    "batch_total_s": 30.0,
+    "startup_s": 20.0
+  }
+}
