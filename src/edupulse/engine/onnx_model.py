@@ -84,6 +84,9 @@ class OnnxModel:
         options = ort.SessionOptions()
         options.intra_op_num_threads = threads
         options.inter_op_num_threads = 1
+        options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        # Đã đo trong container 2 CPU: tắt "spinning" của luồng ORT không giúp (27,3 → 29,3 ms/câu)
+        # và đặt cpuset thay hạn mức CFS chỉ nhanh hơn ~10%, nên giữ mặc định.
         options.enable_cpu_mem_arena = mem_arena
         options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         options.log_severity_level = 3  # chỉ lỗi
