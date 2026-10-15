@@ -61,12 +61,14 @@ ENV JAVA_HOME=/usr/lib/jvm/default-java \
     PYTHONDONTWRITEBYTECODE=1 \
     BUNDLE_VERSION=${BUNDLE_VERSION} \
     EDUPULSE_ARTIFACTS_DIR=/app/artifacts \
-    EDUPULSE_WEB_DIR=/app/web
+    EDUPULSE_WEB_DIR=/app/web \
+    EDUPULSE_VNCORENLP_DIR=/app/vendor/vncorenlp
 WORKDIR /app
 
 # Mã chạy do root sở hữu (chỉ đọc); dữ liệu app đọc thuộc uid 1000 để không phụ thuộc quyền
 # file trên máy build.
 COPY --from=deps /app/.venv /app/.venv
+COPY --chown=1000:1000 vendor/vncorenlp /app/vendor/vncorenlp/
 COPY --from=artifacts --chown=1000:1000 . /app/artifacts/
 COPY --from=web --chown=1000:1000 /web/out /app/web/
 
