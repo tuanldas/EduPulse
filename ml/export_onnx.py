@@ -152,7 +152,7 @@ QUANT_CONFIGS["ffn_out_early6_fp32" + HEADS_SUFFIX] = QuantConfig(
 # Cấu hình triển khai = kết quả của `ml/onnx_gate_search.py` theo luật chọn đã đăng ký trước khi
 # chạy (results/metrics/onnx_gate_search.json, vòng 2): nhanh nhất ở batch 1 trong các cấu hình
 # đạt cổng, hoà trong 5% thì ít nhãn đổi nhất.
-DEPLOY_QUANT_CONFIG = "attn_fp32"
+DEPLOY_QUANT_CONFIG = "ffn_out_early6_fp32+heads_fp32"
 
 
 def quantization_description(config: str) -> str:
