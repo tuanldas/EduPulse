@@ -27,7 +27,7 @@
       "ok": true
     }
   },
-  "quantization": "int8 động, MatMul có trọng số trừ Q/K/V và phép chiếu ra của attention (giữ FP32), từng kênh, reduce_range (ORT)",
+  "quantization": "int8 động, MatMul có trọng số trừ phép chiếu ra của FFN ở nửa đầu các lớp encoder (giữ FP32), hai đầu phân loại giữ FP32, từng kênh, reduce_range (ORT)",
   "fp32": {
     "sentiment": {
       "accuracy": 0.9500947567909034,
@@ -55,78 +55,78 @@
   },
   "int8": {
     "sentiment": {
-      "accuracy": 0.9475679090334808,
-      "macro_f1": 0.8538476525347997,
-      "weighted_f1": 0.945749522546292,
-      "ece": 0.01750741400577938,
+      "accuracy": 0.9481996209728364,
+      "macro_f1": 0.8530971787520856,
+      "weighted_f1": 0.945455121285161,
+      "ece": 0.020567039503286443,
       "per_class_f1": [
-        0.959830866807611,
-        0.640625,
-        0.9610870907967881
+        0.9607843137254902,
+        0.6386554621848739,
+        0.9598517603458925
       ]
     },
     "topic": {
-      "accuracy": 0.8963992419456728,
-      "macro_f1": 0.8080054195359736,
-      "weighted_f1": 0.8939750389128068,
-      "ece": 0.032799440619968284,
+      "accuracy": 0.897662665824384,
+      "macro_f1": 0.8096407448645218,
+      "weighted_f1": 0.8950573738696538,
+      "ece": 0.03848172364760698,
       "per_class_f1": [
-        0.9465056082830026,
-        0.7675276752767528,
-        0.9361702127659575,
-        0.5818181818181818
+        0.9469598965071151,
+        0.7720588235294118,
+        0.9428571428571428,
+        0.5766871165644172
       ]
     }
   },
   "int8_batched": {
     "sentiment": {
-      "accuracy": 0.9431459254579911,
-      "macro_f1": 0.8384558299064371,
-      "weighted_f1": 0.9405648028165208,
-      "ece": 0.023688629070655068,
+      "accuracy": 0.9469361970941251,
+      "macro_f1": 0.8403810508215409,
+      "weighted_f1": 0.9439763939148692,
+      "ece": 0.02130906051328036,
       "per_class_f1": [
-        0.9556650246305419,
-        0.6016260162601627,
-        0.9580764488286067
+        0.9600560616678346,
+        0.6,
+        0.9610870907967881
       ]
     },
     "topic": {
-      "accuracy": 0.8989260897030954,
-      "macro_f1": 0.805460922792353,
-      "weighted_f1": 0.8961100637941478,
-      "ece": 0.02766151964910672,
+      "accuracy": 0.899557801642451,
+      "macro_f1": 0.8050824110291692,
+      "weighted_f1": 0.8956216927024728,
+      "ece": 0.02920503157316632,
       "per_class_f1": [
-        0.9477772982304704,
-        0.7830882352941176,
+        0.9480463718334049,
+        0.7777777777777778,
         0.9230769230769231,
-        0.5679012345679012
+        0.5714285714285714
       ]
     }
   },
   "delta_macro_f1_points": {
-    "sentiment": -0.411,
-    "topic": -0.378
+    "sentiment": -0.486,
+    "topic": -0.214
   },
   "delta_macro_f1_points_batched": {
-    "sentiment": -1.95,
-    "topic": -0.632
+    "sentiment": -1.758,
+    "topic": -0.67
   },
   "label_flips": {
-    "sentiment": 16,
-    "topic": 34
+    "sentiment": 9,
+    "topic": 27
   },
   "batch_dependence": {
     "sentiment": {
-      "median_abs_logit_diff": 0.06517422199249268,
-      "p95_abs_logit_diff": 0.2828514933586113,
-      "max_abs_logit_diff": 1.8048404455184937,
-      "label_flips": 17
+      "median_abs_logit_diff": 0.056583113968372345,
+      "p95_abs_logit_diff": 0.23442430496215755,
+      "max_abs_logit_diff": 0.8889341354370117,
+      "label_flips": 16
     },
     "topic": {
-      "median_abs_logit_diff": 0.06003504991531372,
-      "p95_abs_logit_diff": 0.3651190757751464,
-      "max_abs_logit_diff": 3.670475721359253,
-      "label_flips": 35
+      "median_abs_logit_diff": 0.0523226261138916,
+      "p95_abs_logit_diff": 0.2677699118852615,
+      "max_abs_logit_diff": 1.2808213233947754,
+      "label_flips": 30
     }
   },
   "gate": {
@@ -135,11 +135,12 @@
     "mode": "batch=1",
     "batched_is_informational": "batch=32"
   },
-  "quant_config": "attn_fp32",
-  "n_matmul_kept_fp32": 48,
+  "quant_config": "ffn_out_early6_fp32+heads_fp32",
+  "heads_fp32": true,
+  "n_matmul_kept_fp32": 8,
   "files": {
     "fp32_bytes": 545549057,
-    "int8_bytes": 375785962
+    "int8_bytes": 333361320
   },
   "versions": {
     "onnxruntime": "1.31.0",
@@ -147,10 +148,10 @@
   },
   "threads": 2,
   "timing": {
-    "export_fp32_s": 5.1,
-    "quantize_s": 7.9,
-    "val_fp32_s": 21.8,
-    "val_int8_single_s": 15.8,
-    "val_int8_batched_s": 12.4
+    "export_fp32_s": 5.3,
+    "quantize_s": 10.9,
+    "val_fp32_s": 23.9,
+    "val_int8_single_s": 13.8,
+    "val_int8_batched_s": 10.3
   }
 }

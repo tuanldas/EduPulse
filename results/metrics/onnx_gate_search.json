@@ -381,5 +381,603 @@
       "title": "Lô 32 chỉ để tham khảo",
       "detail": "attn_fp32 đạt cổng ở batch=1 (-0,41/-0,38) nhưng ở lô 32 cảm xúc giảm 1,95 điểm; chỉ phục vụ từng câu một (batch=1) ở mọi đường thì nhãn nhất quán giữa xem một câu và xem lô."
     }
-  ]
+  ],
+  "round2": {
+    "status": "completed",
+    "registered_at": "2026-10-15T14:21:47+0700",
+    "registration_sha256": "cf52156a5faed6ff43e2b3cc87e1f5afbf0691a32c18061a5046cf5fba072959",
+    "registration": {
+      "purpose": "Vòng 2: tìm MỘT cấu hình int8 phục vụ vừa đạt cổng chất lượng (macro-F1 val giảm <= 1,0 điểm so với FP32 ở cả hai tác vụ, chạy từng câu một) vừa NHANH nhất, sau khi sửa tiền đề sai của vòng 1 (hai đầu phân loại bị lượng tử hoá ngoài ý muốn).",
+      "decided_by": "lead, trước khi chạy: duyệt vòng 2 (tối đa 4 cấu hình mới, cả hai đầu phân loại giữ FP32), pool chọn, luật v2 và cách đo; cấu hình thứ tư do dev-ml chọn theo ủy quyền của lead",
+      "why_a_second_round": [
+        "Luật chọn vòng 1 ('tệp model NHỎ nhất') mơ hồ giữa 'nhỏ' và 'nhanh': attn_fp32 thắng ffn_out_fp32 chỉ vì nhỏ hơn 19.924 byte (0,005%) với tốc độ như nhau (10,4 so với 10,2 ms/câu), trong khi số nhãn đổi so với FP32 của nó gần gấp đôi (cảm xúc/chủ đề 16/34 so với 9/14).",
+        "Đăng ký vòng 1 dựa trên tiền đề sai: hai đầu phân loại là nút Gemm nhưng quantize_dynamic đổi Gemm thành MatMul + Add rồi lượng tử hoá, nên cả bốn ứng viên vòng 1 và all_int8 đều lượng tử hoá hai đầu (all_int8 có 74 MatMulInteger = 72 của encoder + node_linear_72_MatMul + node_linear_73_MatMul).",
+        "Mã đã sửa: cấu hình có hậu tố +heads_fp32 đưa hai MatMul đó vào danh sách loại trừ và mỗi lần lượng tử hoá mã kiểm lại đồ thị int8 (tập MatMulInteger phải khớp đúng cấu hình). Đã kiểm CẤU TRÚC trên đồ thị thật trước khi đăng ký (all_int8+heads_fp32: 72 MatMulInteger, hai MatMul FP32 còn lại là hai đầu; ffn_out_early6_fp32+heads_fp32: 66 MatMulInteger); chưa chấm bất kỳ metric nào của vòng 2."
+      ],
+      "model": {
+        "run": "mtl-s42",
+        "fp32_onnx": "outputs/onnx/mtl-s42/model.fp32.onnx (xuất từ checkpoint epoch 4, embedding 66.119 hàng)"
+      },
+      "gate": {
+        "metric": "macro-F1 trên tập validation, từng tác vụ",
+        "max_drop_points": 1.0,
+        "reference": "FP32 ONNX trên cùng 1.583 câu val (FP32 không phụ thuộc lô)",
+        "evaluated_at": "batch=1: mỗi lần gọi ONNX Runtime một câu, không đệm",
+        "both_tasks_required": true,
+        "not_lowered_after_seeing_results": true,
+        "test_split_untouched": true
+      },
+      "selection_rule_lead_verbatim": {
+        "steps": [
+          "lọc cấu hình đạt cổng ở batch=1 cả 2 task (giảm ≤1,0 điểm mF1 so với FP32);",
+          "chọn cấu hình có ms/câu batch=1 thấp nhất;",
+          "nếu các ứng viên chênh tốc độ ≤5% so với cấu hình nhanh nhất thì chọn cấu hình có TỔNG số nhãn đổi (so FP32, 2 task) ít nhất;",
+          "ghi kích thước để tham khảo."
+        ],
+        "reason_for_changing_the_rule": "Lý do đổi luật: luật vòng 1 mơ hồ giữa \"nhỏ\" và \"nhanh\" và dựa trên tiền đề sai (đầu phân loại bị lượng tử hoá)."
+      },
+      "selection_rule": "Trong pool, giữ các cấu hình ĐẠT cổng ở batch=1 cho cả hai tác vụ. Gọi F là ms/câu thấp nhất (batch=1, 2 luồng, trung vị các vòng đo xen kẽ) trong số đó. Mọi cấu hình đạt cổng có ms/câu không quá F x 1,05 họp thành nhóm hoà; chọn trong nhóm cấu hình có TỔNG số nhãn đổi so với FP32 (cảm xúc + chủ đề, batch=1) ít nhất. Nếu vẫn hoà tổng số nhãn đổi thì chọn ms/câu thấp hơn, rồi theo thứ tự trong `pool`. Kích thước tệp chỉ ghi để tham khảo, không dùng để chọn. Không cấu hình nào đạt thì không đóng gói, báo lead kèm bảng kết quả.",
+      "speed_tie_fraction": 0.05,
+      "pool": [
+        {
+          "name": "ffn_out_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "ffn_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "attn_fp32",
+          "origin": "vòng 1, đạt cổng; hai đầu phân loại vẫn int8 (đo lại cùng phiên)"
+        },
+        {
+          "name": "all_int8+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "ffn_out_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "attn_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        },
+        {
+          "name": "ffn_out_early6_fp32+heads_fp32",
+          "origin": "vòng 2, mới"
+        }
+      ],
+      "new_configs": [
+        {
+          "name": "all_int8+heads_fp32",
+          "exclude": "72 MatMul có trọng số của encoder đều int8; chỉ hai đầu phân loại (node_linear_72_MatMul 768x3 và node_linear_73_MatMul 768x4, tên sau khi ORT đổi Gemm) giữ FP32",
+          "rationale": "đối chứng của all_int8 vòng 1 (trượt cổng: -1,131/-0,909) chỉ khác ở hai đầu: cho biết hai đầu int8 gây bao nhiêu phần sai số; nếu đạt cổng thì đây là cấu hình nhanh nhất có thể (6,9 ms/câu ở vòng 1)"
+        },
+        {
+          "name": "ffn_out_fp32+heads_fp32",
+          "exclude": "12 phép chiếu ra của FFN (trọng số 3072x768) ở mọi lớp giữ FP32, cộng hai đầu phân loại giữ FP32",
+          "rationale": "ffn_out_fp32 vòng 1 có số nhãn đổi thấp hơn all_int8 (16/31) và attn_fp32 (16/34) (9/14) mà vẫn nhanh (10,2 ms/câu); thêm hai đầu FP32 theo gợi ý của lead"
+        },
+        {
+          "name": "attn_fp32+heads_fp32",
+          "exclude": "Q/K/V và phép chiếu ra của attention (768x768) ở mọi lớp giữ FP32, cộng hai đầu phân loại giữ FP32",
+          "rationale": "cấu hình mà luật vòng 1 chọn, nhưng hai đầu vẫn int8 và số nhãn đổi cao (16/34): xem hai đầu FP32 có giảm số nhãn đổi không; theo gợi ý của lead"
+        },
+        {
+          "name": "ffn_out_early6_fp32+heads_fp32",
+          "exclude": "phép chiếu ra của FFN (3072x768) ở 6 lớp đầu (lớp 0-5) giữ FP32; 6 lớp sau và mọi MatMul có trọng số khác của encoder int8; hai đầu phân loại giữ FP32",
+          "rationale": "cấu hình thứ tư do dev-ml chọn (lead cho phép +1), chọn TRƯỚC khi chạy bất kỳ metric vòng 2: trong các số đo vòng 1, thêm lượng tử hoá phép chiếu ra của FFN là bước làm tăng số nhãn đổi nhiều nhất (ffn_fp32 4/10 -> ffn_out_fp32 9/14 -> all_int8 16/31), còn giữ FP32 1, 2 hoặc 4 lớp CUỐI không giảm đáng kể số nhãn đổi (thăm dò trước đăng ký vòng 1 và last4_fp32), nên thử nửa đầu; chỉ giữ FP32 nửa số phép chiếu ra của FFN nên tốn khoảng nửa chi phí tốc độ của ffn_out_fp32, nằm giữa all_int8+heads_fp32 và ffn_out_fp32+heads_fp32"
+        }
+      ],
+      "reference_configs": [
+        {
+          "name": "all_int8",
+          "note": "cấu hình hiện tại của vòng 1 (hai đầu int8, trượt cổng) đo lại cùng phiên để thấy riêng tác động của việc giữ hai đầu FP32 so với all_int8+heads_fp32; KHÔNG phải ứng viên"
+        }
+      ],
+      "reference_rows": [
+        "fp32: mốc so sánh trong cùng phiên, không phải ứng viên",
+        "all_int8: mốc vòng 1 đo lại (hai đầu int8), không phải ứng viên"
+      ],
+      "measurement": {
+        "quality": "Chấm macro-F1, accuracy, ECE, F1 lớp trung tính / lớp 'khác' và số nhãn đổi so với FP32 trên cùng 1.583 câu val ở batch=1 (mỗi lần gọi ORT một câu, không đệm); lô 32 chỉ ghi để tham khảo. Ba cấu hình vòng 1 được lượng tử hoá và chấm lại trong phiên này; kết quả tất định nên phải trùng vòng 1, sai lệch (nếu có) được ghi vào reproduction_of_round_one nhưng luật chọn dùng số của phiên vòng 2.",
+        "timing": {
+          "metric": "ms/câu = thời gian chạy 200 câu val đầu tiên (đúng thứ tự tệp) ở batch 1 chia 200, gồm cả bước đệm và gọi ORT",
+          "sentences": 200,
+          "warmup_sentences": 10,
+          "rounds": 5,
+          "threads": 2,
+          "models_timed": "FP32, all_int8 (mốc) và mọi ứng viên trong pool",
+          "interleaved": "mỗi vòng đo lần lượt TẤT CẢ mô hình, thứ tự xoay một bước sau mỗi vòng (mô hình nào cũng có lúc đứng đầu, giữa và cuối), mỗi lần tạo phiên ORT mới rồi khởi động",
+          "statistic": "trung vị của 5 vòng",
+          "conditions": "một phiên duy nhất, cùng 2 luồng ORT; Docker và tiến trình khác vẫn chạy nhưng tác động như nhau lên mọi mô hình nhờ đo xen kẽ; đo đúng một lần, không đo lại hay chỉnh sau khi xem kết quả"
+        }
+      },
+      "common_settings": {
+        "tool": "onnxruntime.quantization.quantize_dynamic sau quant_pre_process",
+        "weight_type": "QInt8",
+        "per_channel": true,
+        "reduce_range": true,
+        "op_types_to_quantize": [
+          "MatMul"
+        ],
+        "note": "Hai đầu phân loại là nút Gemm nhưng quantize_dynamic đổi Gemm thành MatMul + Add rồi lượng tử hoá cả hai (đính chính ghi chú sai của vòng 1); hậu tố +heads_fp32 loại trừ hai MatMul đó. Lớp embedding là Gather nên không bao giờ bị lượng tử hoá; các MatMul kích hoạt x kích hoạt (QK^T, attn.V) không có trọng số hằng nên không bị lượng tử hoá động."
+      },
+      "noise_note": "Pool 7 ứng viên cùng chấm trên 1.583 câu val: 'đạt cổng' (ngưỡng 1,0 điểm macro-F1) là phép đo nhiễu vì lớp trung tính chỉ có 73 câu val và mỗi nhãn đổi ở lớp này làm macro-F1 cảm xúc xê dịch cỡ vài phần mười điểm. Vì vậy số nhãn đổi so với FP32 được ghi cho mọi ứng viên để đánh giá độ vững, và luật v2 dùng nó khi tốc độ gần nhau. Tập test không được dùng để chọn."
+    },
+    "results": {
+      "fp32_reference": {
+        "name": "fp32 (mốc so sánh)",
+        "size_mb": 545.5,
+        "val": {
+          "sentiment": {
+            "accuracy": 0.9500947567909034,
+            "macro_f1": 0.8579571418680328,
+            "ece": 0.01866790943798597
+          },
+          "topic": {
+            "accuracy": 0.901452937460518,
+            "macro_f1": 0.8117840126525019,
+            "ece": 0.030173106165163787
+          }
+        },
+        "neutral_f1_sentiment": 0.65,
+        "others_f1_topic": 0.5789473684210527,
+        "ms_per_sentence_batch1": {
+          "median": 17.82,
+          "runs": [
+            18.5,
+            17.16,
+            18.12,
+            17.82,
+            17.67
+          ]
+        }
+      },
+      "reference_rows": [
+        {
+          "name": "all_int8",
+          "heads_fp32": false,
+          "n_matmul_kept_fp32": 0,
+          "size_mb": 290.9,
+          "size_bytes": 290887451,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9469361970941251,
+              "macro_f1": 0.8466436478956041,
+              "weighted_f1": 0.944779570162527,
+              "ece": 0.024493767773436773
+            },
+            "topic": {
+              "accuracy": 0.8945041061276058,
+              "macro_f1": 0.8026918252836235,
+              "weighted_f1": 0.8923781306200067,
+              "ece": 0.03144209852665807
+            }
+          },
+          "neutral_f1_sentiment": 0.6190476190476191,
+          "others_f1_topic": 0.5748502994011976,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": -1.131,
+            "topic": -0.909
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -0.075,
+            "topic": -0.317
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 16,
+            "topic": 31
+          },
+          "total_label_flips_batch1": 47,
+          "passes_gate_batch1": false,
+          "ms_per_sentence_batch1": {
+            "median": 6.68,
+            "runs": [
+              6.91,
+              6.32,
+              6.68,
+              7.53,
+              6.56
+            ]
+          }
+        }
+      ],
+      "candidates": [
+        {
+          "name": "ffn_out_fp32",
+          "heads_fp32": false,
+          "n_matmul_kept_fp32": 12,
+          "size_mb": 375.8,
+          "size_bytes": 375805886,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9494630448515476,
+              "macro_f1": 0.860995632568951,
+              "weighted_f1": 0.9470963957178395,
+              "ece": 0.018557381222045
+            },
+            "topic": {
+              "accuracy": 0.8982943777637398,
+              "macro_f1": 0.8073522882346411,
+              "weighted_f1": 0.8952999390998722,
+              "ece": 0.028850026931181903
+            }
+          },
+          "neutral_f1_sentiment": 0.6611570247933884,
+          "others_f1_topic": 0.5751633986928104,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": 0.304,
+            "topic": -0.443
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -0.602,
+            "topic": 1.004
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 9,
+            "topic": 14
+          },
+          "total_label_flips_batch1": 23,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 10.45,
+            "runs": [
+              10.37,
+              10.45,
+              10.67,
+              11.37,
+              10.38
+            ]
+          }
+        },
+        {
+          "name": "ffn_fp32",
+          "heads_fp32": false,
+          "n_matmul_kept_fp32": 24,
+          "size_mb": 460.6,
+          "size_bytes": 460586171,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9500947567909034,
+              "macro_f1": 0.8648778020504421,
+              "weighted_f1": 0.9479019186975449,
+              "ece": 0.016318494196467463
+            },
+            "topic": {
+              "accuracy": 0.8989260897030954,
+              "macro_f1": 0.8126296457696576,
+              "weighted_f1": 0.8958869755628173,
+              "ece": 0.024564638345430587
+            }
+          },
+          "neutral_f1_sentiment": 0.6721311475409836,
+          "others_f1_topic": 0.5921052631578947,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": 0.692,
+            "topic": 0.085
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": 0.35,
+            "topic": 0.106
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 4,
+            "topic": 10
+          },
+          "total_label_flips_batch1": 14,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 14.06,
+            "runs": [
+              14.06,
+              13.76,
+              14.14,
+              14.67,
+              13.98
+            ]
+          }
+        },
+        {
+          "name": "attn_fp32",
+          "heads_fp32": false,
+          "n_matmul_kept_fp32": 48,
+          "size_mb": 375.8,
+          "size_bytes": 375785962,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9475679090334808,
+              "macro_f1": 0.8538476525347997,
+              "weighted_f1": 0.945749522546292,
+              "ece": 0.01750741400577938
+            },
+            "topic": {
+              "accuracy": 0.8963992419456728,
+              "macro_f1": 0.8080054195359736,
+              "weighted_f1": 0.8939750389128068,
+              "ece": 0.032799440619968284
+            }
+          },
+          "neutral_f1_sentiment": 0.640625,
+          "others_f1_topic": 0.5818181818181818,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": -0.411,
+            "topic": -0.378
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -1.95,
+            "topic": -0.632
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 16,
+            "topic": 34
+          },
+          "total_label_flips_batch1": 50,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 10.81,
+            "runs": [
+              11.01,
+              10.42,
+              11.11,
+              10.53,
+              10.81
+            ]
+          }
+        },
+        {
+          "name": "all_int8+heads_fp32",
+          "heads_fp32": true,
+          "n_matmul_kept_fp32": 2,
+          "size_mb": 290.9,
+          "size_bytes": 290902093,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9469361970941251,
+              "macro_f1": 0.8466436478956041,
+              "weighted_f1": 0.944779570162527,
+              "ece": 0.024446359594109263
+            },
+            "topic": {
+              "accuracy": 0.8945041061276058,
+              "macro_f1": 0.8026918252836235,
+              "weighted_f1": 0.8923781306200067,
+              "ece": 0.031640310182086
+            }
+          },
+          "neutral_f1_sentiment": 0.6190476190476191,
+          "others_f1_topic": 0.5748502994011976,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": -1.131,
+            "topic": -0.909
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -0.075,
+            "topic": -0.317
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 16,
+            "topic": 31
+          },
+          "total_label_flips_batch1": 47,
+          "passes_gate_batch1": false,
+          "ms_per_sentence_batch1": {
+            "median": 6.54,
+            "runs": [
+              6.54,
+              6.55,
+              6.52,
+              6.41,
+              7.11
+            ]
+          }
+        },
+        {
+          "name": "ffn_out_fp32+heads_fp32",
+          "heads_fp32": true,
+          "n_matmul_kept_fp32": 14,
+          "size_mb": 375.8,
+          "size_bytes": 375820528,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9494630448515476,
+              "macro_f1": 0.860995632568951,
+              "weighted_f1": 0.9470963957178395,
+              "ece": 0.019078551566051028
+            },
+            "topic": {
+              "accuracy": 0.8982943777637398,
+              "macro_f1": 0.8073522882346411,
+              "weighted_f1": 0.8952999390998722,
+              "ece": 0.028959760564857332
+            }
+          },
+          "neutral_f1_sentiment": 0.6611570247933884,
+          "others_f1_topic": 0.5751633986928104,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": 0.304,
+            "topic": -0.443
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -0.602,
+            "topic": 1.004
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 9,
+            "topic": 14
+          },
+          "total_label_flips_batch1": 23,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 10.62,
+            "runs": [
+              10.56,
+              10.8,
+              10.62,
+              10.55,
+              11.66
+            ]
+          }
+        },
+        {
+          "name": "attn_fp32+heads_fp32",
+          "heads_fp32": true,
+          "n_matmul_kept_fp32": 50,
+          "size_mb": 375.8,
+          "size_bytes": 375800604,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9475679090334808,
+              "macro_f1": 0.8538476525347997,
+              "weighted_f1": 0.945749522546292,
+              "ece": 0.018529329553374694
+            },
+            "topic": {
+              "accuracy": 0.8963992419456728,
+              "macro_f1": 0.8080054195359736,
+              "weighted_f1": 0.8939750389128068,
+              "ece": 0.03164505953574558
+            }
+          },
+          "neutral_f1_sentiment": 0.640625,
+          "others_f1_topic": 0.5818181818181818,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": -0.411,
+            "topic": -0.378
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -1.95,
+            "topic": -0.632
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 16,
+            "topic": 34
+          },
+          "total_label_flips_batch1": 50,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 10.68,
+            "runs": [
+              10.68,
+              10.29,
+              10.35,
+              11.45,
+              10.96
+            ]
+          }
+        },
+        {
+          "name": "ffn_out_early6_fp32+heads_fp32",
+          "heads_fp32": true,
+          "n_matmul_kept_fp32": 8,
+          "size_mb": 333.4,
+          "size_bytes": 333361320,
+          "batch1": {
+            "sentiment": {
+              "accuracy": 0.9481996209728364,
+              "macro_f1": 0.8530971787520856,
+              "weighted_f1": 0.945455121285161,
+              "ece": 0.020567039503286443
+            },
+            "topic": {
+              "accuracy": 0.897662665824384,
+              "macro_f1": 0.8096407448645218,
+              "weighted_f1": 0.8950573738696538,
+              "ece": 0.03848172364760698
+            }
+          },
+          "neutral_f1_sentiment": 0.6386554621848739,
+          "others_f1_topic": 0.5766871165644172,
+          "delta_macro_f1_points_batch1": {
+            "sentiment": -0.486,
+            "topic": -0.214
+          },
+          "delta_macro_f1_points_batch32_info": {
+            "sentiment": -1.758,
+            "topic": -0.67
+          },
+          "label_flips_vs_fp32_batch1": {
+            "sentiment": 9,
+            "topic": 27
+          },
+          "total_label_flips_batch1": 36,
+          "passes_gate_batch1": true,
+          "ms_per_sentence_batch1": {
+            "median": 9.04,
+            "runs": [
+              9.04,
+              8.63,
+              8.79,
+              9.34,
+              9.51
+            ]
+          }
+        }
+      ],
+      "reproduction_of_round_one": {
+        "ffn_out_fp32": {
+          "deltas_equal": true,
+          "flips_equal": true
+        },
+        "ffn_fp32": {
+          "deltas_equal": true,
+          "flips_equal": true
+        },
+        "attn_fp32": {
+          "deltas_equal": true,
+          "flips_equal": true
+        }
+      },
+      "passing": [
+        "ffn_out_fp32",
+        "ffn_fp32",
+        "attn_fp32",
+        "ffn_out_fp32+heads_fp32",
+        "attn_fp32+heads_fp32",
+        "ffn_out_early6_fp32+heads_fp32"
+      ],
+      "fastest": {
+        "name": "ffn_out_early6_fp32+heads_fp32",
+        "ms_per_sentence_batch1": 9.04
+      },
+      "within_tie_band": [
+        "ffn_out_early6_fp32+heads_fp32"
+      ],
+      "selected": "ffn_out_early6_fp32+heads_fp32",
+      "selection_rule_applied": "Trong pool, giữ các cấu hình ĐẠT cổng ở batch=1 cho cả hai tác vụ. Gọi F là ms/câu thấp nhất (batch=1, 2 luồng, trung vị các vòng đo xen kẽ) trong số đó. Mọi cấu hình đạt cổng có ms/câu không quá F x 1,05 họp thành nhóm hoà; chọn trong nhóm cấu hình có TỔNG số nhãn đổi so với FP32 (cảm xúc + chủ đề, batch=1) ít nhất. Nếu vẫn hoà tổng số nhãn đổi thì chọn ms/câu thấp hơn, rồi theo thứ tự trong `pool`. Kích thước tệp chỉ ghi để tham khảo, không dùng để chọn. Không cấu hình nào đạt thì không đóng gói, báo lead kèm bảng kết quả.",
+      "environment": {
+        "threads": 2,
+        "onnxruntime": "1.31.0",
+        "loadavg_1m_at_start_of_each_timing_round": [
+          12.0,
+          10.5,
+          9.2,
+          9.2,
+          8.2
+        ],
+        "docker_running_during_timing": true,
+        "note": "ms/câu đo khi máy còn chạy container khác; xen kẽ giữa các mô hình nên chỉ so sánh tương đối trong cùng phiên"
+      }
+    },
+    "completed_at": "2026-10-15T14:33:14+0700",
+    "findings_after_run": [
+      {
+        "title": "Luật v2 chọn ffn_out_early6_fp32+heads_fp32",
+        "detail": "Sáu cấu hình đạt cổng. Nhanh nhất là ffn_out_early6_fp32+heads_fp32 (9,04 ms/câu, nhanh hơn ở cả 5 vòng đo xen kẽ); cấu hình nhanh kế tiếp là ffn_out_fp32 (10,45 ms/câu) chậm hơn 15,6% nên nhóm hoà (<= 5%) chỉ có chính nó và luật không xét số nhãn đổi. Đánh đổi so với các cấu hình gần nhất: tổng nhãn đổi so với FP32 là 36 (cảm xúc/chủ đề 9/27) so với 23 (9/14) của ffn_out_fp32 và 14 (4/10) của ffn_fp32; F1 lớp trung tính 63,9 so với 66,1 và 67,2 (FP32 65,0); ECE chủ đề 0,0385 (FP32 0,0302). So với FP32: 9,04 so với 17,82 ms/câu (1,97 lần) và 333,4 so với 545,5 MB. Triển khai theo đúng luật đã đăng ký; nếu lead muốn ưu tiên độ bám FP32 hơn tốc độ thì phương án kế tiếp là ffn_out_fp32 (hoặc +heads_fp32), đó là quyết định của lead, không do script tự sửa."
+      },
+      {
+        "title": "Lượng tử hoá hai đầu phân loại không gây sai số đo được",
+        "detail": "Cả ba cặp (all_int8 và all_int8+heads_fp32; ffn_out_fp32 và +heads_fp32; attn_fp32 và +heads_fp32) cho cùng delta macro-F1 đến 3 chữ số thập phân và cùng số nhãn đổi; chỉ ECE lệch nhẹ (tối đa 0,0012). Sai số int8 nằm hoàn toàn ở encoder: tiền đề sai của vòng 1 không đổi kết luận của vòng 1, nhưng cấu hình triển khai nay giữ hai đầu FP32 (thêm khoảng 15 KB). all_int8+heads_fp32 vẫn trượt cổng (-1,131/-0,909), nên không còn cấu hình int8 toàn phần nào đạt cổng."
+      },
+      {
+        "title": "Vòng 1 tái lập đúng",
+        "detail": "Ba cấu hình vòng 1 được lượng tử hoá và chấm lại trong phiên này cho đúng delta và số nhãn đổi như vòng 1 (reproduction_of_round_one): int8 động ở batch 1 là tất định."
+      },
+      {
+        "title": "Độ nhiễu của cổng và của phép đo tốc độ",
+        "detail": "Cổng 1,0 điểm là phép đo nhiễu (lớp trung tính 73 câu); cấu hình chọn đạt ở batch=1 (-0,49/-0,21) nhưng ở lô 32 cảm xúc giảm 1,76 điểm (chỉ tham khảo: mọi đường phục vụ chạy từng câu một). Máy bận khi đo (loadavg 1 phút đầu 5 vòng: 12,0; 10,5; 9,2; 9,2; 8,2) nên ms/câu chỉ so sánh tương đối trong phiên này; khoảng cách 9,04 so với 10,45 vượt biên độ giữa các vòng (8,63-9,51 so với 10,37-11,37)."
+      }
+    ]
+  }
 }
