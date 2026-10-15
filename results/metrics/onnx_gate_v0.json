@@ -1,0 +1,156 @@
+{
+  "run": "mtl-s42",
+  "normalizer_version": "1",
+  "base_model": "vinai/phobert-base-v2",
+  "base_revision": "86cd7fd4c148980922ac11a2cf5e257f2ba639e1",
+  "n_val": 1583,
+  "parity": {
+    "n": 64,
+    "max_abs_logit_diff": 1.800060272216797e-05,
+    "tolerance": 0.001,
+    "ok": true
+  },
+  "embedding": {
+    "base_vocab_size": 64001,
+    "unk_id": 3,
+    "embedding_rows": 66119,
+    "extra_rows": 2118,
+    "unk_alias_max_diff": {
+      "fp32": 0.0,
+      "int8": 0.0
+    },
+    "rare_piece_parity": {
+      "n": 4,
+      "n_out_of_range": 4,
+      "max_abs_logit_diff": 2.6226043701171875e-06,
+      "tolerance": 0.001,
+      "ok": true
+    }
+  },
+  "quantization": "int8 động, chỉ MatMul, từng kênh, reduce_range (ONNX Runtime)",
+  "fp32": {
+    "sentiment": {
+      "accuracy": 0.9500947567909034,
+      "macro_f1": 0.8579571418680328,
+      "weighted_f1": 0.9475317254501094,
+      "ece": 0.01866790943798597,
+      "per_class_f1": [
+        0.9622377622377623,
+        0.65,
+        0.9616336633663366
+      ]
+    },
+    "topic": {
+      "accuracy": 0.901452937460518,
+      "macro_f1": 0.8117840126525019,
+      "weighted_f1": 0.8981947124776941,
+      "ece": 0.030173106165163787,
+      "per_class_f1": [
+        0.9476869865974924,
+        0.7899461400359067,
+        0.9305555555555556,
+        0.5789473684210527
+      ]
+    }
+  },
+  "int8": {
+    "sentiment": {
+      "accuracy": 0.9469361970941251,
+      "macro_f1": 0.8466436478956041,
+      "weighted_f1": 0.944779570162527,
+      "ece": 0.024493767773436773,
+      "per_class_f1": [
+        0.9591549295774648,
+        0.6190476190476191,
+        0.9617283950617284
+      ]
+    },
+    "topic": {
+      "accuracy": 0.8945041061276058,
+      "macro_f1": 0.8026918252836235,
+      "weighted_f1": 0.8923781306200067,
+      "ece": 0.03144209852665807,
+      "per_class_f1": [
+        0.9455488331892826,
+        0.7683823529411765,
+        0.9219858156028369,
+        0.5748502994011976
+      ]
+    }
+  },
+  "int8_batched": {
+    "sentiment": {
+      "accuracy": 0.9481996209728364,
+      "macro_f1": 0.8572025898599537,
+      "weighted_f1": 0.9462472976589276,
+      "ece": 0.01710302577736982,
+      "per_class_f1": [
+        0.9585382993675334,
+        0.6507936507936508,
+        0.9622758194186766
+      ]
+    },
+    "topic": {
+      "accuracy": 0.899557801642451,
+      "macro_f1": 0.8086132239074268,
+      "weighted_f1": 0.8967244180123485,
+      "ece": 0.035554368583631674,
+      "per_class_f1": [
+        0.9492254733218589,
+        0.7738317757009345,
+        0.9295774647887324,
+        0.5818181818181818
+      ]
+    }
+  },
+  "delta_macro_f1_points": {
+    "sentiment": -1.131,
+    "topic": -0.909
+  },
+  "delta_macro_f1_points_batched": {
+    "sentiment": -0.075,
+    "topic": -0.317
+  },
+  "label_flips": {
+    "sentiment": 16,
+    "topic": 31
+  },
+  "batch_dependence": {
+    "sentiment": {
+      "median_abs_logit_diff": 0.06474864482879639,
+      "p95_abs_logit_diff": 0.2862012386322018,
+      "max_abs_logit_diff": 1.496302992105484,
+      "label_flips": 17
+    },
+    "topic": {
+      "median_abs_logit_diff": 0.05924913287162781,
+      "p95_abs_logit_diff": 0.353896112460643,
+      "max_abs_logit_diff": 3.4068586826324463,
+      "label_flips": 37
+    }
+  },
+  "gate": {
+    "max_drop_points": 1.0,
+    "passed": false,
+    "modes": [
+      "batch=1",
+      "batch=32"
+    ]
+  },
+  "files": {
+    "fp32_bytes": 545549057,
+    "int8_bytes": 290887451
+  },
+  "versions": {
+    "onnxruntime": "1.31.0",
+    "torch": "2.14.1"
+  },
+  "threads": 2,
+  "timing": {
+    "export_fp32_s": 4.8,
+    "quantize_s": 7.4,
+    "val_fp32_s": 21.8,
+    "val_int8_single_s": 10.4,
+    "val_int8_batched_s": 7.7
+  }
+}

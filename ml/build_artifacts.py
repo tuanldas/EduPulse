@@ -53,7 +53,7 @@ from ml.common import (
     write_json,
 )
 from ml.download_data import DATASET_REPO, load_raw_manifest
-from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, QUANTIZATION, unk_alias_gap
+from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, unk_alias_gap
 from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
 from ml.train_baseline import load_model
 
@@ -299,7 +299,8 @@ def build(
     ):
         if not needed.is_file():
             raise BundleError(f"thiếu {needed} — chạy `make export calibrate`")
-    embedding = require_passed_gate(read_json(onnx_dir / "onnx_gate.json"), run, allow_failed_gate)
+    gate = read_json(onnx_dir / "onnx_gate.json")
+    embedding = require_passed_gate(gate, run, allow_failed_gate)
 
     history = read_json(run / "history.json")
     calibration = Calibration.model_validate_json(calibration_path.read_text("utf-8"))
@@ -350,7 +351,7 @@ def build(
                 input_names=INPUT_NAMES,
                 output_names=tuple(OUTPUT_NAMES[t] for t in TASKS),
                 pad_id=PAD_ID,
-                quantization=QUANTIZATION,
+                quantization=gate["quantization"],
                 base_vocab_size=embedding["base_vocab_size"],
                 unk_id=embedding["unk_id"],
                 embedding_rows=embedding["embedding_rows"],

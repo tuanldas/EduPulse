@@ -53,11 +53,13 @@ def test_gate_report_has_the_documented_structure(exported):
     assert set(gate["fp32"]) == set(gate["int8"]) == set(TASKS)
     assert set(gate["delta_macro_f1_points"]) == set(TASKS)
     assert gate["gate"]["max_drop_points"] == 1.0
-    assert gate["gate"]["modes"] == ["batch=1", "batch=32"]
+    assert gate["gate"]["mode"] == "batch=1"
+    assert gate["quant_config"] == export_onnx.DEPLOY_QUANT_CONFIG
+    assert gate["quantization"] == export_onnx.quantization_description(gate["quant_config"])
     assert gate["files"]["int8_bytes"] < gate["files"]["fp32_bytes"]
 
 
-def test_gate_covers_both_serving_modes_and_reports_batch_dependence(exported):
+def test_gate_uses_single_sentence_mode_and_reports_batch_dependence(exported):
     _, gate = exported
     assert set(gate["int8_batched"]) == set(gate["delta_macro_f1_points_batched"]) == set(TASKS)
     for task in TASKS:
@@ -65,11 +67,8 @@ def test_gate_covers_both_serving_modes_and_reports_batch_dependence(exported):
         assert 0 <= stats["median_abs_logit_diff"] <= stats["p95_abs_logit_diff"]
         assert stats["p95_abs_logit_diff"] <= stats["max_abs_logit_diff"]
         assert 0 <= stats["label_flips"] <= gate["n_val"]
-    worst = max(
-        -delta
-        for deltas in (gate["delta_macro_f1_points"], gate["delta_macro_f1_points_batched"])
-        for delta in deltas.values()
-    )
+    # Cổng chỉ xét chế độ phục vụ (batch 1); lô 32 chỉ để tham khảo.
+    worst = max(-delta for delta in gate["delta_macro_f1_points"].values())
     assert gate["gate"]["passed"] == (worst <= gate["gate"]["max_drop_points"])
 
 
@@ -238,3 +237,75 @@ def test_int8_model_runs_on_the_rare_piece_sentence(exported):
     session = export_onnx.make_session(out / "model.int8.onnx", threads=1)
     logits = export_onnx.run_logits(session, export_onnx.encode([RARE_PIECE_TEXT]), batch_size=1)
     assert all(np.isfinite(logits[task]).all() for task in TASKS)
+
+
+# --- Cấu hình lượng tử hoá ------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def fp32_graph(exported):
+    out, _ = exported
+    import onnx
+
+    return onnx.load(str(out / "model.fp32.onnx"), load_external_data=False).graph
+
+
+def test_weight_matmuls_follow_the_six_per_layer_layout(fp32_graph):
+    names = export_onnx.weight_matmul_names(fp32_graph)
+    assert len(names) == 2 * export_onnx.PER_LAYER  # mô hình thử có 2 lớp
+
+
+@pytest.mark.parametrize(
+    ("config", "expected"),
+    [
+        ("all_int8", 0),
+        ("ffn_out_fp32", 2),  # 1 mỗi lớp
+        ("ffn_fp32", 4),  # 2 mỗi lớp
+        ("attn_fp32", 8),  # 4 mỗi lớp
+        ("last4_fp32", 12),  # chỉ có 2 lớp nên là tất cả
+    ],
+)
+def test_each_config_keeps_the_documented_matmuls_in_fp32(fp32_graph, config, expected):
+    assert len(export_onnx.excluded_nodes(fp32_graph, config)) == expected
+
+
+def test_unknown_config_is_rejected(fp32_graph):
+    with pytest.raises(ValueError, match="không có"):
+        export_onnx.excluded_nodes(fp32_graph, "int4")
+
+
+def test_quantized_graph_has_int8_matmuls_only_where_the_config_allows(exported, tmp_path):
+    import onnx
+
+    out, _ = exported
+    counts = {}
+    for config in ("all_int8", "attn_fp32", "ffn_fp32", "ffn_out_fp32"):
+        target = tmp_path / f"{config}.onnx"
+        export_onnx.quantize_int8(out / "model.fp32.onnx", target, config)
+        graph = onnx.load(str(target), load_external_data=False).graph
+        counts[config] = sum(n.op_type == "MatMulInteger" for n in graph.node)
+    # Mô hình thử có 2 lớp x 6 MatMul có trọng số, cộng 2 đầu phân loại: ORT đổi Gemm của đầu thành
+    # MatMul + Add rồi lượng tử hoá luôn (các cấu hình hiện tại không loại trừ chúng).
+    heads = 2
+    assert counts == {
+        "all_int8": 12 + heads,
+        "attn_fp32": 4 + heads,
+        "ffn_fp32": 8 + heads,
+        "ffn_out_fp32": 10 + heads,
+    }
+
+
+def test_deploy_config_is_one_of_the_registered_candidates():
+    import json
+
+    from edupulse.config import REPO_ROOT
+
+    document = json.loads(
+        (REPO_ROOT / "results" / "metrics" / "onnx_gate_search.json").read_text("utf-8")
+    )
+    registered = [c["name"] for c in document["registration"]["configs"]]
+    assert export_onnx.DEPLOY_QUANT_CONFIG in registered
+    if document["results"] is not None:  # sau khi chạy: triển khai đúng cấu hình đã chọn theo luật
+        assert document["results"]["selected"] == export_onnx.DEPLOY_QUANT_CONFIG or document.get(
+            "deploy_override"
+        )

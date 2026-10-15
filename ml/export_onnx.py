@@ -4,12 +4,13 @@
 
 Các bước (đều trên CPU): xuất FP32 bằng `torch.onnx.export(dynamo=True)` với trục batch và seq
 động -> kiểm khớp torch (|Δlogit| < 1e-3) -> `quant_pre_process` (bắt buộc với bản dynamo) ->
-lượng tử hoá int8 chỉ MatMul, từng kênh, reduce_range -> chấm val FP32 và int8 -> ghi cổng.
-Cổng: macro-F1 val của int8 không được thấp hơn FP32 quá 1 điểm ở MỘT trong hai tác vụ, ở cả hai
-chế độ chạy (từng câu một và lô 32), nếu không tiến trình thoát với mã 1. Int8 động phụ thuộc lô,
-nên logits val dùng để hiệu chuẩn (`val_logits_int8.npz`) và `golden_predictions.json` đều chạy
-từng câu một (batch 1), đúng điều kiện của phân tích một câu; mức lệch so với lô nằm trong
-`onnx_gate.json["batch_dependence"]`.
+lượng tử hoá int8 chỉ MatMul có trọng số, từng kênh, reduce_range (một số MatMul giữ FP32 theo
+`--quant-config`, xem QUANT_CONFIGS) -> chấm val FP32 và int8 -> ghi cổng.
+Cổng: macro-F1 val của int8 không được thấp hơn FP32 quá 1 điểm ở MỘT trong hai tác vụ khi chạy
+từng câu một (batch 1, chế độ phục vụ ở mọi đường), nếu không tiến trình thoát với mã 1. Int8
+động phụ thuộc lô, nên logits val dùng để hiệu chuẩn (`val_logits_int8.npz`) và
+`golden_predictions.json` đều chạy từng câu một; kết quả lô 32 và mức lệch so với batch 1 chỉ để
+tham khảo (`onnx_gate.json["int8_batched"]`, `["batch_dependence"]`).
 
 Đầu ra trong `outputs/onnx/<run>/`: model.fp32.onnx, model.int8.onnx, val_logits_int8.npz,
 onnx_gate.json, golden_predictions.json.
@@ -22,10 +23,12 @@ import json
 import shutil
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import onnx
 import onnxruntime as ort
 import torch
 from onnxruntime.quantization import QuantType, quantize_dynamic
@@ -70,7 +73,6 @@ MAX_DATASET_RARE = 16  # thêm tối đa ngần này câu của dữ liệu có 
 GATE_MAX_DROP_POINTS = 1.0
 EVAL_BATCH = 32
 GOLDEN_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "golden_sentences.json"
-QUANTIZATION = "int8 động, chỉ MatMul, từng kênh, reduce_range (ONNX Runtime)"
 
 
 class _Export(torch.nn.Module):
@@ -106,10 +108,71 @@ def export_fp32(model: MultiHeadPhoBERT, sample: list[list[int]], path: Path) ->
     program.save(str(path))
 
 
-def quantize_int8(fp32_path: Path, int8_path: Path) -> None:
-    prepared = fp32_path.with_name("model.preprocessed.onnx")
+# Mỗi lớp encoder có 6 MatMul có trọng số, theo thứ tự đồ thị: Q, K, V, O (h x h), FFN vào (h x i),
+# FFN ra (i x h). Một cấu hình cho biết (lớp, vị trí 0..5) nào GIỮ FP32; số lớp lấy từ đồ thị.
+PER_LAYER = 6
+KeepFp32 = Callable[[int, int, int], bool]  # (lớp, vị trí, số lớp) -> giữ FP32?
+QUANT_CONFIGS: dict[str, tuple[str, KeepFp32]] = {
+    "all_int8": ("mọi MatMul có trọng số", lambda layer, slot, n: False),
+    "ffn_out_fp32": ("trừ phép chiếu ra của FFN (giữ FP32)", lambda layer, slot, n: slot == 5),
+    "ffn_fp32": ("trừ cả hai phép chiếu của FFN (giữ FP32)", lambda layer, slot, n: slot in (4, 5)),
+    "attn_fp32": (
+        "trừ Q/K/V và phép chiếu ra của attention (giữ FP32)",
+        lambda layer, slot, n: slot in (0, 1, 2, 3),
+    ),
+    "last4_fp32": ("trừ 4 lớp encoder cuối (giữ FP32)", lambda layer, slot, n: layer >= n - 4),
+}
+# Cấu hình triển khai = kết quả của `ml/onnx_gate_search.py` theo luật chọn đã đăng ký trước khi
+# chạy (results/metrics/onnx_gate_search.json): tệp NHỎ nhất đạt cổng ở batch 1 cho cả hai tác vụ.
+DEPLOY_QUANT_CONFIG = "attn_fp32"
+
+
+def quantization_description(config: str) -> str:
+    return (
+        f"int8 động, MatMul có trọng số {QUANT_CONFIGS[config][0]}, từng kênh, reduce_range (ORT)"
+    )
+
+
+def weight_matmul_names(graph: Any) -> list[str]:
+    """Tên các MatMul có trọng số hằng 2 chiều, theo thứ tự đồ thị (lớp-major); kiểm đúng bố cục."""
+    initializers = {i.name: tuple(i.dims) for i in graph.initializer}
+    found = [
+        (node.name, initializers[node.input[1]])
+        for node in graph.node
+        if node.op_type == "MatMul" and len(initializers.get(node.input[1], ())) == 2
+    ]
+    if not found or len(found) % PER_LAYER:
+        raise RuntimeError(f"số MatMul có trọng số ({len(found)}) không chia hết cho {PER_LAYER}")
+    hidden, inner = found[0][1][0], found[4][1][1]
+    slots = ((hidden, hidden),) * 4 + ((hidden, inner), (inner, hidden))
+    for index, (_, shape) in enumerate(found):
+        if shape != slots[index % PER_LAYER]:
+            raise RuntimeError(f"MatMul #{index} có trọng số {shape}, bố cục lớp không như dự kiến")
+    return [name for name, _ in found]
+
+
+def excluded_nodes(graph: Any, config: str) -> list[str]:
+    """Các MatMul được giữ FP32 theo cấu hình lượng tử hoá."""
+    if config not in QUANT_CONFIGS:
+        raise ValueError(
+            f"cấu hình lượng tử hoá {config!r} không có; chọn trong {list(QUANT_CONFIGS)}"
+        )
+    names = weight_matmul_names(graph)
+    keep_fp32 = QUANT_CONFIGS[config][1]
+    n_layers = len(names) // PER_LAYER
+    return [
+        name
+        for index, name in enumerate(names)
+        if keep_fp32(index // PER_LAYER, index % PER_LAYER, n_layers)
+    ]
+
+
+def quantize_int8(fp32_path: Path, int8_path: Path, config: str = DEPLOY_QUANT_CONFIG) -> int:
+    """Lượng tử hoá động int8 (MatMul, từng kênh, reduce_range); trả số MatMul giữ FP32."""
+    prepared = fp32_path.with_name(f"{int8_path.stem}.preprocessed.onnx")
     try:
         quant_pre_process(str(fp32_path), str(prepared))
+        excluded = excluded_nodes(onnx.load(str(prepared), load_external_data=False).graph, config)
         quantize_dynamic(
             str(prepared),
             str(int8_path),
@@ -117,9 +180,11 @@ def quantize_int8(fp32_path: Path, int8_path: Path) -> None:
             op_types_to_quantize=["MatMul"],
             per_channel=True,
             reduce_range=True,
+            nodes_to_exclude=excluded,
         )
     finally:
         prepared.unlink(missing_ok=True)
+    return len(excluded)
 
 
 def make_session(path: Path, threads: int) -> ort.InferenceSession:
@@ -240,7 +305,9 @@ def golden_predictions(int8_path: Path, threads: int) -> GoldenPredictions:
     return GoldenPredictions(normalizer_version=NORMALIZER_VERSION, items=golden)
 
 
-def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
+def export(
+    run: Path, out_dir: Path, threads: int, quant_config: str = DEPLOY_QUANT_CONFIG
+) -> dict[str, Any]:
     history = read_json(run / "history.json")
     if history.get("normalizer_version") != NORMALIZER_VERSION:
         raise RuntimeError(
@@ -296,7 +363,7 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
         )
 
     started = time.time()
-    quantize_int8(fp32_path, int8_path)
+    kept_fp32 = quantize_int8(fp32_path, int8_path, quant_config)
     timing["quantize_s"] = round(time.time() - started, 1)
 
     started = time.time()
@@ -331,9 +398,9 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
     }
     flips = {t: int((fp32_val[t].argmax(1) != int8_val[t].argmax(1)).sum()) for t in TASKS}
     dependence = {t: batch_dependence(int8_val[t], int8_batched[t]) for t in TASKS}
-    passed = all(
-        -delta <= GATE_MAX_DROP_POINTS for delta in (*deltas.values(), *deltas_batched.values())
-    )
+    # Cổng ở chế độ sẽ phục vụ: từng câu một. Lô 32 chỉ để tham khảo vì không có đường phục vụ nào
+    # dùng nó (cùng một câu cho cùng nhãn ở mọi đường).
+    passed = all(-delta <= GATE_MAX_DROP_POINTS for delta in deltas.values())
 
     np.savez(
         out_dir / "val_logits_int8.npz",
@@ -371,7 +438,7 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
                 "ok": True,
             },
         },
-        "quantization": QUANTIZATION,
+        "quantization": quantization_description(quant_config),
         "fp32": fp32_summary,
         "int8": int8_summary,
         "int8_batched": batched_summary,
@@ -382,8 +449,11 @@ def export(run: Path, out_dir: Path, threads: int) -> dict[str, Any]:
         "gate": {
             "max_drop_points": GATE_MAX_DROP_POINTS,
             "passed": passed,
-            "modes": ["batch=1", f"batch={EVAL_BATCH}"],
+            "mode": "batch=1",
+            "batched_is_informational": f"batch={EVAL_BATCH}",
         },
+        "quant_config": quant_config,
+        "n_matmul_kept_fp32": kept_fp32,
         "files": {"fp32_bytes": fp32_path.stat().st_size, "int8_bytes": int8_path.stat().st_size},
         "versions": {"onnxruntime": ort.__version__, "torch": torch.__version__},
         "threads": threads,
@@ -417,6 +487,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run", default="best", help="'best', tên run hoặc thư mục checkpoint")
     parser.add_argument("--threads", type=int, default=None, help="mặc định EDUPULSE_ORT_THREADS")
+    parser.add_argument(
+        "--quant-config",
+        choices=list(QUANT_CONFIGS),
+        default=DEPLOY_QUANT_CONFIG,
+        help=f"cách lượng tử hoá int8 (mặc định {DEPLOY_QUANT_CONFIG})",
+    )
     parser.add_argument("--gate-copy", type=Path, help="chép onnx_gate.json tới đường dẫn này")
     parser.add_argument(
         "--run-summary", type=Path, help="ghi tóm tắt run huấn luyện tới đường dẫn này"
@@ -429,7 +505,7 @@ def main(argv: list[str] | None = None) -> int:
     run = resolve_run(args.run)
     out_dir = settings().outputs_dir / "onnx" / run.name
     threads = args.threads or load_settings().ort_threads
-    gate = export(run, out_dir, threads)
+    gate = export(run, out_dir, threads, args.quant_config)
     if args.gate_copy:
         args.gate_copy.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(out_dir / "onnx_gate.json", args.gate_copy)
@@ -446,9 +522,8 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({k: gate[k] for k in keys}))
     if not gate["gate"]["passed"]:
         print(
-            f"CỔNG KHÔNG QUA: int8 giảm macro-F1 val quá {GATE_MAX_DROP_POINTS} điểm "
-            f"(từng câu {gate['delta_macro_f1_points']}, "
-            f"lô {gate['delta_macro_f1_points_batched']})",
+            f"CỔNG KHÔNG QUA: int8 ({gate['quant_config']}) giảm macro-F1 val quá "
+            f"{GATE_MAX_DROP_POINTS} điểm khi chạy từng câu: {gate['delta_macro_f1_points']}",
             file=sys.stderr,
         )
         return 1
