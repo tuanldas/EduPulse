@@ -22,7 +22,10 @@ from edupulse.labels import LABELS
 from edupulse.scoring import softmax_t
 
 EXPLAIN_BATCH = 16  # lô nhỏ: thêm <40MB RAM và nhường khoá suy luận cho yêu cầu khác
-MIN_EFFECT = 0.01  # dưới 1 điểm phần trăm thì chưa đáng gọi là ủng hộ hay đi ngược
+# Dưới ngưỡng này thì chưa đáng gọi là ủng hộ hay đi ngược. Int8 động làm Δ lệch ngẫu nhiên cỡ 1
+# điểm phần trăm (p95 ≈ 3,5 điểm, đo so với FP32 trên PhoBERT-base), nên 5 điểm để không đưa
+# nhiễu lượng tử hoá ra thành "từ quan trọng".
+MIN_EFFECT = 0.05
 TOP_SUPPORT = 3
 TOP_OPPOSE = 1
 TOO_LONG = "xai_too_long"
