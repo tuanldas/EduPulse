@@ -24,7 +24,7 @@ TEXTS = [
     "ok",
     "thủ_tục xin giấy xác_nhận quá rườm_rà , em phải đi lại nhiều lần",
 ]
-LOGIT_TOLERANCE = 0.25
+NOISE_BOUND = 0.75
 
 
 @pytest.fixture(scope="module")
@@ -46,26 +46,28 @@ def test_empty_input_gives_empty_arrays(model: OnnxModel):
     assert logits.topic.shape == (0, len(TOPIC))
 
 
-def test_batching_and_length_sorting_keep_results_in_input_order(model: OnnxModel):
-    batched = model.predict(TEXTS)
+def test_results_come_back_in_input_order_whatever_the_internal_sort_order(model: OnnxModel):
+    # Lô 1 câu thì không có bạn cùng lô lẫn đệm, nên kết quả phải trùng từng bit với chạy riêng:
+    # kiểm tra chính xác việc trả lại đúng thứ tự sau khi sắp theo độ dài.
+    singles = [model.predict([text]) for text in TEXTS]
+    for texts, picks in (
+        (TEXTS, list(range(len(TEXTS)))),
+        (TEXTS[::-1], list(range(len(TEXTS)))[::-1]),
+    ):
+        logits = model.predict(texts, batch_size=1)
+        for row, pick in enumerate(picks):
+            np.testing.assert_array_equal(logits.sentiment[row], singles[pick].sentiment[0])
+            np.testing.assert_array_equal(logits.topic[row], singles[pick].topic[0])
+
+
+def test_batch_mates_change_logits_only_by_quantization_noise(model: OnnxModel):
+    """Int8 động tính scale kích hoạt theo cả tensor, nên cùng một câu lệch cỡ 0,1 logit (tối đa
+    ~0,4 đo được) tuỳ bạn cùng lô và phần đệm. Chặn trên rộng để bắt hỏng nặng, không so bằng."""
+    batched = model.predict(TEXTS, batch_size=32)
     for i, text in enumerate(TEXTS):
         alone = model.predict([text])
-        np.testing.assert_allclose(batched.sentiment[i], alone.sentiment[0], atol=LOGIT_TOLERANCE)
-        np.testing.assert_allclose(batched.topic[i], alone.topic[0], atol=LOGIT_TOLERANCE)
-
-
-def test_reversing_the_input_reverses_the_output(model: OnnxModel):
-    forward = model.predict(TEXTS)
-    backward = model.predict(TEXTS[::-1])
-    np.testing.assert_allclose(forward.sentiment, backward.sentiment[::-1], atol=LOGIT_TOLERANCE)
-    np.testing.assert_allclose(forward.topic, backward.topic[::-1], atol=LOGIT_TOLERANCE)
-
-
-def test_small_batches_agree_with_one_big_batch(model: OnnxModel):
-    big = model.predict(TEXTS, batch_size=32)
-    small = model.predict(TEXTS, batch_size=2)
-    np.testing.assert_allclose(big.sentiment, small.sentiment, atol=LOGIT_TOLERANCE)
-    np.testing.assert_allclose(big.topic, small.topic, atol=LOGIT_TOLERANCE)
+        assert np.abs(batched.sentiment[i] - alone.sentiment[0]).max() < NOISE_BOUND
+        assert np.abs(batched.topic[i] - alone.topic[0]).max() < NOISE_BOUND
 
 
 def test_single_sentence_runs_are_reproducible(model: OnnxModel):
