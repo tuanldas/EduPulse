@@ -14,6 +14,7 @@ from fastapi.utils import is_body_allowed_for_status_code
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from edupulse.api.access_log import route_template
+from edupulse.config import MAX_CHARS
 
 logger = logging.getLogger("edupulse.api")
 
@@ -30,7 +31,11 @@ _FALLBACK_ERROR = ("http_error", "Yêu cầu không thành công.")
 
 
 class ApiError(StarletteHTTPException):
-    """Lỗi nghiệp vụ có mã ổn định; handler bên dưới trả đúng `{"detail": {code, message}}`."""
+    """Lỗi nghiệp vụ có mã ổn định; handler bên dưới trả đúng `{"detail": {code, message}}`.
+
+    `params` là các số nguyên đi kèm (vd. số dòng của file) để giao diện tự ghép câu thông báo;
+    không đưa vào đó dữ liệu người dùng dạng chuỗi.
+    """
 
     def __init__(
         self,
@@ -38,10 +43,17 @@ class ApiError(StarletteHTTPException):
         code: str,
         message: str,
         headers: dict[str, str] | None = None,
+        params: dict[str, int] | None = None,
     ) -> None:
-        super().__init__(
-            status_code=status_code, detail={"code": code, "message": message}, headers=headers
-        )
+        detail: dict[str, object] = {"code": code, "message": message}
+        if params:
+            detail["params"] = params
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
+
+
+def not_implemented() -> ApiError:
+    """Route đã có trong hợp đồng nhưng chưa làm xong: lỗi rõ ràng, không trả dữ liệu giả."""
+    return ApiError(501, "not_implemented", "Chức năng này chưa được cài đặt.")
 
 
 def _is_api_detail(detail: object) -> bool:
@@ -58,14 +70,28 @@ async def http_error_handler(request: Request, exc: StarletteHTTPException) -> R
     return JSONResponse({"detail": detail}, status_code=exc.status_code, headers=exc.headers)
 
 
+# Loại lỗi do validator tuỳ biến phát ra (xem schemas.Text) -> (mã lỗi, thông báo, số đi kèm).
+_CODED_VALIDATION_ERRORS: dict[str, tuple[str, dict[str, int] | None]] = {
+    "text_empty": ("Câu không được để trống.", None),
+    "text_too_long": (f"Câu dài hơn {MAX_CHARS} ký tự.", {"max_chars": MAX_CHARS}),
+}
+
+
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     # Chỉ trả vị trí và loại lỗi: `input` của pydantic chứa nguyên văn dữ liệu người dùng gửi.
-    fields = [{"loc": list(error["loc"]), "type": error["type"]} for error in exc.errors()]
-    detail = {
+    errors = exc.errors()
+    fields = [{"loc": list(error["loc"]), "type": error["type"]} for error in errors]
+    detail: dict[str, object] = {
         "code": "validation_error",
         "message": "Dữ liệu gửi lên không hợp lệ.",
         "fields": fields,
     }
+    coded = next((e["type"] for e in errors if e["type"] in _CODED_VALIDATION_ERRORS), None)
+    if coded is not None:
+        message, params = _CODED_VALIDATION_ERRORS[coded]
+        detail.update(code=coded, message=message)
+        if params:
+            detail["params"] = params
     return JSONResponse({"detail": detail}, status_code=422)
 
 

@@ -25,9 +25,9 @@ BUILD_DEMO_ARG := $(if $(strip $(EDUPULSE_BUILD_DEMO)),--build-arg EDUPULSE_BUIL
 
 PY := uv run python
 
-# Chạy pnpm trong apps/web nếu đã có package.json (phần web được dựng ở phase sau).
+# Chạy pnpm TỪ TRONG apps/web để corepack đọc đúng `packageManager` (pnpm ghim) và không làm đổi lockfile.
 define web
-@if [ -f apps/web/package.json ]; then pnpm --dir apps/web $(1); \
+@if [ -f apps/web/package.json ]; then cd apps/web && pnpm $(1); \
 else echo "(bỏ qua) chưa có apps/web/package.json: pnpm $(1)"; fi
 endef
 
@@ -90,18 +90,18 @@ api: ## Chạy API FastAPI để dev (cổng 8000, tự nạp lại khi sửa sr
 	uv run uvicorn edupulse.api.main:app --reload --reload-dir src --no-access-log --port 8000
 
 web: ## Chạy Next.js dev (cổng 3000)
-	pnpm --dir apps/web dev
+	cd apps/web && pnpm dev
 
 gen-api: ## Xuất OpenAPI rồi sinh lại kiểu TypeScript cho web
 	$(PY) -m edupulse.api.export_openapi
-	pnpm --dir apps/web gen:api
+	cd apps/web && pnpm gen:api
 
 test: ## Chạy pytest (và Vitest khi đã có apps/web)
 	uv run pytest
 	$(call web,run --if-present test)
 
 e2e: ## Chạy Playwright trên container đang chạy (cần `make up`)
-	pnpm --dir apps/web exec playwright test
+	cd apps/web && pnpm exec playwright test
 
 lint: ## ruff, eslint và tsc --noEmit
 	uv run ruff check .
