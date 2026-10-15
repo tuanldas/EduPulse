@@ -31,6 +31,8 @@ def measure(analyzer: Analyzer, texts: Sequence[str], xai_rows: int, budget_pct:
     started = time.perf_counter()
     prepared = analyzer.prepare_many(texts)
     steps["prepare"] = time.perf_counter() - started
+    skipped = sum(p.n_words == 0 for p in prepared)  # câu không còn nội dung thì không có nhãn
+    prepared = [p for p in prepared if p.n_words]
 
     started = time.perf_counter()
     analyses = analyzer.infer(prepared)
@@ -51,6 +53,7 @@ def measure(analyzer: Analyzer, texts: Sequence[str], xai_rows: int, budget_pct:
     total = sum(steps.values())
     return {
         "n": len(texts),
+        "skipped_no_content": skipped,
         "budget_pct": budget_pct,
         "flagged": sum(a.flag.needs_review for a in analyses),
         "xai_rows": len(candidates),

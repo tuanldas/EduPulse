@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from edupulse.config import BUDGETS, DEFAULT_BUDGET, Settings
-from edupulse.engine.service import Analyzer
+from edupulse.engine.service import Analyzer, NoContent
 from edupulse.labels import LABELS
 
 pytestmark = pytest.mark.model
@@ -95,6 +95,37 @@ def test_progress_reports_done_and_total_for_the_whole_batch(analyzer: Analyzer,
     assert seen[-1] == (len(texts) * 3, len(texts) * 3)
     assert [done for done, _ in seen] == sorted(done for done, _ in seen)
     assert {total for _, total in seen} == {len(texts) * 3}
+
+
+NO_CONTENT_TEXTS = ["0912345678", "😀😀😀", "abc@example.com", "   0912 345 678   "]
+
+
+@pytest.mark.parametrize("text", NO_CONTENT_TEXTS)
+def test_text_with_nothing_left_to_analyze_is_refused_not_guessed(analyzer: Analyzer, text):
+    with pytest.raises(NoContent) as failure:
+        analyzer.analyze(text)
+    assert failure.value.code == "no_content" and failure.value.rows == (0,)
+    with pytest.raises(NoContent):
+        analyzer.explain(text)
+
+
+def test_batch_names_the_rows_that_have_no_content(analyzer: Analyzer, typed_texts):
+    batch = [typed_texts[0], "0912345678", typed_texts[1], "😀"]
+    with pytest.raises(NoContent) as failure:
+        analyzer.analyze_many(batch)
+    assert failure.value.rows == (1, 3)
+
+
+def test_callers_can_filter_empty_rows_before_inference(analyzer: Analyzer, typed_texts):
+    prepared = analyzer.prepare_many([typed_texts[0], "0912345678", typed_texts[1]])
+    kept = [p for p in prepared if p.n_words]
+    assert len(kept) == 2
+    assert len(analyzer.flag(analyzer.infer(kept))) == 2
+
+
+def test_name_only_text_still_has_a_token_to_analyze(analyzer: Analyzer):
+    analysis = analyzer.analyze("Thầy Nam")
+    assert analysis.prepared.n_words >= 1 and analysis.sentiment.probs
 
 
 def test_empty_batch_is_empty(analyzer: Analyzer):

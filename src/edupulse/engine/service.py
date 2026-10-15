@@ -34,6 +34,21 @@ from edupulse.text import Prepared, prepare, prepare_many
 WARMUP_SENTENCE = "Xin chào Thầy Nguyễn Văn An"
 
 
+class NoContent(ValueError):
+    """Câu không còn từ nào để phân tích sau khi ẩn thông tin cá nhân và bỏ ký hiệu.
+
+    Ví dụ câu chỉ có số điện thoại, email hay emoji. Mô hình vẫn trả nhãn cho chuỗi rỗng nhưng
+    đó là nhãn vô nghĩa, nên engine từ chối thay vì trả kết quả trông như thật. Job nền lọc trước
+    bằng `Prepared.n_words` (các dòng này không có nhãn) rồi mới gọi `infer`.
+    """
+
+    code = "no_content"
+
+    def __init__(self, rows: Sequence[int]) -> None:
+        super().__init__(f"{len(rows)} câu không còn nội dung để phân tích")
+        self.rows = tuple(rows)
+
+
 @dataclass(frozen=True, slots=True)
 class HeadResult:
     label: str
@@ -102,7 +117,13 @@ class Analyzer:
     def infer(
         self, prepared: Sequence[Prepared], progress: Callable[[int, int], None] | None = None
     ) -> list[Analysis]:
-        """Dự đoán và điểm cờ từng câu, chưa quyết định cờ; `progress(xong, tổng)` sau mỗi lô."""
+        """Dự đoán và điểm cờ từng câu, chưa quyết định cờ; `progress(xong, tổng)` sau mỗi lô.
+
+        Ném `NoContent` (kèm chỉ số các dòng) nếu có câu không còn từ nào để phân tích.
+        """
+        empty = [i for i, p in enumerate(prepared) if p.n_words == 0]
+        if empty:
+            raise NoContent(empty)
         total = len(prepared)
         logits = self._model.predict(
             [p.model_text for p in prepared],
@@ -165,10 +186,13 @@ class Analyzer:
         return self.flag(self.infer(self.prepare_many(texts), progress), budget_pct)
 
     def explain_prepared(self, prepared: Prepared) -> Explanation:
+        if prepared.n_words == 0:
+            raise NoContent([0])
         if prepared.n_words > XAI_MAX_WORDS:
             raise ExplanationUnavailable(prepared.n_words, XAI_MAX_WORDS)
         return explain_tokens(self._model, self.bundle.calibration, prepared.model_text.split())
 
     def explain(self, text: str) -> Explanation:
-        """Giải thích bằng bỏ từng từ; ném `ExplanationUnavailable` nếu câu dài hơn giới hạn."""
+        """Giải thích bằng bỏ từng từ. Ném `ExplanationUnavailable` nếu câu dài hơn giới hạn,
+        `NoContent` nếu câu không còn từ nào."""
         return self.explain_prepared(prepare(text, use_ner=self._use_ner))

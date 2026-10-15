@@ -12,7 +12,7 @@ from edupulse.api.errors import ApiError
 from edupulse.config import XAI_MAX_WORDS
 from edupulse.engine import explain as xai
 from edupulse.engine import flags
-from edupulse.engine.service import Analysis, HeadResult
+from edupulse.engine.service import Analysis, HeadResult, NoContent
 from edupulse.labels import LABELS
 
 router = APIRouter(
@@ -90,15 +90,26 @@ def to_explain_response(explanation: xai.Explanation) -> schemas.ExplainResponse
     )
 
 
+NO_CONTENT_MESSAGE = (
+    "Câu chỉ gồm thông tin cá nhân hoặc ký hiệu nên không có nội dung để phân tích."
+)
+
+
 @router.post("/analyze")
 def analyze(body: schemas.TextRequest, analyzer: AnalyzerDep) -> schemas.AnalyzeResponse:
-    return to_analyze_response(analyzer.analyze(body.text))
+    try:
+        analysis = analyzer.analyze(body.text)
+    except NoContent as exc:
+        raise ApiError(422, exc.code, NO_CONTENT_MESSAGE) from exc
+    return to_analyze_response(analysis)
 
 
 @router.post("/explain")
 def explain(body: schemas.TextRequest, analyzer: AnalyzerDep) -> schemas.ExplainResponse:
     try:
         explanation = analyzer.explain(body.text)
+    except NoContent as exc:
+        raise ApiError(422, exc.code, NO_CONTENT_MESSAGE) from exc
     except xai.ExplanationUnavailable as exc:
         raise ApiError(
             422,

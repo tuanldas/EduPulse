@@ -176,7 +176,21 @@ def test_hostile_text_is_answered_or_rejected_but_never_a_server_error(
     )
     assert response.status_code in (200, 422), response.text[:200]
     if response.status_code == 422:
-        assert response.json()["detail"]["code"] in ("validation_error", "xai_too_long")
+        code = response.json()["detail"]["code"]
+        assert code in ("validation_error", "xai_too_long", "no_content")
+
+
+@pytest.mark.model
+@pytest.mark.parametrize("path", ["/api/analyze", "/api/explain"])
+@pytest.mark.parametrize("text", ["0912345678", "😀😀", "abc@example.com"])
+def test_text_with_nothing_left_after_masking_is_422_no_content(
+    live_client: TestClient, path: str, text: str
+):
+    response = post(live_client, path, text)
+    assert response.status_code == 422
+    detail = schemas.ErrorResponse.model_validate(response.json()).detail
+    assert detail.code == "no_content"
+    assert text not in response.text
 
 
 @pytest.mark.model
