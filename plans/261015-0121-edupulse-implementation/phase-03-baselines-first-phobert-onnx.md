@@ -99,13 +99,13 @@ Sinh ra, không commit: `models/`, `outputs/onnx/`, `outputs/calibration/`, `art
 - [x] `ml/common.py` (metrics, ECE, khoá MPS, assert normalizer) + test
 - [x] `ml/phobert_model.py` + test bẫy `base_model_prefix`
 - [x] `ml/train_phobert.py` (vòng tay, chạy thử 256 mẫu)
-- [ ] Run MTL seed 42 (4 epoch, Docker tắt) + sanity
-- [ ] `ml/export_onnx.py`: parity FP32, int8, cổng ≤1 điểm, golden predictions
+- [x] Run MTL seed 42 (4 epoch, Docker tắt) + sanity
+- [x] `ml/export_onnx.py`: parity FP32, int8, cổng ≤1 điểm, golden predictions
 - [x] `tokenizer.json` ghim sha + kiểm id 1.583/1.583
 - [x] `ml/train_baseline.py` + tune val + skops roundtrip
 - [x] `scoring.py` + `ml/calibrate.py` + test parity
 - [x] `bundle_schema.py` + golden 20 câu tự viết + test schema
-- [ ] `ml/build_artifacts.py` → `artifacts/v0-smoke/` + guard + test; ghi metrics + commit
+- [x] `ml/build_artifacts.py` → `artifacts/v0-smoke/` + guard + test; ghi metrics + commit
 
 ## Success Criteria
 - Baseline val gần r1 L94: LinearSVC mF1 cảm xúc ≈79,6, chủ đề ≈77,2 (±1,5); thứ hạng LinearSVC > LR > CNB.
