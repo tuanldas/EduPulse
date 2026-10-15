@@ -2,6 +2,7 @@
 #
 # Cần bundle mô hình có sẵn ở $EDUPULSE_HOME/artifacts/$BUNDLE_VERSION (`make artifacts` hoặc
 # `make fetch-artifacts`). Compose tự đọc `.env` cạnh file này để thay các biến ${...}.
+# Cổng máy chủ mặc định 8000, đổi bằng EDUPULSE_PORT khi cổng đó đã bận.
 # Giới hạn tài nguyên khớp phép đo smoke test: --cpus=2 --memory=1536m --memory-swap=1536m.
 name: edupulse
 services:
@@ -14,7 +15,7 @@ services:
       args:
         BUNDLE_VERSION: ${BUNDLE_VERSION:-v1.0}
     ports:
-      - "8000:8000"
+      - "${EDUPULSE_PORT:-8000}:8000"
     # Chỉ chuyển các biến chạy lúc runtime; đường dẫn của máy chủ (EDUPULSE_HOME, ...) ở lại ngoài.
     environment:
       EDUPULSE_ORT_THREADS: ${EDUPULSE_ORT_THREADS:-2}

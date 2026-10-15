@@ -1,5 +1,6 @@
-"""Fixture dùng chung cho test API: cấu hình đọc từ env và thư mục web export thật."""
+"""Fixture dùng chung cho test API: cấu hình đọc từ env, thư mục web export và app có mô hình."""
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from edupulse.api.main import create_app
 from edupulse.config import Settings, load_settings
+from edupulse.text.segment import SegmenterError
 
 
 @pytest.fixture(scope="session")
@@ -27,3 +29,13 @@ def client(settings: Settings) -> TestClient:
     # Không vào `with`: bỏ qua lifespan (cần bundle) vì các test dùng fixture này chỉ kiểm tra
     # định tuyến, header và nhật ký.
     return TestClient(create_app(settings))
+
+
+@pytest.fixture(scope="session")
+def live_client(settings: Settings) -> Iterator[TestClient]:
+    """App đã qua lifespan, tức đã nạp bundle thật; chỉ dùng cùng marker `model`."""
+    try:
+        with TestClient(create_app(settings)) as live:
+            yield live
+    except SegmenterError as exc:  # máy không có JRE
+        pytest.skip(f"không khởi động được bộ tách từ: {exc}")

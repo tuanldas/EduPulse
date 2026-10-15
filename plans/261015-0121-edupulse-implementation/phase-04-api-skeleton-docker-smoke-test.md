@@ -138,9 +138,9 @@ Phần B (cần `artifacts/v0-smoke/`, toàn bộ là [smoke]):
 - [x] Scaffold Next.js export tĩnh (ghim TS 5.9.3, pnpm, `.nvmrc`)
 - [x] Khung FastAPI: lifespan, lỗi JSON, static mount, catch-all 404 JSON, CORS env, header an toàn, `access_log` (không access log uvicorn)
 - [x] Dockerfile `web` + `runtime` (`ARG BUNDLE_VERSION`) + `.dockerignore` + compose cơ bản
-- [ ] Engine: bundle, onnx_model, flags (qua `scoring.py`), explain, service + test golden (model thật)
-- [ ] `/api/health`, `/api/analyze`, `/api/explain` + test TestClient
-- [ ] `engine/bench.py` + guard "không torch/pandas/pyarrow"
+- [x] Engine: bundle, onnx_model, flags (qua `scoring.py`), explain, service + test golden (model thật)
+- [x] `/api/health`, `/api/analyze`, `/api/explain` + test TestClient
+- [x] `engine/bench.py` + guard "không torch/pandas/pyarrow"
 - [ ] Smoke test trong container (2 CPU/1,5GB) + báo cáo `results/perf/` + mốc M1
 - [ ] Commit
 
