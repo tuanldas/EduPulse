@@ -49,6 +49,7 @@ GO = {
 }
 MARKERS = ("SMOKE-NOI-DUNG-9f3a", "SMOKE-QUERY-7c1d", "SMOKE-ID-4b2e", "SMOKE-NHOM-1a6c")
 LONG_WORDS = 30  # câu 30–40 từ là ca xấu nhất của giải thích bằng bỏ từng từ
+BATCHED_REFERENCE = 32  # lô của bench tham khảo (nhanh hơn, nhưng kết quả phụ thuộc bạn cùng lô)
 OUTCOME = {True: "ĐẠT", False: "KHÔNG ĐẠT", None: "không đo"}
 
 
@@ -372,16 +373,16 @@ def run_scenario(
             args.xai,
             args.bench_batch_size,
         )
-        if args.also_batch1 and args.bench_batch_size != 1:
-            result["bench_batch1"] = run_bench(
+        if args.also_batched and args.bench_batch_size != BATCHED_REFERENCE:
+            result["bench_batched"] = run_bench(
                 args.image,
-                f"{bench_name}-batch1",
+                f"{bench_name}-batched",
                 cpus,
                 args.memory,
                 bench_file,
                 args.n,
                 args.xai,
-                1,
+                BATCHED_REFERENCE,
             )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
         result["checks"].update(check_logs("".join(server.logs())))
@@ -593,20 +594,21 @@ def render_markdown(report: dict) -> str:
             f"```\n{bench.get('stderr_tail', '')}\n```",
         ]
 
-    single = gate.get("bench_batch1")
-    if single and "error" not in single:
-        ratio = single["total_s"] / bench["total_s"] if bench and "total_s" in bench else None
+    batched = gate.get("bench_batched")
+    if batched and "error" not in batched:
+        ratio = bench["total_s"] / batched["total_s"] if bench and "total_s" in bench else None
         lines += [
             "",
-            "## Tham khảo: bench chạy từng câu một (lô ONNX 1, kết quả tất định như `analyze`)",
+            f"## Tham khảo: bench theo lô ONNX {BATCHED_REFERENCE} (kết quả phụ thuộc bạn cùng lô)",
             "",
-            f"- 1.000 câu end-to-end {single['total_s']} s"
-            + ("" if ratio is None else f" (gấp {ratio:.2f} lần lô mặc định)"),
-            f"- predict {single['steps_s']['predict']} s; explain {single['steps_s']['explain']} s;"
-            f" cgroup memory.peak {single.get('cgroup_memory_peak_mb', '-')} MB",
+            f"- 1.000 câu end-to-end {batched['total_s']} s"
+            + ("" if ratio is None else f" (mặc định chậm hơn {ratio:.2f} lần)"),
+            f"- predict {batched['steps_s']['predict']} s;"
+            f" explain {batched['steps_s']['explain']} s;"
+            f" cgroup memory.peak {batched.get('cgroup_memory_peak_mb', '-')} MB",
         ]
-    elif single:
-        lines += ["", "## Tham khảo: bench từng câu một", "", f"Lỗi: {single['error']}"]
+    elif batched:
+        lines += ["", "## Tham khảo: bench theo lô 32", "", f"Lỗi: {batched['error']}"]
 
     lines += ["", "## Kiểm tra hành vi", ""]
     lines += [
@@ -658,7 +660,7 @@ def parse_args(settings: Settings) -> argparse.Namespace:
     add("--cpus", type=float, default=2.0)
     add("--memory", default="1536m")
     add("--also-1cpu", action="store_true", help="thêm một lượt tham khảo với 1 CPU")
-    add("--also-batch1", action="store_true", help="thêm bench tham khảo chạy từng câu một")
+    add("--also-batched", action="store_true", help="thêm bench tham khảo chạy theo lô 32")
     add("--port", type=int, default=0, help="cổng máy chủ; 0 = tự chọn cổng trống")
     add("--sentences", help="file mỗi dòng một câu; mặc định lấy tập val đã xử lý")
     add("--n", type=int, default=1000, help="số câu của bench")

@@ -50,13 +50,25 @@ def test_one_sentence_gives_the_same_numbers_by_every_route(analyzer: Analyzer, 
     assert single.score == batched.score
 
 
-def test_batch_size_one_reproduces_single_sentence_results_exactly(analyzer: Analyzer, typed_texts):
-    # Int8 động làm kết quả phụ thuộc bạn cùng lô; lô 1 là chế độ tất định khớp analyze và golden.
-    batched = analyzer.analyze_many(typed_texts, batch_size=1)
-    for text, analysis in zip(typed_texts, batched, strict=True):
+def test_batch_jobs_default_to_the_calibration_batch_size_and_match_analyze_exactly(
+    analyzer: Analyzer, typed_texts
+):
+    # Int8 động làm kết quả phụ thuộc bạn cùng lô; mặc định chạy đúng cỡ lô lúc hiệu chỉnh (1), nên
+    # một câu có cùng nhãn, xác suất và điểm cờ dù đi qua analyze hay analyze_many.
+    assert analyzer.calibration.logits_batch_size == 1
+    for text, analysis in zip(typed_texts, analyzer.analyze_many(typed_texts), strict=True):
         single = analyzer.analyze(text)
         assert (analysis.sentiment, analysis.topic) == (single.sentiment, single.topic), text
         assert analysis.score == single.score
+
+
+def test_larger_batches_are_faster_but_only_approximately_the_same(analyzer: Analyzer, typed_texts):
+    approx = analyzer.infer(analyzer.prepare_many(typed_texts), batch_size=32)
+    exact = analyzer.infer(analyzer.prepare_many(typed_texts))
+    for a, b in zip(approx, exact, strict=True):
+        for head_a, head_b in ((a.sentiment, b.sentiment), (a.topic, b.topic)):
+            drift = max(abs(x - y) for x, y in zip(head_a.probs, head_b.probs, strict=True))
+            assert drift < 0.5
 
 
 def test_single_sentence_is_flagged_exactly_when_below_the_default_budget_threshold(
@@ -144,8 +156,9 @@ def test_empty_batch_is_empty(analyzer: Analyzer):
 
 @pytest.mark.data
 @pytest.mark.slow
+@pytest.mark.parametrize(("batch_size", "low", "high"), [(None, 0.08, 0.12), (32, 0.07, 0.13)])
 def test_default_threshold_flags_about_ten_percent_of_the_validation_set(
-    analyzer: Analyzer, settings: Settings
+    analyzer: Analyzer, settings: Settings, batch_size, low, high
 ):
     pq = pytest.importorskip("pyarrow.parquet")
     column = pq.read_table(
@@ -153,7 +166,7 @@ def test_default_threshold_flags_about_ten_percent_of_the_validation_set(
     )
     sentences = [str(s) for s in column.column(0).to_pylist()]
 
-    analyses = analyzer.infer(analyzer.prepare_many(sentences))
+    analyses = analyzer.infer(analyzer.prepare_many(sentences), batch_size=batch_size)
     tau = analyzer.calibration.tau[DEFAULT_BUDGET]
     share = sum(a.score < tau for a in analyses) / len(analyses)
-    assert 0.07 <= share <= 0.13, f"{share:.3f} câu val dưới ngưỡng ngân sách {DEFAULT_BUDGET}%"
+    assert low <= share <= high, f"{share:.3f} câu val dưới ngưỡng ngân sách {DEFAULT_BUDGET}%"

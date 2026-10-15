@@ -122,8 +122,10 @@ class Analyzer:
     ) -> list[Analysis]:
         """Dự đoán và điểm cờ từng câu, chưa quyết định cờ; `progress(xong, tổng)` sau mỗi lô.
 
-        Int8 động làm kết quả một câu phụ thuộc nhẹ vào bạn cùng lô. `batch_size=1` cho đúng kết
-        quả của `analyze` và của lúc hiệu chỉnh (chậm hơn vài lần); mặc định dùng lô của mô hình.
+        Int8 động làm kết quả một câu phụ thuộc vào bạn cùng lô, nên mặc định chạy đúng cỡ lô mà
+        bundle đã dùng khi hiệu chỉnh (`logits_batch_size`, hiện là 1: từng câu một): nhãn và cờ
+        của một câu khi đó không đổi giữa `analyze` và batch job. `batch_size` lớn hơn nhanh hơn
+        nhưng kết quả lệch nhẹ theo bạn cùng lô.
         Ném `NoContent` (kèm chỉ số các dòng) nếu có câu không còn từ nào để phân tích.
         """
         empty = [i for i, p in enumerate(prepared) if p.n_words == 0]
@@ -132,7 +134,7 @@ class Analyzer:
         total = len(prepared)
         logits = self._model.predict(
             [p.model_text for p in prepared],
-            batch_size=batch_size,
+            batch_size=batch_size or self.bundle.calibration.logits_batch_size,
             progress=None if progress is None else lambda done: progress(done, total),
         )
         calibration = self.bundle.calibration

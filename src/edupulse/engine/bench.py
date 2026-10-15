@@ -41,6 +41,7 @@ def measure(
     prepared = [p for p in prepared if p.n_words]
 
     started = time.perf_counter()
+    batch_size = batch_size or analyzer.calibration.logits_batch_size
     analyses = analyzer.infer(prepared, batch_size=batch_size)
     steps["predict"] = time.perf_counter() - started
 
@@ -77,7 +78,9 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--n", type=int, default=1000, help="số câu đo")
     parser.add_argument("--xai", type=int, default=AUTO_XAI_TOP, help="số câu giải thích tự động")
     parser.add_argument("--budget", type=float, default=DEFAULT_BUDGET, help="ngân sách duyệt, %%")
-    parser.add_argument("--batch-size", type=int, help="kích thước lô ONNX; 1 = từng câu một")
+    parser.add_argument(
+        "--batch-size", type=int, help="cỡ lô ONNX; mặc định theo logits_batch_size của bundle"
+    )
     parser.add_argument("--json", action="store_true", help="in một dòng JSON ra stdout")
     return parser.parse_args(argv)
 
