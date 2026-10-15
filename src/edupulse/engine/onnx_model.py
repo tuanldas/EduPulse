@@ -22,8 +22,26 @@ from edupulse.labels import SENTIMENT, TOPIC
 # Mỗi lần gọi chỉ vài chục câu: song song hoá của tokenizers tốn hơn lợi và tranh CPU với ORT.
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
+# ORT gửi sự kiện sử dụng về Microsoft ở một số nền tảng. Tắt trước khi tạo session đầu tiên: dữ
+# liệu của sinh viên không được rời máy chủ, và khi mạng chặn thì bước xả sự kiện lúc thoát tiến
+# trình có thể quay vòng chiếm CPU hàng chục phút (đã gặp trên macOS).
+ort.disable_telemetry_events()
+
 DEFAULT_BATCH_SIZE = 32
 WARMUP_TEXT = "xin chào"
+
+# `tokenizer.json` của PhoBERT-base-v2 có id tới 66118 nhưng bảng embedding của mô hình chỉ có 64001
+# hàng. Bộ tách chậm chính thức (bộ đã dùng lúc huấn luyện) đổi 2.118 mảnh BPE dư, vd "đạt_" trong
+# "truyền_đạt_kiến", thành <unk>. Làm y hệt: vừa khớp lúc huấn luyện, vừa tránh lỗi chỉ số ngoài
+# biên của ORT (một câu như vậy từng làm cả yêu cầu hỏng).
+EMBEDDING_ROWS = 64001
+UNK_ID = 3
+
+
+def clamp_unknown_ids(ids: np.ndarray) -> np.ndarray:
+    """Đổi mọi id ngoài bảng embedding thành <unk>, tại chỗ; trả lại chính mảng đó."""
+    np.putmask(ids, ids >= EMBEDDING_ROWS, UNK_ID)
+    return ids
 
 
 @dataclass(frozen=True)
@@ -54,6 +72,8 @@ class OnnxModel:
         tokenizer = Tokenizer.from_file(str(bundle.tokenizer_path))
         tokenizer.enable_truncation(max_length=bundle.manifest.max_len)
         tokenizer.no_padding()
+        if tokenizer.token_to_id("<unk>") != UNK_ID:
+            raise BundleError("tokenizer.json không phải của PhoBERT: <unk> không có id 3")
         self._tokenizer = tokenizer
 
         options = ort.SessionOptions()
@@ -89,7 +109,7 @@ class OnnxModel:
         for i, row in enumerate(rows):
             ids[i, : len(row)] = row
             mask[i, : len(row)] = 1
-        return ids, mask
+        return clamp_unknown_ids(ids), mask
 
     def _run(self, ids: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         feed = {self._input_names[0]: ids, self._input_names[1]: mask}

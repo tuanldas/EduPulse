@@ -31,10 +31,12 @@ def test_measure_reports_each_step_and_a_total_that_adds_up(analyzer: Analyzer, 
     assert result["xai_forwards"] > result["xai_rows"]
 
 
-def test_measure_can_run_one_sentence_per_batch_and_says_so(analyzer: Analyzer, sentences):
-    result = measure(analyzer, sentences, xai_rows=1, budget_pct=10, batch_size=1)
-    assert result["batch_size"] == 1
-    assert measure(analyzer, sentences, xai_rows=1, budget_pct=10)["batch_size"] is None
+def test_measure_reports_the_batch_size_it_used(analyzer: Analyzer, sentences):
+    default = measure(analyzer, sentences, xai_rows=1, budget_pct=10)
+    assert default["batch_size"] == analyzer.calibration.logits_batch_size == 1
+    assert (
+        measure(analyzer, sentences, xai_rows=1, budget_pct=10, batch_size=32)["batch_size"] == 32
+    )
 
 
 def test_measure_skips_sentences_with_no_content_instead_of_failing(analyzer: Analyzer, sentences):
@@ -48,14 +50,14 @@ def test_cli_prints_one_json_line_with_the_keys_the_smoke_test_reads(
     path = tmp_path / "cau.txt"
     path.write_text("\n".join(sentences) + "\n", encoding="utf-8")
 
-    args = ["--input", str(path), "--n", str(len(sentences)), "--xai", "2", "--batch-size", "1"]
+    args = ["--input", str(path), "--n", str(len(sentences)), "--xai", "2", "--batch-size", "4"]
     assert main([*args, "--json"]) == 0
     out = capsys.readouterr().out.strip().splitlines()
     assert len(out) == 1
     result = json.loads(out[0])
     for key in ("total_s", "steps_s", "rss_mb", "cgroup_memory_peak_mb", "bundle_version"):
         assert key in result
-    assert result["budget_pct"] == DEFAULT_BUDGET and result["batch_size"] == 1
+    assert result["budget_pct"] == DEFAULT_BUDGET and result["batch_size"] == 4
     assert AUTO_XAI_TOP > 2  # --xai ghi đè mặc định
     assert result["xai_rows"] <= 2
 

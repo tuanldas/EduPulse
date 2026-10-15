@@ -161,6 +161,8 @@ HOSTILE_TEXTS = {
     "only a phone number": "0912345678",
     "emoticon flood": ":) " * 150,
     "dots": "." * MAX_CHARS,
+    "piece outside the embedding table": "truyền_đạt_kiến thưc tốt",
+    "model special tokens typed by the user": "<s> </s> <pad> <unk> <mask> thầy dạy hay",
 }
 
 

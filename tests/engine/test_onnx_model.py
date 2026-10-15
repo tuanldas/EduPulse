@@ -8,9 +8,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pytest
+from tokenizers import Tokenizer
 
 from edupulse.engine.bundle import Bundle
-from edupulse.engine.onnx_model import OnnxModel
+from edupulse.engine.onnx_model import (
+    EMBEDDING_ROWS,
+    UNK_ID,
+    OnnxModel,
+    clamp_unknown_ids,
+)
 from edupulse.labels import SENTIMENT, TOPIC
 
 pytestmark = pytest.mark.model
@@ -102,3 +108,23 @@ def test_concurrent_calls_match_sequential_calls(model: OnnxModel):
         expected = sequential[i % len(TEXTS)]
         np.testing.assert_array_equal(result.sentiment, expected.sentiment)
         np.testing.assert_array_equal(result.topic, expected.topic)
+
+
+# "đạt_" (id 65771) là mảnh BPE nằm ngoài bảng embedding 64001 hàng; xuất hiện trong từ ghép RDR.
+OUT_OF_TABLE_TEXT = "truyền_đạt_kiến thưc tốt"
+
+
+def test_pieces_beyond_the_embedding_table_are_read_as_unknown(model: OnnxModel, bundle: Bundle):
+    tokenizer = Tokenizer.from_file(str(bundle.tokenizer_path))
+    ids = tokenizer.encode(OUT_OF_TABLE_TEXT).ids
+    assert max(ids) >= EMBEDDING_ROWS, "câu thử không còn chứa mảnh ngoài bảng embedding"
+
+    logits = model.predict([OUT_OF_TABLE_TEXT])  # trước đây ORT báo chỉ số ngoài biên
+    assert np.isfinite(logits.sentiment).all() and np.isfinite(logits.topic).all()
+
+    # Kết quả phải đúng bằng khi chính các id đó được đổi sang <unk> rồi mới chạy mô hình.
+    row = [UNK_ID if i >= EMBEDDING_ROWS else i for i in ids]
+    arr = clamp_unknown_ids(np.array([row], dtype=np.int64))
+    sentiment, topic = model._run(arr, np.ones_like(arr))
+    np.testing.assert_array_equal(logits.sentiment, sentiment)
+    np.testing.assert_array_equal(logits.topic, topic)

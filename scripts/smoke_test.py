@@ -49,6 +49,7 @@ GO = {
 }
 MARKERS = ("SMOKE-NOI-DUNG-9f3a", "SMOKE-QUERY-7c1d", "SMOKE-ID-4b2e", "SMOKE-NHOM-1a6c")
 LONG_WORDS = 30  # câu 30–40 từ là ca xấu nhất của giải thích bằng bỏ từng từ
+BATCHED_REFERENCE = 32  # lô của bench tham khảo (nhanh hơn, nhưng kết quả phụ thuộc bạn cùng lô)
 OUTCOME = {True: "ĐẠT", False: "KHÔNG ĐẠT", None: "không đo"}
 
 
@@ -372,6 +373,17 @@ def run_scenario(
             args.xai,
             args.bench_batch_size,
         )
+        if args.also_batched and args.bench_batch_size != BATCHED_REFERENCE:
+            result["bench_batched"] = run_bench(
+                args.image,
+                f"{bench_name}-batched",
+                cpus,
+                args.memory,
+                bench_file,
+                args.n,
+                args.xai,
+                BATCHED_REFERENCE,
+            )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
         result["checks"].update(check_logs("".join(server.logs())))
         result["server_memory_peak_mb"] = server.memory_peak_mb()
@@ -582,6 +594,22 @@ def render_markdown(report: dict) -> str:
             f"```\n{bench.get('stderr_tail', '')}\n```",
         ]
 
+    batched = gate.get("bench_batched")
+    if batched and "error" not in batched:
+        ratio = bench["total_s"] / batched["total_s"] if bench and "total_s" in bench else None
+        lines += [
+            "",
+            f"## Tham khảo: bench theo lô ONNX {BATCHED_REFERENCE} (kết quả phụ thuộc bạn cùng lô)",
+            "",
+            f"- 1.000 câu end-to-end {batched['total_s']} s"
+            + ("" if ratio is None else f" (mặc định chậm hơn {ratio:.2f} lần)"),
+            f"- predict {batched['steps_s']['predict']} s;"
+            f" explain {batched['steps_s']['explain']} s;"
+            f" cgroup memory.peak {batched.get('cgroup_memory_peak_mb', '-')} MB",
+        ]
+    elif batched:
+        lines += ["", "## Tham khảo: bench theo lô 32", "", f"Lỗi: {batched['error']}"]
+
     lines += ["", "## Kiểm tra hành vi", ""]
     lines += [
         f"- {name}: {'đạt' if ok else 'KHÔNG ĐẠT'}" for name, ok in gate.get("checks", {}).items()
@@ -632,6 +660,7 @@ def parse_args(settings: Settings) -> argparse.Namespace:
     add("--cpus", type=float, default=2.0)
     add("--memory", default="1536m")
     add("--also-1cpu", action="store_true", help="thêm một lượt tham khảo với 1 CPU")
+    add("--also-batched", action="store_true", help="thêm bench tham khảo chạy theo lô 32")
     add("--port", type=int, default=0, help="cổng máy chủ; 0 = tự chọn cổng trống")
     add("--sentences", help="file mỗi dòng một câu; mặc định lấy tập val đã xử lý")
     add("--n", type=int, default=1000, help="số câu của bench")
