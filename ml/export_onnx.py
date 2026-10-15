@@ -4,8 +4,9 @@
 
 Các bước (đều trên CPU): xuất FP32 bằng `torch.onnx.export(dynamo=True)` với trục batch và seq
 động -> kiểm khớp torch (|Δlogit| < 1e-3) -> `quant_pre_process` (bắt buộc với bản dynamo) ->
-lượng tử hoá int8 chỉ MatMul có trọng số, từng kênh, reduce_range (một số MatMul giữ FP32 theo
-`--quant-config`, xem QUANT_CONFIGS) -> chấm val FP32 và int8 -> ghi cổng.
+lượng tử hoá int8 chỉ MatMul có trọng số, từng kênh, reduce_range (một số MatMul, và có thể cả
+hai đầu phân loại, giữ FP32 theo `--quant-config`, xem QUANT_CONFIGS) -> chấm val FP32 và int8 ->
+ghi cổng.
 Cổng: macro-F1 val của int8 không được thấp hơn FP32 quá 1 điểm ở MỘT trong hai tác vụ khi chạy
 từng câu một (batch 1, chế độ phục vụ ở mọi đường), nếu không tiến trình thoát với mã 1. Int8
 động phụ thuộc lô, nên logits val dùng để hiệu chuẩn (`val_logits_int8.npz`) và
@@ -25,7 +26,7 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 import onnx
@@ -110,26 +111,55 @@ def export_fp32(model: MultiHeadPhoBERT, sample: list[list[int]], path: Path) ->
 
 # Mỗi lớp encoder có 6 MatMul có trọng số, theo thứ tự đồ thị: Q, K, V, O (h x h), FFN vào (h x i),
 # FFN ra (i x h). Một cấu hình cho biết (lớp, vị trí 0..5) nào GIỮ FP32; số lớp lấy từ đồ thị.
+# Hai đầu phân loại là nút Gemm; `quantize_dynamic` đổi chúng thành MatMul + Add rồi lượng tử hoá
+# trừ khi cấu hình đặt `heads_fp32` (khi đó tên MatMul sinh ra được đưa vào danh sách loại trừ).
 PER_LAYER = 6
+HEADS_SUFFIX = "+heads_fp32"
 KeepFp32 = Callable[[int, int, int], bool]  # (lớp, vị trí, số lớp) -> giữ FP32?
-QUANT_CONFIGS: dict[str, tuple[str, KeepFp32]] = {
-    "all_int8": ("mọi MatMul có trọng số", lambda layer, slot, n: False),
-    "ffn_out_fp32": ("trừ phép chiếu ra của FFN (giữ FP32)", lambda layer, slot, n: slot == 5),
-    "ffn_fp32": ("trừ cả hai phép chiếu của FFN (giữ FP32)", lambda layer, slot, n: slot in (4, 5)),
-    "attn_fp32": (
+
+
+class QuantConfig(NamedTuple):
+    description: str
+    keep_fp32: KeepFp32
+    heads_fp32: bool = False
+
+
+QUANT_CONFIGS: dict[str, QuantConfig] = {
+    "all_int8": QuantConfig("mọi MatMul có trọng số", lambda layer, slot, n: False),
+    "ffn_out_fp32": QuantConfig(
+        "trừ phép chiếu ra của FFN (giữ FP32)", lambda layer, slot, n: slot == 5
+    ),
+    "ffn_fp32": QuantConfig(
+        "trừ cả hai phép chiếu của FFN (giữ FP32)", lambda layer, slot, n: slot in (4, 5)
+    ),
+    "attn_fp32": QuantConfig(
         "trừ Q/K/V và phép chiếu ra của attention (giữ FP32)",
         lambda layer, slot, n: slot in (0, 1, 2, 3),
     ),
-    "last4_fp32": ("trừ 4 lớp encoder cuối (giữ FP32)", lambda layer, slot, n: layer >= n - 4),
+    "last4_fp32": QuantConfig(
+        "trừ 4 lớp encoder cuối (giữ FP32)", lambda layer, slot, n: layer >= n - 4
+    ),
 }
+# Vòng 2: cùng bộ loại trừ của encoder nhưng hai đầu phân loại cũng giữ FP32, cùng một cấu hình
+# mới giữ FP32 phép chiếu ra của FFN ở nửa đầu các lớp (xem đăng ký vòng 2).
+for _base in ("all_int8", "ffn_out_fp32", "attn_fp32"):
+    QUANT_CONFIGS[_base + HEADS_SUFFIX] = QUANT_CONFIGS[_base]._replace(heads_fp32=True)
+QUANT_CONFIGS["ffn_out_early6_fp32" + HEADS_SUFFIX] = QuantConfig(
+    "trừ phép chiếu ra của FFN ở nửa đầu các lớp encoder (giữ FP32)",
+    lambda layer, slot, n: slot == 5 and layer < n // 2,
+    heads_fp32=True,
+)
 # Cấu hình triển khai = kết quả của `ml/onnx_gate_search.py` theo luật chọn đã đăng ký trước khi
-# chạy (results/metrics/onnx_gate_search.json): tệp NHỎ nhất đạt cổng ở batch 1 cho cả hai tác vụ.
-DEPLOY_QUANT_CONFIG = "attn_fp32"
+# chạy (results/metrics/onnx_gate_search.json, vòng 2): nhanh nhất ở batch 1 trong các cấu hình
+# đạt cổng, hoà trong 5% thì ít nhãn đổi nhất.
+DEPLOY_QUANT_CONFIG = "ffn_out_early6_fp32+heads_fp32"
 
 
 def quantization_description(config: str) -> str:
+    spec = QUANT_CONFIGS[config]
+    heads = "hai đầu phân loại giữ FP32" if spec.heads_fp32 else "hai đầu phân loại cũng int8"
     return (
-        f"int8 động, MatMul có trọng số {QUANT_CONFIGS[config][0]}, từng kênh, reduce_range (ORT)"
+        f"int8 động, MatMul có trọng số {spec.description}, {heads}, từng kênh, reduce_range (ORT)"
     )
 
 
@@ -151,20 +181,52 @@ def weight_matmul_names(graph: Any) -> list[str]:
     return [name for name, _ in found]
 
 
+def head_matmul_names(graph: Any) -> list[str]:
+    """Tên MatMul mà ORT sinh ra từ hai đầu phân loại (Gemm có trọng số hằng): `<tên Gemm>_MatMul`.
+
+    `quantize_dynamic` đổi mỗi Gemm (alpha=beta=1, transA=0) thành MatMul + Add và đặt tên MatMul
+    là tên Gemm cộng `_MatMul`; danh sách loại trừ phải dùng tên sau khi đổi, không phải tên Gemm.
+    """
+    initializers = {i.name for i in graph.initializer}
+    heads = [n for n in graph.node if n.op_type == "Gemm" and n.input[1] in initializers]
+    if len(heads) != len(TASKS) or not all(n.name for n in heads):
+        raise RuntimeError(
+            f"cần đúng {len(TASKS)} nút Gemm có tên và trọng số hằng (hai đầu phân loại), "
+            f"thấy {len(heads)}"
+        )
+    return [f"{n.name}_MatMul" for n in heads]
+
+
 def excluded_nodes(graph: Any, config: str) -> list[str]:
-    """Các MatMul được giữ FP32 theo cấu hình lượng tử hoá."""
+    """Các MatMul được giữ FP32 theo cấu hình lượng tử hoá (kể cả hai đầu khi `heads_fp32`)."""
     if config not in QUANT_CONFIGS:
         raise ValueError(
             f"cấu hình lượng tử hoá {config!r} không có; chọn trong {list(QUANT_CONFIGS)}"
         )
+    spec = QUANT_CONFIGS[config]
     names = weight_matmul_names(graph)
-    keep_fp32 = QUANT_CONFIGS[config][1]
     n_layers = len(names) // PER_LAYER
-    return [
+    excluded = [
         name
         for index, name in enumerate(names)
-        if keep_fp32(index // PER_LAYER, index % PER_LAYER, n_layers)
+        if spec.keep_fp32(index // PER_LAYER, index % PER_LAYER, n_layers)
     ]
+    return (excluded + head_matmul_names(graph)) if spec.heads_fp32 else excluded
+
+
+def check_quantized_graph(path: Path, quantizable: list[str], excluded: list[str]) -> None:
+    """Đồ thị đã lượng tử hoá phải có MatMulInteger đúng cho các MatMul không bị loại trừ.
+
+    Bắt lỗi loại trừ nhầm tên (ORT lặng lẽ bỏ qua tên không khớp và vẫn lượng tử hoá nút đó).
+    """
+    graph = onnx.load(str(path), load_external_data=False).graph
+    integer = {n.name for n in graph.node if n.op_type == "MatMulInteger"}
+    expected = {f"{name}_quant" for name in quantizable if name not in set(excluded)}
+    if integer != expected:
+        raise RuntimeError(
+            f"đồ thị int8 không khớp cấu hình: thừa {sorted(integer - expected)[:4]}, "
+            f"thiếu {sorted(expected - integer)[:4]}"
+        )
 
 
 def quantize_int8(fp32_path: Path, int8_path: Path, config: str = DEPLOY_QUANT_CONFIG) -> int:
@@ -172,7 +234,9 @@ def quantize_int8(fp32_path: Path, int8_path: Path, config: str = DEPLOY_QUANT_C
     prepared = fp32_path.with_name(f"{int8_path.stem}.preprocessed.onnx")
     try:
         quant_pre_process(str(fp32_path), str(prepared))
-        excluded = excluded_nodes(onnx.load(str(prepared), load_external_data=False).graph, config)
+        graph = onnx.load(str(prepared), load_external_data=False).graph
+        excluded = excluded_nodes(graph, config)
+        quantizable = [*weight_matmul_names(graph), *head_matmul_names(graph)]
         quantize_dynamic(
             str(prepared),
             str(int8_path),
@@ -182,6 +246,7 @@ def quantize_int8(fp32_path: Path, int8_path: Path, config: str = DEPLOY_QUANT_C
             reduce_range=True,
             nodes_to_exclude=excluded,
         )
+        check_quantized_graph(int8_path, quantizable, excluded)
     finally:
         prepared.unlink(missing_ok=True)
     return len(excluded)
@@ -453,6 +518,7 @@ def export(
             "batched_is_informational": f"batch={EVAL_BATCH}",
         },
         "quant_config": quant_config,
+        "heads_fp32": QUANT_CONFIGS[quant_config].heads_fp32,
         "n_matmul_kept_fp32": kept_fp32,
         "files": {"fp32_bytes": fp32_path.stat().st_size, "int8_bytes": int8_path.stat().st_size},
         "versions": {"onnxruntime": ort.__version__, "torch": torch.__version__},

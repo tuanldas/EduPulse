@@ -111,7 +111,8 @@ Sinh ra, không commit: `models/`, `outputs/onnx/`, `outputs/calibration/`, `art
 - Baseline val gần r1 L94: LinearSVC mF1 cảm xúc ≈79,6, chủ đề ≈77,2 (±1,5); thứ hạng LinearSVC > LR > CNB.
 - MTL seed 42: mF1 val ≥84 (cảm xúc) và ≥81 (chủ đề) (r1: 85,55 / 82,72).
 - Test bẫy khởi tạo, skops roundtrip, parity `scoring.py`, schema v0 đều pass.
-- ONNX FP32 parity < 1e-3; int8 giảm mF1 val ≤1 điểm mỗi task; file ≈284MB.
+- ONNX FP32 parity < 1e-3; int8 giảm mF1 val ≤1 điểm mỗi task ở batch=1; file ≈333MB với cấu hình chọn theo tìm kiếm đăng ký trước (`results/metrics/onnx_gate_search.json`; int8 toàn phần 291MB trượt cổng).
+<!-- Updated: Session 5 (lead) - kích thước model và chế độ batch=1 theo kết quả tìm kiếm lượng tử hoá -->
 - `tokenizer.json` khớp id 100% val; `artifacts/v0-smoke/manifest.json` hợp lệ (schema + sha256), `stage: "smoke"`, nạp được không cần torch; guard: 0 câu gốc trong bundle.
 
 ## Risk Assessment
