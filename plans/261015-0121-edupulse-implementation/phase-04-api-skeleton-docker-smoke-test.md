@@ -135,9 +135,9 @@ Phần B (cần `artifacts/v0-smoke/`, toàn bộ là [smoke]):
 9. Commit (`feat: add inference engine and analyze api`, `build: add dockerfile and compose`, `test: add resource-limited smoke test`).
 
 ## Todo list
-- [ ] Scaffold Next.js export tĩnh (ghim TS 5.9.3, pnpm, `.nvmrc`)
-- [ ] Khung FastAPI: lifespan, lỗi JSON, static mount, catch-all 404 JSON, CORS env, header an toàn, `access_log` (không access log uvicorn)
-- [ ] Dockerfile `web` + `runtime` (`ARG BUNDLE_VERSION`) + `.dockerignore` + compose cơ bản
+- [x] Scaffold Next.js export tĩnh (ghim TS 5.9.3, pnpm, `.nvmrc`)
+- [x] Khung FastAPI: lifespan, lỗi JSON, static mount, catch-all 404 JSON, CORS env, header an toàn, `access_log` (không access log uvicorn)
+- [x] Dockerfile `web` + `runtime` (`ARG BUNDLE_VERSION`) + `.dockerignore` + compose cơ bản
 - [ ] Engine: bundle, onnx_model, flags (qua `scoring.py`), explain, service + test golden (model thật)
 - [ ] `/api/health`, `/api/analyze`, `/api/explain` + test TestClient
 - [ ] `engine/bench.py` + guard "không torch/pandas/pyarrow"

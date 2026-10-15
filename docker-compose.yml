@@ -1,0 +1,33 @@
+# Dựng và chạy EduPulse trên một máy:  docker compose up -d --build   (hoặc `make up`)
+#
+# Cần bundle mô hình có sẵn ở $EDUPULSE_HOME/artifacts/$BUNDLE_VERSION (`make artifacts` hoặc
+# `make fetch-artifacts`). Compose tự đọc `.env` cạnh file này để thay các biến ${...}.
+# Giới hạn tài nguyên khớp phép đo smoke test: --cpus=2 --memory=1536m --memory-swap=1536m.
+name: edupulse
+services:
+  edupulse:
+    image: edupulse:${BUNDLE_VERSION:-v1.0}
+    build:
+      context: .
+      additional_contexts:
+        artifacts: ${EDUPULSE_ARTIFACTS_DIR:-${EDUPULSE_HOME:-.}/artifacts/${BUNDLE_VERSION:-v1.0}}
+      args:
+        BUNDLE_VERSION: ${BUNDLE_VERSION:-v1.0}
+    ports:
+      - "8000:8000"
+    # Chỉ chuyển các biến chạy lúc runtime; đường dẫn của máy chủ (EDUPULSE_HOME, ...) ở lại ngoài.
+    environment:
+      EDUPULSE_ORT_THREADS: ${EDUPULSE_ORT_THREADS:-2}
+      EDUPULSE_NER: ${EDUPULSE_NER:-0}
+      EDUPULSE_CORS_ORIGINS: ${EDUPULSE_CORS_ORIGINS:-}
+      EDUPULSE_SOURCE_URL: ${EDUPULSE_SOURCE_URL:-}
+      EDUPULSE_JOB_TTL_MIN: ${EDUPULSE_JOB_TTL_MIN:-30}
+    cpus: 2
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
