@@ -6,6 +6,7 @@ from pathlib import Path
 
 _MB = 1024 * 1024
 _CGROUP_PEAK = Path("/sys/fs/cgroup/memory.peak")
+_CGROUP_CPU_STAT = Path("/sys/fs/cgroup/cpu.stat")
 
 
 def current_rss_mb() -> float:
@@ -25,4 +26,25 @@ def cgroup_peak_mb() -> float | None:
     try:
         return round(int(_CGROUP_PEAK.read_text()) / _MB, 1)
     except (OSError, ValueError):
+        return None
+
+
+def cgroup_cpu_throttle() -> dict[str, float] | None:
+    """Số chu kỳ CFS đã chạy và bị giới hạn CPU (`--cpus`) kể từ khi container khởi động.
+
+    Bị giới hạn nhiều nghĩa là các luồng tranh nhau quota (vd ORT quay vòng chờ việc), khiến độ
+    trễ tăng đột ngột. None nếu không có cgroup v2.
+    """
+    try:
+        raw = _CGROUP_CPU_STAT.read_text()
+    except OSError:
+        return None
+    stat = dict(line.split() for line in raw.splitlines() if len(line.split()) == 2)
+    try:
+        return {
+            "periods": int(stat["nr_periods"]),
+            "throttled": int(stat["nr_throttled"]),
+            "throttled_s": round(int(stat["throttled_usec"]) / 1e6, 3),
+        }
+    except (KeyError, ValueError):
         return None

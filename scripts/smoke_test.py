@@ -438,6 +438,17 @@ def image_layers_mb(image: str) -> int:
     return round(total / 1e6)
 
 
+def image_content_mb(image: str) -> int | None:
+    """Dung lượng nén (phần phải tải về) lấy từ cột CONTENT SIZE của `docker image ls`; None nếu
+    bản Docker không có cột đó hoặc không đọc được."""
+    rows = docker("image", "ls", image, check=False).splitlines()
+    if len(rows) < 2:
+        return None
+    fields = re.split(r"\s{2,}", rows[1].strip())
+    match = re.fullmatch(r"([\d.]+)([kMG]?B)", fields[3]) if len(fields) >= 4 else None
+    return None if match is None else round(float(match[1]) * _SIZE_UNITS[match[2]] / 1e6)
+
+
 def build_image(args: argparse.Namespace) -> dict:
     started = time.monotonic()
     if not args.skip_build:
@@ -451,6 +462,7 @@ def build_image(args: argparse.Namespace) -> dict:
     return {
         "tag": args.image,
         "size_mb": image_layers_mb(args.image),
+        "compressed_mb": image_content_mb(args.image),
         "build_s": None if args.skip_build else round(time.monotonic() - started, 1),
     }
 
@@ -549,7 +561,8 @@ def render_markdown(report: dict) -> str:
     ]
     if image:
         lines.append(
-            f"- Image `{image['tag']}`: {image['size_mb']} MB (tổng các lớp, chưa nén);"
+            f"- Image `{image['tag']}`: {image['size_mb']} MB tổng các lớp chưa nén,"
+            f" {image.get('compressed_mb') or '-'} MB nén (phần tải về);"
             f" dựng mất {image['build_s']} s"
         )
     limits = f"--cpus={gate.get('cpus', '-')} --memory={gate.get('memory', '-')}"
@@ -584,6 +597,12 @@ def render_markdown(report: dict) -> str:
             f"RSS cuối {bench.get('rss_mb', '-')} MB;"
             f" cgroup memory.peak {bench.get('cgroup_memory_peak_mb', '-')} MB.",
         ]
+        throttle = bench.get("cgroup_cpu_throttle")
+        if throttle:
+            lines.append(
+                f"Giới hạn CPU (CFS): bị cắt {throttle['throttled']}/{throttle['periods']} chu kỳ,"
+                f" tổng {throttle['throttled_s']} s."
+            )
     elif bench:
         lines += [
             "",

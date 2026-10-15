@@ -30,17 +30,17 @@ ort.disable_telemetry_events()
 DEFAULT_BATCH_SIZE = 32
 WARMUP_TEXT = "xin chào"
 
-# `tokenizer.json` của PhoBERT-base-v2 có id tới 66118 nhưng bảng embedding của mô hình chỉ có 64001
-# hàng. Bộ tách chậm chính thức (bộ đã dùng lúc huấn luyện) đổi 2.118 mảnh BPE dư, vd "đạt_" trong
-# "truyền_đạt_kiến", thành <unk>. Làm y hệt: vừa khớp lúc huấn luyện, vừa tránh lỗi chỉ số ngoài
-# biên của ORT (một câu như vậy từng làm cả yêu cầu hỏng).
-EMBEDDING_ROWS = 64001
-UNK_ID = 3
 
+def clamp_unknown_ids(ids: np.ndarray, base_vocab_size: int, unk_id: int) -> np.ndarray:
+    """Đổi mọi id ngoài bảng embedding gốc thành <unk>, tại chỗ; trả lại chính mảng đó.
 
-def clamp_unknown_ids(ids: np.ndarray) -> np.ndarray:
-    """Đổi mọi id ngoài bảng embedding thành <unk>, tại chỗ; trả lại chính mảng đó."""
-    np.putmask(ids, ids >= EMBEDDING_ROWS, UNK_ID)
+    `tokenizer.json` của PhoBERT-base-v2 có id tới 66118 nhưng checkpoint gốc chỉ có 64001 hàng
+    embedding. Bộ tách chậm chính thức (bộ đã dùng lúc huấn luyện) đổi 2.118 mảnh BPE dư, vd
+    "đạt_" trong "truyền_đạt_kiến", thành <unk>; làm y hệt để khớp huấn luyện. Bundle mới nới bảng
+    embedding của ONNX bằng các bản sao <unk> nên ORT chạy được mọi id; bước này vẫn giữ để bundle
+    cũ (bảng 64001 hàng) không báo lỗi chỉ số ngoài biên.
+    """
+    np.putmask(ids, ids >= base_vocab_size, unk_id)
     return ids
 
 
@@ -67,18 +67,26 @@ class OnnxModel:
         self._input_names = spec.input_names
         self._output_names = spec.output_names
         self._pad_id = spec.pad_id
+        self._base_vocab_size = spec.base_vocab_size
+        self._unk_id = spec.unk_id
         self._batch_size = batch_size
 
         tokenizer = Tokenizer.from_file(str(bundle.tokenizer_path))
         tokenizer.enable_truncation(max_length=bundle.manifest.max_len)
         tokenizer.no_padding()
-        if tokenizer.token_to_id("<unk>") != UNK_ID:
-            raise BundleError("tokenizer.json không phải của PhoBERT: <unk> không có id 3")
+        if tokenizer.token_to_id("<unk>") != spec.unk_id:
+            raise BundleError(
+                f"tokenizer.json có <unk> ở id {tokenizer.token_to_id('<unk>')}, "
+                f"manifest khai {spec.unk_id}"
+            )
         self._tokenizer = tokenizer
 
         options = ort.SessionOptions()
         options.intra_op_num_threads = threads
         options.inter_op_num_threads = 1
+        options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        # Đã đo trong container 2 CPU: tắt "spinning" của luồng ORT không giúp (27,3 → 29,3 ms/câu)
+        # và đặt cpuset thay hạn mức CFS chỉ nhanh hơn ~10%, nên giữ mặc định.
         options.enable_cpu_mem_arena = mem_arena
         options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         options.log_severity_level = 3  # chỉ lỗi
@@ -109,7 +117,7 @@ class OnnxModel:
         for i, row in enumerate(rows):
             ids[i, : len(row)] = row
             mask[i, : len(row)] = 1
-        return clamp_unknown_ids(ids), mask
+        return clamp_unknown_ids(ids, self._base_vocab_size, self._unk_id), mask
 
     def _run(self, ids: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         feed = {self._input_names[0]: ids, self._input_names[1]: mask}

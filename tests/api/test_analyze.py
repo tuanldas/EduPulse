@@ -13,7 +13,9 @@ from fastapi.testclient import TestClient
 
 from edupulse.api import schemas
 from edupulse.config import MAX_CHARS, XAI_MAX_WORDS
+from edupulse.engine.explain import is_punctuation
 from edupulse.labels import LABELS
+from edupulse.text import prepare
 
 SENTENCE = "Thầy giảng bài rất dễ hiểu, em rất thích môn này."
 
@@ -123,14 +125,15 @@ def test_explain_covers_every_word_of_the_analyzed_sentence(live_client: TestCli
     assert response.status_code == 200
     explanation = schemas.ExplainResponse.model_validate(response.json())
 
-    assert explanation.n_forwards == analysis["n_words"] + 1
+    tokens = prepare(SENTENCE, use_ner=False).model_text.split()
+    assert explanation.n_forwards == sum(not is_punctuation(t) for t in tokens) + 1
     for head, analysed in (
         (explanation.sentiment, analysis["sentiment"]),
         (explanation.topic, analysis["topic"]),
     ):
         assert len(head.tokens) == analysis["n_words"]
         assert head.label == analysed["label"]
-        assert head.probability == pytest.approx(analysed["confidence"], abs=0.03)
+        assert head.probability == analysed["confidence"]  # cùng lô 1 nên giống hệt
         assert all(0 <= i < len(head.tokens) for i in head.support + head.oppose)
 
 

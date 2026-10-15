@@ -1,8 +1,10 @@
 """Giải thích dự đoán bằng cách bỏ từng từ (occlusion).
 
-Với câu N từ (đơn vị là token của `model_text`: từ ghép RDR và dấu câu), dựng N biến thể bỏ đúng
-một từ, rồi chạy N+1 câu (cùng câu gốc) qua mô hình trong một lượt chia lô nhỏ. Mô hình đa nhiệm
-nên cả hai head được giải thích cùng lúc. Với mỗi head, mức ảnh hưởng của một từ là
+Với câu có N từ (đơn vị là token của `model_text`: từ ghép RDR, tên, emoticon và dấu câu), dựng
+một biến thể bỏ đúng một từ cho mỗi từ không phải dấu câu, rồi chạy các biến thể cùng câu gốc qua
+mô hình, mỗi câu một lượt. Dấu câu không mang nội dung để giải thích nên không bị che: Δ = 0 sẵn,
+bớt khoảng một phần tám số lượt chạy. Mô hình đa nhiệm nên cả hai head được giải thích cùng lúc.
+Với mỗi head, mức ảnh hưởng của một từ là
 
     Δ = p(đủ câu) − p(bỏ từ đó)     (xác suất của lớp mà đủ câu được dự đoán)
 
@@ -21,7 +23,6 @@ from edupulse.engine.onnx_model import OnnxModel
 from edupulse.labels import LABELS
 from edupulse.scoring import softmax_t
 
-EXPLAIN_BATCH = 16  # lô nhỏ: thêm <40MB RAM và nhường khoá suy luận cho yêu cầu khác
 # Dưới ngưỡng này thì chưa đáng gọi là ủng hộ hay đi ngược. Int8 động làm Δ lệch ngẫu nhiên cỡ 1
 # điểm phần trăm (p95 ≈ 3,5 điểm, đo so với FP32 trên PhoBERT-base), nên 5 điểm để không đưa
 # nhiễu lượng tử hoá ra thành "từ quan trọng".
@@ -46,6 +47,8 @@ _SYMBOL_TOKENS = {
     "dotdotdot": "...",
 }
 _NAME_TOKEN = re.compile(r"wzjwz\d+")
+_PUNCTUATION = re.compile(r"[^\w]+")  # token chỉ gồm dấu câu và ký hiệu
+_PUNCTUATION_TOKENS = frozenset({"doubledot", "dotdotdot"})  # ":" và "..." sau chuẩn hoá
 # 3dot0 -> 3.0, uitdotedudotvn -> uit.edu.vn
 _DOTTED_TOKEN = re.compile(
     r"\d+(?:dot\d+)+|(?:[a-z0-9]+(?:dot[a-z0-9]+)*)?dot(?:com|net|org|edu|vn|io)"
@@ -81,9 +84,16 @@ class HeadExplanation:
 
 @dataclass(frozen=True, slots=True)
 class Explanation:
-    n_forwards: int  # số câu đã chạy qua mô hình: N + 1
+    n_forwards: (
+        int  # số câu đã chạy qua mô hình: câu gốc + một biến thể cho mỗi từ không phải dấu câu
+    )
     sentiment: HeadExplanation
     topic: HeadExplanation
+
+
+def is_punctuation(token: str) -> bool:
+    """Dấu câu (kể cả ":" và "..." đã đổi thành token chữ). Emoticon và tên thì không phải."""
+    return token in _PUNCTUATION_TOKENS or _PUNCTUATION.fullmatch(token) is not None
 
 
 def display_token(token: str) -> str:
@@ -108,13 +118,23 @@ def _top(deltas: np.ndarray, *, descending: bool, limit: int) -> tuple[int, ...]
 
 
 def _explain_head(
-    task: str, logits: np.ndarray, calibration: HeadCalibration, shown: Sequence[str]
+    task: str,
+    logits: np.ndarray,
+    calibration: HeadCalibration,
+    shown: Sequence[str],
+    occluded: Sequence[int] | None = None,
 ) -> HeadExplanation:
-    """`logits` có N+1 hàng: câu đầy đủ rồi N biến thể bỏ một từ."""
+    """`logits` có hàng đầu là câu đầy đủ, các hàng sau là biến thể bỏ từ `occluded[k]`.
+
+    Từ không nằm trong `occluded` (dấu câu) không được chạy lại: xác suất không đổi, Δ = 0.
+    `occluded=None` nghĩa là mọi từ đều bị che lần lượt.
+    """
     probs = softmax_t(logits, calibration.temperature)
     predicted = int(np.argmax(probs[0]))
     full = float(probs[0, predicted])
-    without = probs[1:, predicted]
+    without = np.full(len(shown), full)
+    positions = range(len(shown)) if occluded is None else occluded
+    without[list(positions)] = probs[1:, predicted]
     deltas = full - without
     effects = tuple(
         TokenEffect(text=text, delta=float(d), p_without=float(w))
@@ -132,13 +152,22 @@ def _explain_head(
 def explain_tokens(
     model: OnnxModel, calibration: Calibration, tokens: Sequence[str]
 ) -> Explanation:
-    """Giải thích cho câu đã tách từ (`model_text.split()`); gọi sau khi kiểm giới hạn độ dài."""
+    """Giải thích cho câu đã tách từ (`model_text.split()`); gọi sau khi kiểm giới hạn độ dài.
+
+    Mỗi câu chạy riêng (lô 1): int8 động làm kết quả phụ thuộc bạn cùng lô, nên chia lô sẽ khiến
+    câu đầy đủ có thể ra nhãn khác với `/api/analyze` và Δ nhiễu theo cách chia. Lô 1 cho câu đầy đủ
+    đúng bằng kết quả của `analyze`, và Δ của một từ không phụ thuộc các từ khác bị che hay không.
+    Chia lô cũng không nhanh hơn đáng kể ở mô hình này (đo ~12%).
+    """
+    occluded = [i for i, token in enumerate(tokens) if not is_punctuation(token)]
     variants = [" ".join(tokens)]
-    variants += [" ".join((*tokens[:i], *tokens[i + 1 :])) for i in range(len(tokens))]
-    logits = model.predict(variants, batch_size=EXPLAIN_BATCH)
+    variants += [" ".join((*tokens[:i], *tokens[i + 1 :])) for i in occluded]
+    logits = model.predict(variants, batch_size=1)
     shown = [display_token(token) for token in tokens]
     return Explanation(
         n_forwards=len(variants),
-        sentiment=_explain_head("sentiment", logits.sentiment, calibration.sentiment, shown),
-        topic=_explain_head("topic", logits.topic, calibration.topic, shown),
+        sentiment=_explain_head(
+            "sentiment", logits.sentiment, calibration.sentiment, shown, occluded
+        ),
+        topic=_explain_head("topic", logits.topic, calibration.topic, shown, occluded),
     )

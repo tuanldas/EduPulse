@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from edupulse.config import AUTO_XAI_TOP, DEFAULT_BUDGET, XAI_MAX_WORDS, load_settings
-from edupulse.engine.memory import cgroup_peak_mb, current_rss_mb
+from edupulse.engine.memory import cgroup_cpu_throttle, cgroup_peak_mb, current_rss_mb
 from edupulse.engine.service import Analyzer
 
 
@@ -106,6 +106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         load_s=round(load_s, 2),
         rss_mb=current_rss_mb(),
         cgroup_memory_peak_mb=cgroup_peak_mb(),
+        cgroup_cpu_throttle=cgroup_cpu_throttle(),
         ort_threads=settings.ort_threads,
         ner=settings.ner,
         bundle_version=analyzer.bundle.manifest.bundle_version,
