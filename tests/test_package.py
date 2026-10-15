@@ -166,11 +166,13 @@ def _group_closure(lock: dict, group: str) -> set[str]:
     return seen
 
 
-def test_app_group_excludes_training_stack():
+def test_app_group_excludes_heavy_and_test_only_packages():
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     closure = _group_closure(lock, "app")
     assert {"fastapi", "onnxruntime", "tokenizers"} <= closure, "đọc sai uv.lock"
-    assert closure.isdisjoint({"torch", "pandas", "pyarrow"}), sorted(closure)
+    # openpyxl chỉ dành cho test tạo file XLSX; runtime đọc XLSX bằng python-calamine.
+    forbidden = {"torch", "pandas", "pyarrow", "openpyxl"}
+    assert closure.isdisjoint(forbidden), sorted(closure & forbidden)
 
 
 @pytest.mark.skipif(shutil.which("make") is None, reason="thiếu `make`")
