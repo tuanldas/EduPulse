@@ -1,0 +1,39 @@
+tap,loai,so_cau,so_lan,ti_le_cau
+train,Tên người (wzjwz<N>),210,237,0.01838
+train,Emoticon (colon...),85,85,0.00744
+train,Dấu hai chấm (doubledot),85,87,0.00744
+train,Viết tắt v.v (vdotv),8,8,0.0007
+train,Dấu ba chấm (dotdotdot),5,5,0.00044
+train,Số/tên miền chứa dấu chấm (…dot…),12,12,0.00105
+validation,Tên người (wzjwz<N>),18,20,0.01137
+validation,Emoticon (colon...),10,10,0.00632
+validation,Dấu hai chấm (doubledot),6,6,0.00379
+validation,Viết tắt v.v (vdotv),1,1,0.00063
+validation,Dấu ba chấm (dotdotdot),0,0,0.0
+validation,Số/tên miền chứa dấu chấm (…dot…),0,0,0.0
+test,Tên người (wzjwz<N>),73,76,0.02306
+test,Emoticon (colon...),31,31,0.00979
+test,Dấu hai chấm (doubledot),27,32,0.00853
+test,Viết tắt v.v (vdotv),3,3,0.00095
+test,Dấu ba chấm (dotdotdot),1,1,0.00032
+test,Số/tên miền chứa dấu chấm (…dot…),5,5,0.00158
+all,Tên người (wzjwz<N>),301,333,0.01861
+all,Emoticon (colon...),126,126,0.00779
+all,Dấu hai chấm (doubledot),118,125,0.0073
+all,Viết tắt v.v (vdotv),12,12,0.00074
+all,Dấu ba chấm (dotdotdot),6,6,0.00037
+all,Số/tên miền chứa dấu chấm (…dot…),17,17,0.00105
+all,  colonsmile,39,39,0.0
+all,  colonsmilesmile,18,18,0.0
+all,  colonlove,13,13,0.0
+all,  colonsad,13,13,0.0
+all,  coloncontemn,11,11,0.0
+all,  colonhihi,7,7,0.0
+all,  colonbigsmile,7,7,0.0
+all,  colonsmallsmile,6,6,0.0
+all,  colondoublesurprise,4,4,0.0
+all,  colonsadcolon,3,3,0.0
+all,  colonsurprise,2,2,0.0
+all,  coloncolon,1,1,0.0
+all,  coloncc,1,1,0.0
+all,  colonlovelove,1,1,0.0

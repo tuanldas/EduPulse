@@ -192,6 +192,14 @@ def test_calibration_round_trips_with_integer_budget_keys():
     assert DEFAULT_BUDGET in again.efficiency
 
 
+def test_calibration_records_that_logits_were_run_one_sentence_at_a_time():
+    calibration = Calibration(**calibration_data())
+    assert calibration.logits_batch_size == 1
+    assert '"logits_batch_size":1' in calibration.model_dump_json()
+    with pytest.raises(ValidationError):
+        Calibration(**calibration_data(logits_batch_size=32))
+
+
 def test_calibration_rejects_bad_cdf():
     with pytest.raises(ValidationError):
         HeadCalibration(temperature=1.0, cdf=[0.5] * 100)

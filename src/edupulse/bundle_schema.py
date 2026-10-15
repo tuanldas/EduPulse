@@ -28,6 +28,15 @@ from edupulse.labels import LABELS, TASKS
 from edupulse.scoring import CDF_POINTS
 
 SCHEMA_VERSION = 1
+
+# Kiểu skops phải tin khi nạp `baseline/*.skops`. Danh sách tường minh thay cho `trusted=True`:
+# tệp chứa thêm kiểu lạ thì skops từ chối nạp. Cập nhật khi nâng scikit-learn/skops
+# (ml/train_baseline.save_model báo kiểu thiếu).
+BASELINE_TRUSTED_TYPES: tuple[str, ...] = (
+    "sklearn.calibration._CalibratedClassifier",
+    "sklearn.calibration._TemperatureScaling",
+)
+
 Stage = Literal["smoke", "release"]
 Split = Literal["val", "test"]
 
@@ -130,8 +139,15 @@ class BudgetEfficiency(_Strict):
 
 
 class Calibration(_Strict):
+    """Nhiệt độ, bảng phân vị độ tin cậy và ngưỡng cờ, tính từ logits val của bản int8.
+
+    Int8 động phụ thuộc nhẹ vào lô nên logits val được chạy từng câu một (`logits_batch_size` = 1),
+    cùng điều kiện với phân tích một câu: `tau` và `cdf` là tham chiếu tất định cho đường đó.
+    """
+
     schema_version: Literal[1] = SCHEMA_VERSION
     split: Literal["val"] = "val"
+    logits_batch_size: Literal[1] = 1
     n: int = Field(gt=0)
     sentiment: HeadCalibration
     topic: HeadCalibration
@@ -275,10 +291,15 @@ class GoldenItem(_Strict):
 
 
 class GoldenPredictions(_Strict):
-    """Xác suất thô (T = 1) của mô hình int8 trên các câu tự viết; câu nằm ở tests/fixtures."""
+    """Xác suất thô (T = 1) của mô hình int8 trên các câu tự viết; câu nằm ở tests/fixtures.
+
+    Int8 động tính thang kích hoạt theo cả tensor, nên xác suất phụ thuộc nhẹ vào các câu cùng lô:
+    mỗi câu được chạy riêng một lần (batch 1, không đệm) và test phải chạy cùng điều kiện đó.
+    """
 
     schema_version: Literal[1] = SCHEMA_VERSION
     normalizer_version: str
+    batch_size: Literal[1] = 1
     items: list[GoldenItem]
 
 
