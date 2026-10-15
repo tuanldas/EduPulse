@@ -372,6 +372,17 @@ def run_scenario(
             args.xai,
             args.bench_batch_size,
         )
+        if args.also_batch1 and args.bench_batch_size != 1:
+            result["bench_batch1"] = run_bench(
+                args.image,
+                f"{bench_name}-batch1",
+                cpus,
+                args.memory,
+                bench_file,
+                args.n,
+                args.xai,
+                1,
+            )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
         result["checks"].update(check_logs("".join(server.logs())))
         result["server_memory_peak_mb"] = server.memory_peak_mb()
@@ -582,6 +593,21 @@ def render_markdown(report: dict) -> str:
             f"```\n{bench.get('stderr_tail', '')}\n```",
         ]
 
+    single = gate.get("bench_batch1")
+    if single and "error" not in single:
+        ratio = single["total_s"] / bench["total_s"] if bench and "total_s" in bench else None
+        lines += [
+            "",
+            "## Tham khảo: bench chạy từng câu một (lô ONNX 1, kết quả tất định như `analyze`)",
+            "",
+            f"- 1.000 câu end-to-end {single['total_s']} s"
+            + ("" if ratio is None else f" (gấp {ratio:.2f} lần lô mặc định)"),
+            f"- predict {single['steps_s']['predict']} s; explain {single['steps_s']['explain']} s;"
+            f" cgroup memory.peak {single.get('cgroup_memory_peak_mb', '-')} MB",
+        ]
+    elif single:
+        lines += ["", "## Tham khảo: bench từng câu một", "", f"Lỗi: {single['error']}"]
+
     lines += ["", "## Kiểm tra hành vi", ""]
     lines += [
         f"- {name}: {'đạt' if ok else 'KHÔNG ĐẠT'}" for name, ok in gate.get("checks", {}).items()
@@ -632,6 +658,7 @@ def parse_args(settings: Settings) -> argparse.Namespace:
     add("--cpus", type=float, default=2.0)
     add("--memory", default="1536m")
     add("--also-1cpu", action="store_true", help="thêm một lượt tham khảo với 1 CPU")
+    add("--also-batch1", action="store_true", help="thêm bench tham khảo chạy từng câu một")
     add("--port", type=int, default=0, help="cổng máy chủ; 0 = tự chọn cổng trống")
     add("--sentences", help="file mỗi dòng một câu; mặc định lấy tập val đã xử lý")
     add("--n", type=int, default=1000, help="số câu của bench")
