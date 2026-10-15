@@ -79,6 +79,38 @@ def test_full_cpu_run_waits_for_the_machine_wide_lock(monkeypatch, tmp_path, cap
     assert "job khác" in capsys.readouterr().err
 
 
+def fake_history() -> dict:
+    scores = {"macro_f1": 0.5}
+    return {
+        "epochs": [{"val": {"sentiment": scores, "topic": scores}}],
+        "best_epoch": 1,
+        "total_s": 1.0,
+        "peak_mb": 0,
+    }
+
+
+def test_lock_held_by_the_queue_is_not_taken_again(monkeypatch, tmp_path):
+    from ml.common import mps_lock
+
+    monkeypatch.setenv("EDUPULSE_HOME", str(tmp_path))
+    monkeypatch.setattr(train_phobert, "train", lambda *args, **kwargs: fake_history())
+    with mps_lock(note="hàng đợi"):  # tiến trình cha giữ khoá; con chạy với --lock-held
+        argv = ["--device", "cpu", "--lock-held", "--out", str(tmp_path / "run")]
+        assert train_phobert.main(argv) == 0
+
+
+def test_lock_held_flag_without_a_holder_is_refused(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("EDUPULSE_HOME", str(tmp_path))
+
+    def must_not_train(*args, **kwargs):
+        raise AssertionError("không được train khi không có ai giữ khoá")
+
+    monkeypatch.setattr(train_phobert, "train", must_not_train)
+    argv = ["--device", "cpu", "--lock-held", "--out", str(tmp_path / "run")]
+    assert train_phobert.main(argv) == 4
+    assert "--lock-held" in capsys.readouterr().err
+
+
 @pytest.mark.data
 @pytest.mark.slow
 def test_tiny_cpu_run_writes_loadable_checkpoint_and_is_idempotent(tmp_path):
