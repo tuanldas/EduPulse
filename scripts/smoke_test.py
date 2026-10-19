@@ -3,8 +3,9 @@
 Chế độ mặc định chạy container Docker với đúng giới hạn của VPS (`--cpus=2 --memory=1536m`, không
 swap) rồi đo: thời gian khởi động, độ trễ của nhãn và của giải thích (hai chỉ số p95 tách biệt),
 1.000 câu end-to-end (bench trong một container riêng cùng giới hạn), upload file 5MB chạy xong,
-bộ nhớ đỉnh của cgroup, OOM-kill, và kiểm tra nhật ký không lộ nội dung. Chế độ `--url` đo độ
-trễ, upload 5MB và hành vi HTTP của một dịch vụ đã chạy (ví dụ VPS thật).
+đỉnh RAM không thu hồi được (anon + kernel + shmem, lấy mẫu memory.stat; `memory.peak` gồm cả
+page cache nên chỉ để tham khảo), OOM-kill, và kiểm tra nhật ký không lộ nội dung. Chế độ `--url`
+đo độ trễ, upload 5MB và hành vi HTTP của một dịch vụ đã chạy (ví dụ VPS thật).
 
     uv run python scripts/smoke_test.py --bundle-version v0-smoke --image edupulse:smoke
     uv run python scripts/smoke_test.py --url http://vps.example:8000
@@ -55,7 +56,7 @@ from edupulse.config import MAX_ROWS, REPO_ROOT, Settings, load_settings
 # đo trên VPS thật bằng `--url`. Khi đo trên M1 với 2 CPU / 1,5GB, VPS x86 chia sẻ chậm hơn nên đọc
 # thời gian 1.000 câu với hệ số an toàn ×3: 30 s → 90 s < 2 phút.
 GO = {
-    "memory_peak_mb": 1200,
+    "ram_mb": 1200,
     "label_p95_s": 0.5,
     "explain_p95_s": 2.0,
     "batch_total_s": 30.0,
@@ -69,6 +70,9 @@ BASELINE_LOADED = re.compile(r"Đã nạp mô hình cơ sở trong ([\d.]+) s")
 # Việc nặng của người khác trên cùng máy làm nhiễu số đo; `[x]` để pgrep không tự khớp lệnh của nó.
 HEAVY_PATTERN = "[p]ytest|[p]laywright|[v]itest|[n]ext build"
 WATCH_PERIOD_S = 2.0  # chu kỳ lấy mẫu việc nặng khác
+MEMORY_PERIOD_S = 0.5  # chu kỳ lấy mẫu memory.stat của container
+COLD_CACHE_MB = 100  # page cache của file từ mức này trở lên: cache của máy đang lạnh
+MB = 1048576
 UPLOAD_MB = 5  # PDR 5: file 5MB phải chạy xong
 UPLOAD_TIMEOUT_S = 900.0
 LONG_SHARE = 0.8  # câu dài từ ~80% giới hạn giải thích là ca xấu nhất của bỏ từng từ
@@ -196,7 +200,13 @@ class Container:
 
     def memory_peak_mb(self) -> float | None:
         out = docker("exec", self.name, "cat", "/sys/fs/cgroup/memory.peak", check=False).strip()
-        return round(int(out) / 1048576, 1) if out.isdigit() else None
+        return round(int(out) / MB, 1) if out.isdigit() else None
+
+    def memory_stat(self) -> str:
+        """Nội dung memory.stat của cgroup; rỗng khi container chưa chạy hoặc đã mất."""
+        return docker(
+            "exec", self.name, "cat", "/sys/fs/cgroup/memory.stat", check=False, timeout=15
+        )
 
     def remove(self) -> None:
         docker("rm", "-f", self.name, check=False)
@@ -242,9 +252,10 @@ class BusyWatch:
         self._thread = threading.Thread(target=self._run, daemon=True)
 
     def _run(self) -> None:
-        while not self._stop.is_set():
+        while True:  # luôn lấy ít nhất một mẫu, kể cả khi bị dừng ngay sau khi bắt đầu
             self.samples.append((time.time(), self.probe()))
-            self._stop.wait(self.period)
+            if self._stop.wait(self.period):
+                return
 
     def __enter__(self) -> "BusyWatch":
         self._thread.start()
@@ -283,14 +294,109 @@ class BusyWatch:
         return {"samples": len(samples), "busy_samples": busy, "windows": self.busy_windows()}
 
 
+CGROUP_KEYS = ("anon", "kernel", "shmem", "file")
+
+
+def parse_memory_stat(text: str) -> dict[str, int]:
+    """Các khoản cần dùng trong memory.stat của cgroup v2, tính bằng byte."""
+    found = {}
+    for line in text.splitlines():
+        key, _, value = line.partition(" ")
+        if key in CGROUP_KEYS and value.strip().isdigit():
+            found[key] = int(value)
+    return found
+
+
+def unreclaimable_bytes(stat: dict[str, int]) -> int:
+    """Phần không thể thu hồi khi hết RAM và không có swap: anon, kernel và shmem."""
+    return stat.get("anon", 0) + stat.get("kernel", 0) + stat.get("shmem", 0)
+
+
+def page_cache_bytes(stat: dict[str, int]) -> int:
+    """Page cache của file, thu hồi được; `file` của cgroup v2 đã gồm shmem nên trừ ra."""
+    return max(0, stat.get("file", 0) - stat.get("shmem", 0))
+
+
+def cache_state(page_cache_mb: float | None) -> str:
+    if page_cache_mb is None:
+        return "không rõ"
+    return "lạnh" if page_cache_mb >= COLD_CACHE_MB else "ấm"
+
+
+class MemoryWatch:
+    """Lấy mẫu memory.stat của một container để biết đỉnh bộ nhớ KHÔNG thu hồi được.
+
+    `memory.peak` của cgroup tính cả page cache của file (mô hình 333 MB, JRE, thư viện), nên khi
+    cache của máy đang lạnh nó vọt thêm ~600 MB dù RAM thật không đổi. Page cache thu hồi được khi
+    chạm giới hạn nên không gây OOM; cổng RAM vì thế chấm theo anon + kernel + shmem. Một lần lấy
+    mẫu chỉ phản ánh lúc nó được lấy, nên đỉnh ngắn hơn chu kỳ có thể sót.
+    """
+
+    def __init__(self, read: Callable[[], str], period: float = MEMORY_PERIOD_S):
+        self.read, self.period = read, period
+        self.samples: list[tuple[float, dict[str, int]]] = []  # (giờ epoch, khoản của memory.stat)
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    def _run(self) -> None:
+        while True:  # luôn lấy ít nhất một mẫu, kể cả khi bị dừng ngay sau khi bắt đầu
+            try:
+                stat = parse_memory_stat(self.read())
+            except (SmokeError, subprocess.SubprocessError, OSError):
+                stat = {}  # mất một mẫu thì thôi, không làm hỏng phép đo
+            if stat:
+                self.samples.append((time.time(), stat))
+            if self._stop.wait(self.period):
+                return
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        self._thread.join(timeout=30)
+
+    def __enter__(self) -> "MemoryWatch":
+        self.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.stop()
+
+    def max_between(self, start: float, end: float) -> float | None:
+        """Phần không thu hồi lớn nhất (MB) lấy được trong [start, end]; None nếu không có mẫu."""
+        values = [
+            unreclaimable_bytes(stat) for taken, stat in list(self.samples) if start <= taken <= end
+        ]
+        return round(max(values) / MB, 1) if values else None
+
+    def summary(self) -> dict | None:
+        """Đỉnh không thu hồi và page cache lúc cgroup đầy nhất; None nếu chưa có mẫu nào."""
+        samples = list(self.samples)
+        if not samples:
+            return None
+        peak_at, peak = max(samples, key=lambda item: unreclaimable_bytes(item[1]))
+        _, fullest = max(
+            samples, key=lambda item: unreclaimable_bytes(item[1]) + page_cache_bytes(item[1])
+        )
+        return {
+            "samples": len(samples),
+            "period_s": self.period,
+            "unreclaimable_peak_mb": round(unreclaimable_bytes(peak) / MB, 1),
+            "unreclaimable_peak_at": clock(peak_at),
+            "page_cache_mb": round(page_cache_bytes(fullest) / MB, 1),
+        }
+
+
 class Timeline:
-    """Giờ bắt đầu/kết thúc từng pha đo và việc nặng khác thấy được trong pha đó (`noisy_with`).
+    """Giờ bắt đầu/kết thúc từng pha đo, việc nặng khác thấy được trong pha đó (`noisy_with`) và
+    đỉnh RAM không thu hồi của pha (`ram_mb`).
 
     `noisy_with` là None khi không theo dõi, [] khi theo dõi mà máy sạch, còn lại là danh sách tên.
     """
 
-    def __init__(self, watch: BusyWatch | None = None):
-        self.watch = watch
+    def __init__(self, watch: BusyWatch | None = None, memory: MemoryWatch | None = None):
+        self.watch, self.memory = watch, memory
         self.phases: list[dict] = []
 
     @contextmanager
@@ -301,6 +407,7 @@ class Timeline:
         finally:  # pha lỗi vẫn được ghi giờ
             ended = time.time()
             seen = None if self.watch is None else self.watch.seen_between(started, ended)
+            ram = None if self.memory is None else self.memory.max_between(started, ended)
             self.phases.append(
                 {
                     "name": name,
@@ -308,6 +415,7 @@ class Timeline:
                     "end": clock(ended),
                     "seconds": round(ended - started, 1),
                     "noisy_with": seen,
+                    "ram_mb": ram,
                 }
             )
 
@@ -624,18 +732,25 @@ def run_bench(
     xai: int,
     batch_size: int | None,
 ) -> dict:
-    """1.000 câu end-to-end trong container riêng cùng giới hạn; bộ nhớ đỉnh do bench tự đọc."""
+    """1.000 câu end-to-end trong container riêng cùng giới hạn.
+
+    `cgroup_memory_peak_mb` do bench tự đọc (gồm page cache); `memory_watch` là đỉnh không thu
+    hồi được lấy mẫu từ bên ngoài, dùng để chấm cổng RAM.
+    """
     container = Container(name, image, cpus, memory)
     command = ("python", "-m", "edupulse.engine.bench", "--input", "/tmp/sentences.txt")
     command += ("--n", str(n), "--xai", str(xai), "--json")
     if batch_size is not None:
         command += ("--batch-size", str(batch_size))
+    watch = MemoryWatch(container.memory_stat)
+    watch.start()
     try:
         container.start(*command, mounts=(f"{sentences}:/tmp/sentences.txt:ro",))
         exit_code = int(docker("wait", name, timeout=1800).strip())
         state = container.state()
         stdout, stderr = container.logs()
     finally:
+        watch.stop()
         container.remove()
     lines = [line for line in stdout.splitlines() if line.startswith("{")]
     if exit_code != 0 or not lines:
@@ -644,7 +759,7 @@ def run_bench(
             "stderr_tail": stderr.strip()[-600:],
             **state,
         }
-    return {**json.loads(lines[-1]), **state}
+    return {**json.loads(lines[-1]), **state, "memory_watch": watch.summary()}
 
 
 def wait_for_health(base: str, container: Container, timeout: float = 180.0) -> float:
@@ -727,8 +842,10 @@ def run_scenario(
     base = f"http://127.0.0.1:{args.port or free_port()}"
     port = int(base.rsplit(":", 1)[1])
     server = Container(f"edupulse-smoke-{label}", args.image, cpus, args.memory, port)
-    timeline = Timeline(watch)
+    memory_watch = MemoryWatch(server.memory_stat)
+    timeline = Timeline(watch, memory_watch)
     result: dict = {"label": label, "cpus": cpus, "memory": args.memory}
+    memory_watch.start()  # từ trước khi container chạy, để thấy cả lúc nạp mô hình
     try:
         with timeline.phase("Khởi động container tới health 200"):
             server.start()
@@ -776,7 +893,9 @@ def run_scenario(
         result["server_memory_peak_mb"] = server.memory_peak_mb()
         result["server_state"] = server.state()
     finally:
+        memory_watch.stop()
         server.remove()
+    result["memory_watch"] = memory_watch.summary()
     result["phases"] = timeline.phases
     return result
 
@@ -887,11 +1006,23 @@ def verdict_rows(gate: dict) -> list[dict]:
     """Bảng go/no-go; `ok` là None khi chỉ số không đo được ở chế độ này.
 
     Nhãn và giải thích là hai dòng riêng với hai p95 riêng (PDR 5): nhãn đo trên mọi câu, giải
-    thích chỉ trên câu ≤ `limits.xai_max_words` của máy chủ.
+    thích chỉ trên câu ≤ `limits.xai_max_words` của máy chủ. Cổng RAM chấm theo đỉnh không thu hồi
+    được (anon + kernel + shmem, lấy mẫu); `memory.peak` gồm cả page cache nên chỉ để tham khảo.
     """
     bench = gate.get("bench") or {}
     peaks = [gate.get("server_memory_peak_mb"), bench.get("cgroup_memory_peak_mb")]
     peak = max((p for p in peaks if p is not None), default=None)
+    watches = [gate.get("memory_watch") or {}, bench.get("memory_watch") or {}]
+    sampled = [w["unreclaimable_peak_mb"] for w in watches if "unreclaimable_peak_mb" in w]
+    ram = max(sampled, default=None)
+    ram_metric = (
+        "RAM không thu hồi (anon + kernel + shmem) lớn nhất, đã gồm so sánh với mô hình cơ sở (MB)"
+    )
+    if (
+        ram is None and peak is not None
+    ):  # không lấy mẫu được: dùng số lớn hơn, không bao giờ lạc quan
+        ram, ram_metric = peak, "memory.peak (MB), không lấy mẫu được memory.stat, đã gồm so sánh"
+    cache_mb = max((w["page_cache_mb"] for w in watches if "page_cache_mb" in w), default=None)
     ooms = [gate.get("server_state", {}).get("oom_killed"), bench.get("oom_killed")]
     label = p95_of(gate, "latency_idle", "analyze")
     explain = p95_of(gate, "latency_idle", "explain")
@@ -915,17 +1046,18 @@ def verdict_rows(gate: dict) -> list[dict]:
             sum(ooms) if measured_ooms else None,
             not any(ooms) if measured_ooms else None,
         ),
-        row(
-            "memory.peak (MB), đã gồm so sánh với mô hình cơ sở",
-            f"≤ {GO['memory_peak_mb']}",
-            peak,
-            within(peak, GO["memory_peak_mb"]),
-        ),
+        row(ram_metric, f"≤ {GO['ram_mb']}", ram, within(ram, GO["ram_mb"])),
         row(
             "RSS tiến trình sau khi nạp mô hình cơ sở (MB)",
-            f"≤ {GO['memory_peak_mb']}",
+            f"≤ {GO['ram_mb']}",
             rss_after,
-            within(rss_after, GO["memory_peak_mb"]),
+            within(rss_after, GO["ram_mb"]),
+        ),
+        row(
+            f"memory.peak của cgroup (MB), gồm page cache: cache {cache_state(cache_mb)}",
+            INFO,
+            peak,
+            None,
         ),
         row(
             "So sánh mô hình: nạp lạnh lần đầu (s)",
@@ -1044,11 +1176,21 @@ def compare_section(gate: dict) -> list[str]:
             f"- RSS tiến trình: {compare['rss_before_mb']} MB → {compare['rss_after_mb']} MB"
             f" (+{compare['rss_delta_mb']} MB)"
         )
+    watch = gate.get("memory_watch")
+    if watch:
+        lines.append(
+            "- RAM không thu hồi lớn nhất của container (anon + kernel + shmem, lấy mẫu mỗi"
+            f" {watch['period_s']:g} s): {watch['unreclaimable_peak_mb']} MB lúc"
+            f" {watch['unreclaimable_peak_at']}, tính cả phần nạp mô hình cơ sở"
+            f" (ngưỡng ≤ {GO['ram_mb']})"
+        )
     peak = gate.get("server_memory_peak_mb")
     if peak is not None:
+        cache = "" if not watch else f"; page cache {watch['page_cache_mb']} MB lúc đầy nhất"
+        state = cache_state(watch and watch["page_cache_mb"])
         lines.append(
-            f"- memory.peak của container cuối lượt đo: {peak} MB, tính cả phần nạp mô hình cơ sở"
-            f" (ngưỡng ≤ {GO['memory_peak_mb']})"
+            f"- memory.peak của container: {peak} MB, gồm page cache của file thu hồi được{cache}"
+            f" (cache {state}); chỉ để tham khảo"
         )
     if not compare["ok"]:
         lines.append("- **Lỗi**: so sánh với mô hình cơ sở không chạy được")
@@ -1085,18 +1227,26 @@ def phase_section(report: dict) -> list[str]:
     """Giờ bắt đầu/kết thúc từng pha của mỗi lượt đo, để về sau đối chiếu với việc khác trên máy."""
     tables: list[str] = []
     for run in report["runs"]:
-        if run.get("phases"):
-            rows = [
-                [p["name"], p["start"], p["end"], p["seconds"], noise_cell(p.get("noisy_with"))]
-                for p in run["phases"]
-            ]
-            header = ["Pha", "Bắt đầu", "Kết thúc", "Giây", "Nhiễu"]
-            tables += ["", f"Lượt `{run.get('label', '-')}`:", "", *table(header, rows)]
+        phases = run.get("phases")
+        if not phases:
+            continue
+        with_ram = any(p.get("ram_mb") is not None for p in phases)
+        header = ["Pha", "Bắt đầu", "Kết thúc", "Giây"]
+        header += ["RAM không thu hồi lớn nhất (MB)"] if with_ram else []
+        header.append("Nhiễu")
+        rows = []
+        for p in phases:
+            row = [p["name"], p["start"], p["end"], p["seconds"]]
+            row += [p.get("ram_mb")] if with_ram else []
+            rows.append([*row, noise_cell(p.get("noisy_with"))])
+        tables += ["", f"Lượt `{run.get('label', '-')}`:", "", *table(header, rows)]
     if not tables:
         return []
     note = (
         "Giờ máy (HH:MM:SS). Cột Nhiễu cho biết pytest, playwright, vitest hay next build có chạy"
-        f" cùng lúc không (lấy mẫu mỗi {WATCH_PERIOD_S:g} s); dấu - là không theo dõi."
+        f" cùng lúc không (lấy mẫu mỗi {WATCH_PERIOD_S:g} s); dấu - là không theo dõi. Cột RAM là"
+        f" anon + kernel + shmem lớn nhất của container server trong pha (lấy mẫu mỗi"
+        f" {MEMORY_PERIOD_S:g} s)."
     )
     return ["", "## Giờ từng pha đo", "", note, *tables]
 
@@ -1167,10 +1317,14 @@ def render_markdown(report: dict) -> str:
             "" if batch is None else f" (lô ONNX {batch})"
         )
         lines += ["", title, ""] + table(["Bước", "Giây"], steps)
+        watch = bench.get("memory_watch")
+        unreclaimable = (
+            "" if not watch else f"RAM không thu hồi {watch['unreclaimable_peak_mb']} MB; "
+        )
         lines += [
             "",
-            f"RSS cuối {bench.get('rss_mb', '-')} MB;"
-            f" cgroup memory.peak {bench.get('cgroup_memory_peak_mb', '-')} MB.",
+            f"RSS cuối {bench.get('rss_mb', '-')} MB; {unreclaimable}"
+            f"cgroup memory.peak {bench.get('cgroup_memory_peak_mb', '-')} MB.",
         ]
         throttle = bench.get("cgroup_cpu_throttle")
         if throttle:
