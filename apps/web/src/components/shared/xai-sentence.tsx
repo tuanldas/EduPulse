@@ -26,7 +26,7 @@ function Word({ token }: { token: SentenceToken }) {
     >
       {token.text}
       <sup
-        className={cn("ml-px text-[11px] font-bold", support ? "text-primary" : "text-muted-foreground")}
+        className={cn("ml-px text-xs font-bold", support ? "text-primary" : "text-muted-foreground")}
         aria-hidden="true"
       >
         {support ? role.rank : "−"}

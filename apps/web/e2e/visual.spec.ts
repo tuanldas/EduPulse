@@ -94,7 +94,24 @@ for (const viewport of VIEWPORTS) {
       await page.getByRole("button", { name: "Phân tích" }).click();
       await expect(page.getByText("Không còn nội dung để phân tích.")).toBeVisible();
       await page.screenshot({ path: path.join(OUTPUT, `01-khong-con-noi-dung-${tag}.png`), fullPage: true });
-      expect(problems).toEqual([]);
+      // Câu chỉ có số điện thoại cố ý nhận 422 `no_content`; trình duyệt tự ghi dòng này vào console.
+      expect(problems.filter((problem) => !problem.includes("status of 422"))).toEqual([]);
+      await context.close();
+    });
+
+    test(`trang 1 · so sánh mô hình · ${tag}`, async ({ browser }) => {
+      const { context, page, problems } = await openPage(browser, viewport, theme);
+      await page.goto("/");
+      await settle(page);
+      await page.getByRole("switch", { name: /So sánh với mô hình cơ sở/ }).click();
+      await analyze(page, SENTENCE);
+      await explainSettled(page);
+      // Khung so sánh hiện sau khi mô hình cơ sở trả lời, hoặc thông báo lỗi nếu máy chủ chưa hỗ trợ.
+      await expect(page.getByRole("region", { name: "So sánh mô hình" })).toBeVisible();
+      await expect(page.getByLabel("Đang tính mô hình cơ sở")).toHaveCount(0, { timeout: 30_000 });
+      await page.screenshot({ path: path.join(OUTPUT, `01-so-sanh-mo-hinh-${tag}.png`), fullPage: true });
+      // Route so sánh có thể còn trả 501 (chưa cài đặt): trình duyệt tự ghi dòng này vào console.
+      expect(problems.filter((problem) => !problem.includes("status of 501"))).toEqual([]);
       await context.close();
     });
 

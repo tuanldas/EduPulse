@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from edupulse.api.main import create_app
 from edupulse.config import Settings, load_settings
+from edupulse.engine.service import Analyzer
 from edupulse.text.segment import SegmenterError
 
 
@@ -39,3 +40,20 @@ def live_client(settings: Settings) -> Iterator[TestClient]:
             yield live
     except SegmenterError as exc:  # máy không có JRE
         pytest.skip(f"không khởi động được bộ tách từ: {exc}")
+
+
+@pytest.fixture(scope="session")
+def analyzer(live_client: TestClient) -> Analyzer:
+    """Bộ phân tích mà app thật đang dùng (không nạp thêm bản thứ hai)."""
+    return live_client.app.state.analyzer
+
+
+@pytest.fixture(autouse=True)
+def empty_batch_store(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Mỗi test bắt đầu và kết thúc với kho batch của app thật trống (nếu test có dùng app đó)."""
+    live = "live_client" in request.fixturenames or "analyzer" in request.fixturenames
+    if live:
+        request.getfixturevalue("live_client").app.state.jobs.clear()
+    yield
+    if live:
+        request.getfixturevalue("live_client").app.state.jobs.clear()

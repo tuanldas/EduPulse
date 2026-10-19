@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from edupulse.api.errors import ApiError
+from edupulse.api.jobs import JobStore
 from edupulse.bundle_schema import InsightBackground, ModelCard
 from edupulse.config import Settings
 from edupulse.demo_data import DemoData
@@ -51,3 +52,13 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 DemoDep = Annotated[DemoData, Depends(get_demo)]
 ModelCardDep = Annotated[ModelCard, Depends(get_model_card)]
 BackgroundDep = Annotated[InsightBackground, Depends(get_background)]
+
+
+def get_store(request: Request) -> JobStore:
+    store = getattr(request.app.state, "jobs", None)
+    if store is None:
+        raise ApiError(503, "engine_unavailable", "Kho batch chưa sẵn sàng.")
+    return store
+
+
+StoreDep = Annotated[JobStore, Depends(get_store)]

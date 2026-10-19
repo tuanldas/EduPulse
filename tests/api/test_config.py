@@ -23,7 +23,6 @@ from edupulse.config import (
     Settings,
 )
 from edupulse.engine.bundle import load_model_card
-from edupulse.engine.service import Analyzer
 
 
 def write_small_demo(directory: Path, bundle: str) -> None:
@@ -110,12 +109,12 @@ def test_config_exposes_limits_budgets_and_the_model(live_client: TestClient, se
 
 
 @pytest.mark.model
-def test_config_budgets_come_from_the_calibration(live_client: TestClient, analyzer_state):
+def test_config_budgets_come_from_the_calibration(live_client: TestClient, analyzer):
     config = schemas.AppConfig.model_validate(live_client.get("/api/config").json())
     assert [b.budget for b in config.budgets] == list(BUDGETS)
     assert [b.budget for b in config.budgets if b.default] == [DEFAULT_BUDGET]
     for option in config.budgets:
-        assert option.efficiency == analyzer_state.calibration.efficiency[option.budget]
+        assert option.efficiency == analyzer.calibration.efficiency[option.budget]
     # Ngân sách càng lớn càng bắt được nhiều lỗi: hiệu quả ước tính phải đơn điệu.
     caught = [b.efficiency.caught_sentiment_errors for b in config.budgets]
     assert caught == sorted(caught)
@@ -133,12 +132,7 @@ def test_config_demo_fields_agree_with_each_other(live_client: TestClient):
 
 
 @pytest.mark.model
-def test_model_card_is_the_bundle_card_unchanged(live_client: TestClient, analyzer_state):
+def test_model_card_is_the_bundle_card_unchanged(live_client: TestClient, analyzer):
     response = live_client.get("/api/model-card")
     assert response.status_code == 200
-    assert ModelCard.model_validate(response.json()) == load_model_card(analyzer_state.bundle)
-
-
-@pytest.fixture(scope="session")
-def analyzer_state(live_client: TestClient) -> Analyzer:
-    return live_client.app.state.analyzer
+    assert ModelCard.model_validate(response.json()) == load_model_card(analyzer.bundle)

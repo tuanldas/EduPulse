@@ -1,5 +1,7 @@
 """Luật cờ và lý do bằng lời: dựng trên `edupulse.scoring`, không cần mô hình."""
 
+import math
+
 import numpy as np
 import pytest
 
@@ -9,8 +11,11 @@ from edupulse.engine.flags import (
     NOT_FLAGGED,
     Candidate,
     FlagReason,
+    audit_sample,
     batch_needs_review,
     build_flag,
+    review_order,
+    seed_from,
     single_needs_review,
     top_candidates,
     weakest_task,
@@ -127,3 +132,63 @@ def test_batch_flag_share_follows_the_budget(budget):
     scores = np.random.default_rng(0).uniform(size=1000)
     flagged = batch_needs_review(scores, np.zeros(1000, dtype=bool), budget)
     assert flagged.sum() == budget * 10
+
+
+# --- Mẫu kiểm tra và hàng đợi duyệt --------------------------------------------------------------
+
+
+def test_seed_from_is_stable_and_distinguishes_ids():
+    assert seed_from("abc") == seed_from("abc")
+    assert seed_from("abc") != seed_from("abd")
+    assert seed_from("abc") == int.from_bytes(
+        bytes.fromhex("ba7816bf8f01cfea"), "big"
+    )  # sha256("abc") bắt đầu bằng ba7816bf 8f01cfea
+
+
+def test_audit_takes_a_share_of_the_unflagged_rows_only():
+    flagged = np.zeros(200, dtype=bool)
+    flagged[:30] = True
+    audit = audit_sample(flagged, 0.05, seed=1)
+    assert audit.sum() == math.ceil(0.05 * 170)  # 9
+    assert not (audit & flagged).any()
+
+
+def test_audit_always_has_one_row_when_anything_is_unflagged():
+    flagged = np.ones(10, dtype=bool)
+    flagged[3] = False
+    assert audit_sample(flagged, 0.05, seed=1).tolist() == [i == 3 for i in range(10)]
+
+
+def test_audit_is_empty_when_everything_is_flagged():
+    assert not audit_sample(np.ones(5, dtype=bool), 0.05, seed=1).any()
+    assert audit_sample(np.zeros(0, dtype=bool), 0.05, seed=1).shape == (0,)
+
+
+def test_audit_is_fixed_by_the_seed():
+    flagged = np.zeros(500, dtype=bool)
+    first = audit_sample(flagged, 0.05, seed=7)
+    assert (first == audit_sample(flagged, 0.05, seed=7)).all()
+    assert not (first == audit_sample(flagged, 0.05, seed=8)).all()
+    assert first.sum() == 25
+
+
+def test_audit_spreads_over_the_whole_batch_not_just_the_start():
+    audit = audit_sample(np.zeros(1000, dtype=bool), 0.05, seed=3)
+    positions = np.flatnonzero(audit)
+    assert positions.min() < 250 and positions.max() > 750
+
+
+@pytest.mark.parametrize("rate", [0, -0.1, 1.5])
+def test_audit_rejects_a_rate_outside_the_unit_interval(rate: float):
+    with pytest.raises(ValueError, match="tỉ lệ"):
+        audit_sample(np.zeros(10, dtype=bool), rate, seed=1)
+
+
+def test_review_order_lists_members_by_ascending_score_then_row():
+    scores = [0.9, 0.1, 0.5, 0.1, 0.3, 0.7]
+    in_review = [True, True, False, True, True, False]
+    assert review_order(scores, in_review) == [1, 3, 4, 0]
+
+
+def test_review_order_is_empty_without_members():
+    assert review_order([0.1, 0.2], [False, False]) == []

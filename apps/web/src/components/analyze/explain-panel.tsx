@@ -101,7 +101,7 @@ export function ExplainPanel({ analysis, explain, maxWords, onRetry }: ExplainPa
           <SegmentedControl value={task} onValueChange={setTask} options={options} ariaLabel="Chọn tác vụ để giải thích" />
         ) : null}
       </div>
-      <div aria-live="polite">
+      <div>
         {explain.status === "loading" ? <ExplainSkeleton /> : null}
         {explain.status === "skipped" ? <LongSentenceNotice nWords={analysis.n_words} maxWords={maxWords} /> : null}
         {explain.status === "error" ? <FailureNotice failure={explain.failure} onRetry={onRetry} /> : null}

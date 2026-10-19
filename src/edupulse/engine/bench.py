@@ -31,42 +31,22 @@ def measure(
     budget_pct: float,
     batch_size: int | None = None,
 ) -> dict:
-    """Chạy một batch như job thật và trả thời gian (giây) từng bước."""
-    steps: dict[str, float] = {}
-
-    started = time.perf_counter()
-    prepared = analyzer.prepare_many(texts)
-    steps["prepare"] = time.perf_counter() - started
-    skipped = sum(p.n_words == 0 for p in prepared)  # câu không còn nội dung thì không có nhãn
-    prepared = [p for p in prepared if p.n_words]
-
-    started = time.perf_counter()
+    """Chạy một batch đúng đường của job nền (`Analyzer.run_batch`) và trả thời gian từng bước."""
     batch_size = batch_size or analyzer.calibration.logits_batch_size
-    analyses = analyzer.infer(prepared, batch_size=batch_size)
-    steps["predict"] = time.perf_counter() - started
-
-    started = time.perf_counter()
-    analyses = analyzer.flag(analyses, budget_pct)
-    steps["flags"] = time.perf_counter() - started
-
-    started = time.perf_counter()
-    explainable = (
-        a for a in analyses if a.flag.needs_review and a.prepared.n_words <= analyzer.xai_max_words
+    outcome = analyzer.run_batch(
+        texts, budget_pct, seed=0, explain_top=xai_rows, batch_size=batch_size
     )
-    candidates = sorted(explainable, key=lambda a: a.score)[:xai_rows]
-    forwards = sum(analyzer.explain_prepared(a.prepared).n_forwards for a in candidates)
-    steps["explain"] = time.perf_counter() - started
-
-    total = sum(steps.values())
+    forwards = sum(e.n_forwards for e in outcome.explanations.values())
+    total = sum(outcome.steps_s.values())
     return {
         "n": len(texts),
-        "skipped_no_content": skipped,
+        "skipped_no_content": outcome.n_skipped,
         "budget_pct": budget_pct,
         "batch_size": batch_size,
-        "flagged": sum(a.flag.needs_review for a in analyses),
-        "xai_rows": len(candidates),
+        "flagged": outcome.n_flagged,
+        "xai_rows": len(outcome.explanations),
         "xai_forwards": forwards,
-        "steps_s": {name: round(seconds, 3) for name, seconds in steps.items()},
+        "steps_s": {name: round(seconds, 3) for name, seconds in outcome.steps_s.items()},
         "total_s": round(total, 3),
         "per_sentence_ms": round(total / max(len(texts), 1) * 1000, 2),
     }
