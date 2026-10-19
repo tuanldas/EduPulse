@@ -32,6 +32,7 @@ from edupulse.demo_data import DemoRowData
 from edupulse.engine.explain import Explanation
 from edupulse.engine.flags import seed_from
 from edupulse.engine.service import Analysis, Analyzer, BatchCancelled, NoContent
+from edupulse.insights.models import InsightsResponse
 from edupulse.insights.rows import InsightRow
 from edupulse.text import Prepared
 
@@ -95,6 +96,7 @@ class Batch:
     # Kết quả.
     result: BatchResult | None = None
     insight_rows: list[InsightRow] | None = None
+    insights_cache: dict[tuple[str, ...], InsightsResponse] = field(default_factory=dict)
     # Điều khiển.
     cancel: threading.Event = field(default_factory=threading.Event)
     lock: threading.RLock = field(
@@ -310,6 +312,34 @@ class JobStore:
                 batch.pii_rows, batch.error_code = None, None
             self._queue.put(batch.id)
         return self.snapshot(batch)
+
+    @staticmethod
+    def insight_rows(batch: Batch) -> list[InsightRow]:
+        """Các dòng có nhãn của batch ở dạng đầu vào của insight (tính một lần rồi giữ lại).
+
+        Insight tính trên NHÃN DỰ ĐOÁN, không phản ánh nhãn người duyệt đã sửa ở giao diện.
+        """
+        with batch.lock:
+            if batch.insight_rows is None:
+                result = batch.result
+                if result is None:
+                    raise ApiError(409, "not_done", "Batch chưa phân tích xong.")
+                batch.insight_rows = [
+                    InsightRow(
+                        display_text=row.prepared.display_text,
+                        model_text=row.prepared.model_text,
+                        sentiment=row.analysis.sentiment.label,
+                        sentiment_confidence=row.analysis.sentiment.confidence,
+                        topic=row.analysis.topic.label,
+                        topic_confidence=row.analysis.topic.confidence,
+                        n_words=row.prepared.n_words,
+                        group=row.group,
+                        flagged=row.analysis.flag.needs_review,
+                    )
+                    for row in result.rows
+                    if row.analysis is not None
+                ]
+            return batch.insight_rows
 
     def snapshot(self, batch: Batch) -> Snapshot:
         with batch.lock:
