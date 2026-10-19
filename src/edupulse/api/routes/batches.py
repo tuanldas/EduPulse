@@ -38,6 +38,7 @@ RowIndex = Annotated[int, Path(ge=0)]
 
 SAMPLE_FILENAME = "edupulse-file-mau.csv"
 INSIGHTS_CACHE_SIZE = 16  # số cách lọc nhóm được nhớ cho mỗi batch
+MAX_FILENAME_CHARS = 255
 
 
 def _finished(batch: Batch) -> Batch:
@@ -87,7 +88,9 @@ def upload_batch(
     if len(data) > MAX_UPLOAD_BYTES:
         raise too_large
     filename = file.filename or ""
-    table = parse_upload(filename, data)
+    table = parse_upload(filename, data)  # chỉ đọc phần mở rộng của tên
+    # Tên file chỉ để hiển thị lại cho chính người tải lên: cắt cho gọn, không bao giờ ghi log.
+    filename = filename[:MAX_FILENAME_CHARS]
     del data
     batch = store.create(
         filename, table, illustrative=is_illustrative("upload", None, table.columns)
