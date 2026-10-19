@@ -158,6 +158,16 @@ def test_run_made_by_another_normalizer_counts_as_a_different_configuration(home
     assert code == queue.EXIT_USAGE and "normalizer_version" in text
 
 
+def test_run_from_an_equivalent_normalizer_is_not_a_different_configuration(home, monkeypatch):
+    write_history(home, "mtl-s42")
+    path = home / "models" / "phobert" / "mtl-s42" / "history.json"
+    history = json.loads(path.read_text("utf-8"))
+    history["normalizer_version"] = "0"
+    write_json(path, history)
+    monkeypatch.setattr(queue, "normalizer_compatible", lambda found: found == "0")
+    assert queue.mismatches(history, epochs=4) == []
+
+
 def test_dry_run_prints_the_plan_but_runs_and_locks_nothing(home):
     recorder = Recorder()
     code, text = run(home, recorder, dry_run=True, docker=True)

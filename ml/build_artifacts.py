@@ -51,6 +51,7 @@ from ml.common import (
     SPLITS,
     assert_normalizer,
     load_processed,
+    normalizer_compatible,
     read_json,
     resolve_run,
     settings,
@@ -137,15 +138,20 @@ def git_commit() -> str:
 def assert_same_normalizer(
     history: dict[str, Any], background: InsightBackground, golden: GoldenPredictions
 ) -> None:
+    """Mã, dữ liệu đã xử lý, đếm nền và dự đoán vàng phải cùng một bản chuẩn hoá. Run huấn luyện
+    có thể do bản cũ hơn nếu bằng chứng bất biến chứng minh hai bản cho model_text giống hệt."""
     versions = {
         "mã nguồn": NORMALIZER_VERSION,
         "dữ liệu đã xử lý": assert_normalizer()["normalizer_version"],
-        "run huấn luyện": history.get("normalizer_version"),
         "đếm nền insight": background.normalizer_version,
         "dự đoán vàng": golden.normalizer_version,
     }
-    if len(set(versions.values())) != 1:
-        raise BundleError(f"normalizer_version không đồng nhất: {versions}")
+    trained_with = history.get("normalizer_version")
+    if len(set(versions.values())) != 1 or not normalizer_compatible(trained_with):
+        raise BundleError(
+            f"normalizer_version không đồng nhất: {versions}, run huấn luyện {trained_with!r} "
+            "(khác bản của mã thì cần results/metrics/normalizer_v*_invariance.json còn hiệu lực)"
+        )
 
 
 def guard_texts(directory: Path) -> dict[str, str]:
@@ -260,7 +266,7 @@ def baseline_rows() -> list[BaselineRow]:
     if not path.is_file():
         raise BundleError(f"chưa có {path} — chạy `make baseline`")
     data = read_json(path)
-    if data["normalizer_version"] != NORMALIZER_VERSION:
+    if not normalizer_compatible(data["normalizer_version"]):
         raise BundleError(
             "val_baselines.json sinh bởi bản chuẩn hoá khác — chạy lại `make baseline`"
         )
@@ -319,7 +325,7 @@ def require_passed_gate(gate: dict[str, Any], run: Path, allow_failed: bool) -> 
     """Cổng int8 của đúng run này phải qua trước khi đóng gói; trả về mục `embedding`."""
     if gate.get("run") != run.name:
         raise BundleError(f"onnx_gate.json là của run {gate.get('run')!r}, không phải {run.name!r}")
-    if gate.get("normalizer_version") != NORMALIZER_VERSION:
+    if not normalizer_compatible(gate.get("normalizer_version")):
         raise BundleError("onnx_gate.json sinh bởi bản chuẩn hoá khác — chạy lại `make export`")
     if not gate["gate"]["passed"] and not allow_failed:
         raise BundleError(

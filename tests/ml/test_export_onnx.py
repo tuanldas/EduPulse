@@ -182,6 +182,67 @@ def test_refuses_runs_made_by_another_normalizer(tiny_run, tmp_path):
         export_onnx.export(stale, tmp_path / "out", threads=1)
 
 
+# --- Tính lại câu vàng từ ONNX đã xuất ------------------------------------------------------------
+
+
+def test_refresh_golden_recomputes_from_the_exported_model_without_changing_it(
+    exported, tiny_run, capsys
+):
+    out, _ = exported
+    path = out / "golden_predictions.json"
+    before, model_bytes = path.read_text("utf-8"), (out / "model.int8.onnx").read_bytes()
+    assert export_onnx.refresh_golden(tiny_run, out, threads=2) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["items"] == 20 and report["changed"] == []
+    assert report["normalizer_version"] == NORMALIZER_VERSION
+    assert json.loads(path.read_text("utf-8")) == json.loads(before)
+    assert (out / "model.int8.onnx").read_bytes() == model_bytes
+
+
+def test_refresh_golden_names_the_sentences_that_changed(exported, tiny_run, capsys):
+    out, _ = exported
+    path = out / "golden_predictions.json"
+    original = path.read_text("utf-8")
+    data = json.loads(original)
+    data["items"][14]["model_text"] = "câu cũ khác"
+    data["items"][3]["sentiment"] = (
+        "neutral" if data["items"][3]["sentiment"] != "neutral" else "positive"
+    )
+    data["items"][5]["p_topic"] = [0.25, 0.25, 0.25, 0.25]
+    del data["items"][19]
+    write_json(path, data)
+    try:
+        assert export_onnx.refresh_golden(tiny_run, out, threads=2) == 0
+        changed = json.loads(capsys.readouterr().out)["changed"]
+        assert changed == ["g04: nhãn", "g06: xác suất", "g15: model_text", "g20: câu mới"]
+    finally:
+        path.write_text(original, encoding="utf-8")
+
+
+def test_golden_differences_without_an_old_file_asks_for_a_comparison():
+    new = GoldenPredictions(normalizer_version=NORMALIZER_VERSION, items=[])
+    assert export_onnx.golden_differences(None, new) == ["chưa có bản cũ để so"]
+
+
+def test_refresh_golden_refuses_a_run_from_another_normalizer(tiny_run, tmp_path):
+    history = json.loads((tiny_run / "history.json").read_text("utf-8"))
+    stale = tmp_path / "stale"
+    stale.mkdir()
+    write_json(stale / "history.json", {**history, "normalizer_version": "0"})
+    with pytest.raises(RuntimeError, match="chuẩn hoá"):
+        export_onnx.refresh_golden(stale, tmp_path, threads=1)
+
+
+def test_refresh_golden_needs_an_exported_model(tiny_run, tmp_path):
+    with pytest.raises(RuntimeError, match="model.int8.onnx"):
+        export_onnx.refresh_golden(tiny_run, tmp_path, threads=1)
+
+
+def test_golden_only_is_a_command_line_flag():
+    assert export_onnx.build_parser().parse_args(["--golden-only"]).golden_only is True
+    assert export_onnx.build_parser().parse_args([]).golden_only is False
+
+
 # --- Id ngoài bảng embedding gốc ------------------------------------------------------------------
 
 RARE_PIECE_TEXT = "thầy truyền_đạt_kiến thức rất tốt ."

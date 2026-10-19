@@ -42,6 +42,7 @@ from edupulse.scoring import softmax_t
 from edupulse.text import NORMALIZER_VERSION, prepare_many
 from ml.common import (
     load_processed,
+    normalizer_compatible,
     read_json,
     resolve_run,
     settings,
@@ -370,15 +371,71 @@ def golden_predictions(int8_path: Path, threads: int) -> GoldenPredictions:
     return GoldenPredictions(normalizer_version=NORMALIZER_VERSION, items=golden)
 
 
+def golden_differences(old: GoldenPredictions | None, new: GoldenPredictions) -> list[str]:
+    """Câu vàng nào đổi giữa hai lần tính: model_text, nhãn hay xác suất (rỗng = giống hệt)."""
+    if old is None:
+        return ["chưa có bản cũ để so"]
+    before = {item.id: item for item in old.items}
+    changed = []
+    for item in new.items:
+        previous = before.get(item.id)
+        if previous is None:
+            changed.append(f"{item.id}: câu mới")
+            continue
+        parts = []
+        if previous.model_text != item.model_text:
+            parts.append("model_text")
+        if (previous.sentiment, previous.topic) != (item.sentiment, item.topic):
+            parts.append("nhãn")
+        if (previous.p_sentiment, previous.p_topic) != (item.p_sentiment, item.p_topic):
+            parts.append("xác suất")
+        if parts:
+            changed.append(f"{item.id}: {', '.join(parts)}")
+    changed += [f"{name}: không còn" for name in sorted(set(before) - {i.id for i in new.items})]
+    return changed
+
+
+def refresh_golden(run: Path, out_dir: Path, threads: int) -> int:
+    """Tính lại golden_predictions.json từ ONNX int8 đã xuất, không xuất lại mô hình.
+
+    Dùng khi chỉ bản chuẩn hoá hoặc câu vàng đổi: tệp ONNX, calibration và cổng int8 giữ nguyên.
+    In ra những câu vàng đổi so với bản cũ để người chạy xem có hợp lệ không.
+    """
+    require_compatible_run(read_json(run / "history.json"))
+    int8_path, target = out_dir / "model.int8.onnx", out_dir / "golden_predictions.json"
+    if not int8_path.is_file():
+        raise RuntimeError(f"thiếu {int8_path}: chạy `make export` trước")
+    old = None
+    if target.is_file():
+        old = GoldenPredictions.model_validate_json(target.read_text("utf-8"))
+    new = golden_predictions(int8_path, threads)
+    write_json(target, new.model_dump(mode="json"))
+    report = {
+        "run": run.name,
+        "normalizer_version": NORMALIZER_VERSION,
+        "items": len(new.items),
+        "changed": golden_differences(old, new),
+    }
+    print(json.dumps(report, ensure_ascii=False))
+    return 0
+
+
+def require_compatible_run(history: dict[str, Any]) -> None:
+    """Run huấn luyện bằng bản chuẩn hoá khác chỉ dùng được khi có bằng chứng bất biến."""
+    found = history.get("normalizer_version")
+    if not normalizer_compatible(found):
+        raise RuntimeError(
+            f"run huấn luyện bằng bản chuẩn hoá {found!r}, mã đang là {NORMALIZER_VERSION!r} và "
+            "không có bằng chứng bất biến (results/metrics/normalizer_v*_invariance.json): "
+            "huấn luyện lại"
+        )
+
+
 def export(
     run: Path, out_dir: Path, threads: int, quant_config: str = DEPLOY_QUANT_CONFIG
 ) -> dict[str, Any]:
     history = read_json(run / "history.json")
-    if history.get("normalizer_version") != NORMALIZER_VERSION:
-        raise RuntimeError(
-            f"run huấn luyện bằng bản chuẩn hoá {history.get('normalizer_version')!r}, mã đang là "
-            f"{NORMALIZER_VERSION!r}: huấn luyện lại"
-        )
+    require_compatible_run(history)
     model = MultiHeadPhoBERT.from_pretrained(run).eval()
     if tuple(model.config.task_heads) != TASKS:
         raise RuntimeError(
@@ -563,6 +620,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--run-summary", type=Path, help="ghi tóm tắt run huấn luyện tới đường dẫn này"
     )
+    parser.add_argument(
+        "--golden-only",
+        action="store_true",
+        help="chỉ tính lại golden_predictions.json từ model.int8.onnx đã xuất (không xuất lại)",
+    )
     return parser
 
 
@@ -571,6 +633,8 @@ def main(argv: list[str] | None = None) -> int:
     run = resolve_run(args.run)
     out_dir = settings().outputs_dir / "onnx" / run.name
     threads = args.threads or load_settings().ort_threads
+    if args.golden_only:
+        return refresh_golden(run, out_dir, threads)
     gate = export(run, out_dir, threads, args.quant_config)
     if args.gate_copy:
         args.gate_copy.parent.mkdir(parents=True, exist_ok=True)

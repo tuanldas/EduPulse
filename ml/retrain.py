@@ -55,6 +55,7 @@ from ml.common import (
     MpsBusyError,
     load_processed,
     mps_lock,
+    normalizer_compatible,
     read_json,
     resolve_run,
     set_seed,
@@ -431,10 +432,11 @@ def retrain_phobert(
     history_path = run / "history.json"
     if history_path.is_file():
         found = read_json(history_path).get("normalizer_version")
-        if found != NORMALIZER_VERSION:
+        if not normalizer_compatible(found):
             raise InputError(
                 f"{run.name} huấn luyện với bản chuẩn hoá {found!r} nhưng mã đang là "
-                f"{NORMALIZER_VERSION!r}; không trộn phản hồi mới vào mô hình cũ"
+                f"{NORMALIZER_VERSION!r} và không có bằng chứng bất biến; không trộn phản hồi "
+                "mới vào mô hình cũ"
             )
     target = assert_safe_output(out or default_out("phobert"), run)
 

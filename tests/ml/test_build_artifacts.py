@@ -106,6 +106,26 @@ def test_gate_must_have_passed_for_the_same_run(tmp_path):
         builder.require_passed_gate(stale, run, allow_failed=False)
 
 
+def test_a_gate_from_an_older_normalizer_needs_the_invariance_evidence(monkeypatch, tmp_path):
+    run, old_gate = tmp_path / "mtl-s1", {**passing_gate(), "normalizer_version": "0"}
+    monkeypatch.setattr(builder, "normalizer_compatible", lambda found: False)
+    with pytest.raises(builder.BundleError, match="bản chuẩn hoá khác"):
+        builder.require_passed_gate(old_gate, run, allow_failed=False)
+    monkeypatch.setattr(builder, "normalizer_compatible", lambda found: found == "0")
+    assert builder.require_passed_gate(old_gate, run, allow_failed=False)["embedding_rows"] == 66119
+
+
+@pytest.mark.data
+def test_a_run_from_an_older_normalizer_needs_the_invariance_evidence(monkeypatch):
+    history = {"normalizer_version": "0"}
+    golden = GoldenPredictions(normalizer_version=NORMALIZER_VERSION, items=[])
+    monkeypatch.setattr(builder, "normalizer_compatible", lambda found: False)
+    with pytest.raises(builder.BundleError, match="không đồng nhất.*run huấn luyện '0'"):
+        builder.assert_same_normalizer(history, background(), golden)
+    monkeypatch.setattr(builder, "normalizer_compatible", lambda found: found == "0")
+    builder.assert_same_normalizer(history, background(), golden)  # có bằng chứng thì qua
+
+
 def test_different_normalizer_versions_are_refused():
     history = {"normalizer_version": NORMALIZER_VERSION}
     golden = GoldenPredictions(normalizer_version=NORMALIZER_VERSION, items=[])
