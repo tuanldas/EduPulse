@@ -7,9 +7,10 @@ import time
 import pytest
 
 from edupulse.api.errors import ApiError
-from edupulse.api.jobs import JobStore
+from edupulse.api.jobs import EXPLAIN_SECONDS_GUESS, JobStore, _estimate_eta
 from edupulse.api.limits import DEMO_BATCH_ID, MAX_GROUPS
 from edupulse.api.parsing import parse_upload
+from edupulse.config import AUTO_XAI_TOP
 from edupulse.demo_data import DemoRowData
 from edupulse.engine.service import Analyzer
 
@@ -253,6 +254,35 @@ def test_demo_batch_is_done_readonly_and_never_expires(store: JobStore, clock: C
         409,
         "batch_readonly",
     )
+
+
+# --- Ước tính thời gian còn lại -------------------------------------------------------------------
+
+
+def test_eta_is_unknown_until_a_rate_has_been_measured():
+    assert _estimate_eta("prepare", 50, 100, 5.0) is None
+    assert _estimate_eta("predict", 0, 100, 5.0) is None
+    assert _estimate_eta("predict", 3, 100, 0.1) is None  # chưa đủ thời gian để đo
+
+
+def test_eta_in_the_predict_step_extrapolates_the_rate_and_adds_the_explain_guess():
+    guess = AUTO_XAI_TOP * EXPLAIN_SECONDS_GUESS
+    # 250 câu trong 10 s -> còn 750 câu cần 30 s.
+    assert _estimate_eta("predict", 250, 1000, 10.0) == pytest.approx(30.0 + guess)
+    assert _estimate_eta("predict", 1000, 1000, 40.0) == pytest.approx(guess)
+
+
+def test_eta_shrinks_as_the_predict_step_advances_at_a_steady_rate():
+    values = [_estimate_eta("predict", done, 1000, done * 0.04) for done in (100, 400, 700, 900)]
+    assert values == sorted(values, reverse=True)
+
+
+def test_eta_in_the_later_steps():
+    assert _estimate_eta("flag", 0, 1, 0.0) == pytest.approx(AUTO_XAI_TOP * EXPLAIN_SECONDS_GUESS)
+    assert _estimate_eta("explain", 0, 20, 0.0) == pytest.approx(20 * EXPLAIN_SECONDS_GUESS)
+    assert _estimate_eta("explain", 10, 20, 1.5) == pytest.approx(1.5)  # đã 0,15 s/câu, còn 10 câu
+    assert _estimate_eta("explain", 20, 20, 3.0) == 0.0
+    assert _estimate_eta("explain", 0, 0, 0.0) == 0.0
 
 
 # --- Worker nền -----------------------------------------------------------------------------------

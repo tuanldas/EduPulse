@@ -51,11 +51,6 @@ class ApiError(StarletteHTTPException):
         super().__init__(status_code=status_code, detail=detail, headers=headers)
 
 
-def not_implemented() -> ApiError:
-    """Route đã có trong hợp đồng nhưng chưa làm xong: lỗi rõ ràng, không trả dữ liệu giả."""
-    return ApiError(501, "not_implemented", "Chức năng này chưa được cài đặt.")
-
-
 def _is_api_detail(detail: object) -> bool:
     return isinstance(detail, dict) and "code" in detail and "message" in detail
 

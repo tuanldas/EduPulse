@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import skops.io as sio
 
 from edupulse.bundle_schema import BASELINE_TRUSTED_TYPES
 from edupulse.labels import LABELS, TASKS
@@ -61,6 +60,9 @@ class _TaskModel:
 
 
 def _load_task(path: Path) -> _TaskModel:
+    # Import lười: scikit-learn và skops tốn ~100MB RSS, chỉ trả khi có người bật so sánh.
+    import skops.io as sio
+
     try:
         calibrated = sio.load(path, trusted=list(BASELINE_TRUSTED_TYPES))
         pipeline = calibrated.calibrated_classifiers_[0].estimator.estimator
