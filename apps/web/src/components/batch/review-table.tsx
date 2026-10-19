@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TONE_CLASS } from "@/lib/colors";
 import type { LabelChange, LabelPatch, Overrides } from "@/lib/batch/overrides";
-import { paginate, reasonText, REVIEW_PAGE_SIZE } from "@/lib/batch/review-rows";
+import { paginate, reasonDetail, reasonText, REVIEW_PAGE_SIZE } from "@/lib/batch/review-rows";
 import type { ResultRow, SentimentLabel, TopicLabel } from "@/lib/batch/types";
 import { formatNumber } from "@/lib/format";
 import { LABEL_ORDER, labelMeta } from "@/lib/labels";
@@ -120,7 +120,10 @@ export function ReviewTable({
                     <PiiText text={row.text} />
                   </div>
                 </TableCell>
-                <TableCell className={cn("whitespace-nowrap", row.source === "audit" && "text-muted-foreground")}>
+                <TableCell
+                  className={cn("whitespace-nowrap", row.source === "audit" && "text-muted-foreground")}
+                  title={reasonDetail(row)}
+                >
                   {reasonText(row, xaiMaxWords)}
                 </TableCell>
                 <TableCell>

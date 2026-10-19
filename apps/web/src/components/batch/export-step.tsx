@@ -10,7 +10,7 @@ import { Icon } from "@/components/shared/icon";
 import { Caption } from "@/components/shared/section-heading";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toFailure } from "@/lib/api/client";
-import { isAbortError } from "@/lib/api/errors";
+import { isAbortError, type ApiFailure } from "@/lib/api/errors";
 import { exportBatch } from "@/lib/batch/batch-api";
 import { saveBlob } from "@/lib/batch/download";
 import { toOverrideList, type Overrides } from "@/lib/batch/overrides";
@@ -45,11 +45,12 @@ export function ExportStep({
   onExported,
 }: ExportStepProps) {
   const [busy, setBusy] = useState<ExportKind | null>(null);
-  const [failure, setFailure] = useState<ReturnType<typeof toFailure> | null>(null);
+  // Lỗi gắn với loại file đã thử, để "Thử lại" tạo đúng file đó.
+  const [failed, setFailed] = useState<{ kind: ExportKind; failure: ApiFailure } | null>(null);
 
   async function download(kind: ExportKind) {
     setBusy(kind);
-    setFailure(null);
+    setFailed(null);
     try {
       const blob = await exportBatch(batchId, { kind, overrides: toOverrideList(overrides) });
       saveBlob(blob, `${fileStem}_${kind === "all" ? "ket-qua" : "nhan-da-sua"}.csv`);
@@ -57,7 +58,7 @@ export function ExportStep({
       const rows = kind === "all" ? summary.n_rows : correctedCount;
       toast.success(`Đã tạo file CSV · ${formatNumber(rows)} dòng`);
     } catch (error) {
-      if (!isAbortError(error)) setFailure(toFailure(error));
+      if (!isAbortError(error)) setFailed({ kind, failure: toFailure(error) });
     } finally {
       setBusy(null);
     }
@@ -92,7 +93,7 @@ export function ExportStep({
         CSV mã hoá UTF-8 có BOM (mở thẳng bằng Excel). Chỉ chứa câu đã ẩn thông tin cá nhân, nhãn dự đoán, độ tin cậy,
         nhãn đã sửa và nguồn (cờ / ngẫu nhiên).
       </Caption>
-      {failure ? <FailureNotice failure={failure} onRetry={() => void download(busy ?? "all")} /> : null}
+      {failed ? <FailureNotice failure={failed.failure} onRetry={() => void download(failed.kind)} /> : null}
       <Callout tone="warn" icon="schedule" title="Kết quả không được lưu trên máy chủ.">
         Hãy tải file trước khi đóng tab hoặc tải file khác.
         {unexported ? (

@@ -19,7 +19,7 @@ function numberParam(failure: ApiFailure, name: string): number | undefined {
 export function batchFailureMessage(failure: ApiFailure, context: BatchErrorContext = {}): string {
   switch (failure.code) {
     case "file_too_large": {
-      const limit = context.maxUploadMb;
+      const limit = numberParam(failure, "max_mb") ?? context.maxUploadMb;
       return limit === undefined
         ? "File quá lớn. Hãy giảm dung lượng hoặc tách file rồi tải lại."
         : `File lớn hơn ${formatNumber(limit)} MB. Hãy giảm dung lượng hoặc tách file rồi tải lại.`;
@@ -43,6 +43,8 @@ export function batchFailureMessage(failure: ApiFailure, context: BatchErrorCont
       return "Không tìm thấy cột văn bản. File cần ít nhất một cột chữ (ví dụ “Góp ý”). Kiểm tra dòng tiêu đề rồi tải lại.";
     case "invalid_column":
       return "Cột đã chọn không có trong file. Hãy chọn lại cột văn bản.";
+    case "invalid_budget":
+      return "Ngân sách duyệt không hợp lệ. Hãy chọn lại một trong các mức có sẵn.";
     case "too_many_groups": {
       const groups = numberParam(failure, "n_groups");
       const max = numberParam(failure, "max_groups");
@@ -53,7 +55,7 @@ export function batchFailureMessage(failure: ApiFailure, context: BatchErrorCont
     case "batch_not_found":
       return "Phiên làm việc đã kết thúc. Hãy tải file lên lại.";
     case "already_running":
-      return "File này đang được phân tích.";
+      return "File này đã được phân tích. Muốn đổi cột hoặc ngân sách, hãy tải file lên lại.";
     case "batch_readonly":
       return "Dữ liệu demo chỉ để xem, không chạy lại hay xuất file được.";
     case "not_done":
@@ -70,12 +72,8 @@ export function batchFailureMessage(failure: ApiFailure, context: BatchErrorCont
 /** Mã lỗi của job nền (`BatchStatus.error_code`, khi `state = failed`). */
 export function jobFailureMessage(code: string | null): string {
   const base = "Phân tích không thành công.";
-  switch (code) {
-    case "out_of_memory":
-      return `${base} Máy chủ hết bộ nhớ; hãy thử file ít câu hơn.`;
-    case "timeout":
-      return `${base} Quá thời gian chờ; hãy thử file ít câu hơn.`;
-    default:
-      return `${base} Hãy thử lại; nếu vẫn lỗi, tách file thành phần nhỏ hơn.`;
+  if (code === "no_content") {
+    return `${base} Cột đã chọn không còn nội dung nào để phân tích (chỉ có thông tin cá nhân hoặc ký hiệu). Hãy kiểm tra lại cột văn bản.`;
   }
+  return `${base} Hãy thử lại; nếu vẫn lỗi, tách file thành phần nhỏ hơn.`;
 }

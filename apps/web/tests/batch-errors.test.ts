@@ -8,6 +8,12 @@ function failure(status: number, code: string, params?: Record<string, number>) 
 }
 
 describe("batchFailureMessage", () => {
+  it("giới hạn dung lượng lấy từ máy chủ trước, rồi mới đến cấu hình", () => {
+    expect(batchFailureMessage(failure(413, "file_too_large", { max_mb: 10 }))).toContain("10 MB");
+    expect(batchFailureMessage(failure(413, "file_too_large"), { maxUploadMb: 8 })).toContain("8 MB");
+    expect(batchFailureMessage(failure(413, "file_too_large"))).toContain("File quá lớn");
+  });
+
   it("ghép số dòng của file vào câu báo quá giới hạn", () => {
     const message = batchFailureMessage(failure(422, "too_many_rows", { n_rows: 3450, max_rows: 2000 }));
     expect(message).toContain("3.450 câu");
@@ -67,7 +73,7 @@ describe("jobFailureMessage", () => {
     expect(jobFailureMessage("lỗi_gì_đó")).toContain("thử lại");
   });
 
-  it("gợi ý riêng cho hết bộ nhớ", () => {
-    expect(jobFailureMessage("out_of_memory")).toContain("ít câu hơn");
+  it("báo rõ khi cột đã chọn không còn nội dung", () => {
+    expect(jobFailureMessage("no_content")).toContain("không còn nội dung");
   });
 });

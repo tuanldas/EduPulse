@@ -100,6 +100,14 @@ export function parseStoredBatch(raw: unknown): StoredBatch | null {
 
 export const storedBatchStore = createSessionStore<StoredBatch | null>(KEY, null, parseStoredBatch);
 
+export function saveStoredBatch(batch: StoredBatch): void {
+  storedBatchStore.set(batch);
+}
+
+export function clearStoredBatch(): void {
+  storedBatchStore.remove();
+}
+
 export function storedBatchFromUpload(upload: BatchUpload, sizeBytes: number | null = null): StoredBatch {
   return {
     batchId: upload.batch_id,

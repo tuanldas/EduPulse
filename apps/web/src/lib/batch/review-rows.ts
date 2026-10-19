@@ -62,19 +62,33 @@ export function pageOfPosition(position: number, size: number = REVIEW_PAGE_SIZE
 }
 
 /**
- * Cột "Lý do": lý do gắn cờ bằng lời do máy chủ viết; câu kiểm tra ngẫu nhiên ghi rõ là mẫu kiểm
- * tra; câu dài hơn giới hạn giải thích thêm số từ để người duyệt hiểu vì sao không tô được từ.
+ * Cột "Lý do" của bảng, viết ngắn: "Cả hai không chắc", "Cảm xúc không chắc", "Chủ đề không chắc",
+ * "Câu không dấu", "Ngẫu nhiên (kiểm tra)". Câu dài hơn giới hạn giải thích thêm số từ để người duyệt
+ * hiểu vì sao không tô được từ. Phần chi tiết (hai lớp cao nhất và xác suất) nằm ở `reasonDetail`.
  */
 export function reasonText(row: ResultRow, xaiMaxWords: number): string {
   const parts: string[] = [];
   if (row.source === "audit") {
     parts.push("Ngẫu nhiên (kiểm tra)");
   } else {
+    const unsure = new Set<string>();
+    let noDiacritics = false;
     for (const reason of row.reasons) {
-      if (!parts.includes(reason.message)) parts.push(reason.message);
+      if (reason.code === "low_confidence" && reason.task !== null) unsure.add(reason.task);
+      else if (reason.code === "no_diacritics") noDiacritics = true;
     }
+    if (unsure.has("sentiment") && unsure.has("topic")) parts.push("Cả hai không chắc");
+    else if (unsure.has("sentiment")) parts.push("Cảm xúc không chắc");
+    else if (unsure.has("topic")) parts.push("Chủ đề không chắc");
+    if (noDiacritics) parts.push("Câu không dấu");
     if (parts.length === 0 && row.source === "flag") parts.push("Cần xem xét");
   }
   if (row.n_words > xaiMaxWords) parts.push(`dài ${row.n_words} từ`);
   return parts.length === 0 ? "—" : parts.join(" · ");
+}
+
+/** Lý do đầy đủ do máy chủ viết (kèm các lớp cao nhất), dùng làm gợi ý khi rê chuột vào cột "Lý do". */
+export function reasonDetail(row: ResultRow): string | undefined {
+  const messages = row.reasons.map((reason) => reason.message).filter((message) => message !== "");
+  return messages.length === 0 ? undefined : [...new Set(messages)].join("; ");
 }

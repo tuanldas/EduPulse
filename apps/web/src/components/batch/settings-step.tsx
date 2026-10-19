@@ -25,14 +25,18 @@ interface SettingsStepProps {
   config: AppConfig;
   /** Đang chạy hoặc đã chạy xong: khoá các lựa chọn để kết quả luôn khớp với thiết lập đã dùng. */
   locked: boolean;
+  /** Đã chạy xong: máy chủ đã giải phóng dữ liệu thô nên muốn đổi thiết lập phải tải file lại. */
+  finished: boolean;
   /** Đang gửi yêu cầu chạy. */
   starting: boolean;
   failure: ApiFailure | null;
   onRun: (run: StoredRun) => void;
+  /** Bỏ file hiện tại để bắt đầu lại từ bước 1. */
+  onReset: () => void;
 }
 
 /** Bước 2: chọn cột văn bản, cột nhóm, ngân sách duyệt rồi chạy. Đổi file thì dựng lại bằng `key`. */
-export function SettingsStep({ batch, config, locked, starting, failure, onRun }: SettingsStepProps) {
+export function SettingsStep({ batch, config, locked, finished, starting, failure, onRun, onReset }: SettingsStepProps) {
   const budgets = sortedBudgets(config.budgets);
   const [textCol, setTextCol] = useState(batch.run?.textCol ?? batch.suggestedTextCol ?? "");
   const [groupCol, setGroupCol] = useState(batch.run?.groupCol ?? batch.suggestedGroupCol ?? "");
@@ -136,19 +140,40 @@ export function SettingsStep({ batch, config, locked, starting, failure, onRun }
         <BudgetEfficiency options={budgets} selected={budget} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <Button
-          disabled={!canRun}
-          onClick={() => onRun({ textCol, groupCol: groupCol === "" ? null : groupCol, budget })}
+      {finished ? (
+        <Callout
+          tone="info"
+          icon="info"
+          title="Đã phân tích xong."
+          role="status"
+          action={
+            <Button variant="outline" size="sm" onClick={onReset}>
+              <Icon name="restart_alt" size="sm" />
+              Bắt đầu lại
+            </Button>
+          }
         >
-          <Icon name="play_arrow" size="sm" />
-          {starting ? "Đang gửi…" : `Phân tích ${formatNumber(batch.nRows)} câu`}
-        </Button>
-        <Caption className="inline-flex items-center gap-1.5">
-          <Icon name="schedule" size="xs" />
-          Ước tính dưới 2 phút cho 1.000 câu; thanh tiến trình sẽ báo thời gian còn lại.
-        </Caption>
-      </div>
+          Muốn đổi cột văn bản, cột nhóm hoặc ngân sách duyệt, hãy tải file lên lại.
+        </Callout>
+      ) : (
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            disabled={!canRun}
+            onClick={() => onRun({ textCol, groupCol: groupCol === "" ? null : groupCol, budget })}
+          >
+            <Icon name="play_arrow" size="sm" />
+            {starting
+              ? "Đang gửi…"
+              : locked
+                ? "Đang phân tích…"
+                : `Phân tích ${formatNumber(batch.nRows)} câu`}
+          </Button>
+          <Caption className="inline-flex items-center gap-1.5">
+            <Icon name="schedule" size="xs" />
+            Ước tính dưới 2 phút cho 1.000 câu; thanh tiến trình sẽ báo thời gian còn lại.
+          </Caption>
+        </div>
+      )}
 
       {overLimit ? (
         <Callout tone="warn" icon="content_cut" role="alert">

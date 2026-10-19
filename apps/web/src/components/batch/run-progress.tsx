@@ -54,9 +54,10 @@ interface RunProgressProps {
 function stepLabel(line: StepLine, status: BatchStatus | null, budget: number, autoXaiTop: number | undefined): ReactNode {
   switch (line) {
     case "pii":
-      return status?.pii_rows !== null && status?.pii_rows !== undefined
-        ? `Ẩn thông tin cá nhân · ${formatNumber(status.pii_rows)} câu có thông tin bị ẩn`
-        : "Ẩn thông tin cá nhân";
+      if (status?.pii_rows === null || status?.pii_rows === undefined) return "Ẩn thông tin cá nhân";
+      return status.pii_rows === 0
+        ? "Ẩn thông tin cá nhân · chưa phát hiện câu nào có thông tin cá nhân"
+        : `Ẩn thông tin cá nhân · ${formatNumber(status.pii_rows)} câu có thông tin bị ẩn`;
     case "segment":
       return "Tách từ (RDRSegmenter)";
     case "predict":
@@ -125,7 +126,7 @@ export function RunProgress({ phase, status, budget, autoXaiTop, nRows, elapsedS
                   <StepMark state={states[line]} />
                   <span>{stepLabel(line, status, budget, autoXaiTop)}</span>
                 </div>
-                {states[line] === "active" && text !== null && (line === "predict" || line === "flag") ? (
+                {states[line] === "active" && text !== null ? (
                   <Progress value={Math.round((status?.progress ?? 0) * 100)} className="pl-[26px]">
                     <ProgressLabel className="tabular-nums">{text}</ProgressLabel>
                   </Progress>
