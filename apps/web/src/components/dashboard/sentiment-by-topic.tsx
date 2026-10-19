@@ -69,8 +69,8 @@ interface SentimentByTopicProps {
 }
 
 /**
- * Cột chồng 100% "Cảm xúc theo chủ đề" kèm vạch mức nền tiêu cực của TỪNG chủ đề. Dựng bằng CSS flex
- * thay vì Recharts vì vạch nền khác nhau ở mỗi hàng; số nằm trong ô và có mô tả bằng chữ.
+ * Cột chồng 100% "Cảm xúc theo chủ đề" kèm vạch mức nền tiêu cực của TỪNG chủ đề. Dựng bằng CSS flex vì
+ * vạch nền khác nhau ở mỗi hàng; số nằm trong ô và có mô tả bằng chữ.
  */
 export function SentimentByTopic({ topics, className }: SentimentByTopicProps) {
   const bars = topicBars(topics);
