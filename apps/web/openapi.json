@@ -866,6 +866,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "insights_unavailable (bundle thiếu số liệu nền)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }

@@ -11,7 +11,7 @@ from fastapi import APIRouter, File, Path, Response, UploadFile
 
 from edupulse.api import schemas
 from edupulse.api.batch_view import results_response, status_response, upload_response
-from edupulse.api.deps import AnalyzerDep, DemoDep, StoreDep
+from edupulse.api.deps import AnalyzerDep, BackgroundDep, DemoDep, StoreDep
 from edupulse.api.errors import ApiError, not_implemented
 from edupulse.api.jobs import Batch
 from edupulse.api.limits import DEMO_BATCH_ID
@@ -20,6 +20,7 @@ from edupulse.api.routes.analyze import NO_CONTENT_MESSAGE, to_explain_response
 from edupulse.api.upload_limit import MAX_UPLOAD_BYTES
 from edupulse.config import MAX_UPLOAD_MB
 from edupulse.engine.explain import ExplanationUnavailable
+from edupulse.insights.build import build_insights
 
 router = APIRouter(prefix="/api", tags=["batches"])
 
@@ -28,6 +29,7 @@ RowIndex = Annotated[int, Path(ge=0)]
 
 
 SAMPLE_FILENAME = "edupulse-file-mau.csv"
+INSIGHTS_CACHE_SIZE = 16  # số cách lọc nhóm được nhớ cho mỗi batch
 
 
 def _finished(batch: Batch) -> Batch:
@@ -212,11 +214,34 @@ def explain_row(
 
 @router.post(
     "/batches/{batch_id}/insights",
-    responses=_errors({**NOT_FOUND, 409: "not_done"}),
+    responses=_errors(
+        {**NOT_FOUND, 409: "not_done", 503: "insights_unavailable (bundle thiếu số liệu nền)"}
+    ),
     summary="Dashboard & insight, lọc nhóm qua thân yêu cầu",
 )
-def batch_insights(batch_id: BatchId, body: schemas.InsightsRequest) -> schemas.InsightsResponse:
-    raise not_implemented()
+def batch_insights(
+    batch_id: BatchId, body: schemas.InsightsRequest, store: StoreDep, background: BackgroundDep
+) -> schemas.InsightsResponse:
+    batch = store.get(batch_id)
+    if not batch.readonly:
+        _finished(batch)
+    key = tuple(sorted(set(body.groups or ())))
+    with batch.lock:
+        cached = batch.insights_cache.get(key)
+    if cached is not None:
+        return cached
+    insights = build_insights(
+        store.insight_rows(batch),
+        background,
+        source="demo" if batch.readonly else "batch",
+        illustrative_groups=batch.illustrative_groups,
+        groups=key,
+    )
+    with batch.lock:
+        if len(batch.insights_cache) >= INSIGHTS_CACHE_SIZE:
+            batch.insights_cache.pop(next(iter(batch.insights_cache)))
+        batch.insights_cache[key] = insights
+    return insights
 
 
 @router.post(
