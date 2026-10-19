@@ -8,13 +8,21 @@ import { labelMeta } from "@/lib/labels";
 
 type Recommendation = InsightsResponse["recommendations"][number];
 
-// Icon riêng cho từng luật (khoá `id` ổn định của máy chủ); luật mới chưa có ở đây dùng icon của chủ đề.
+// Icon riêng cho từng luật (khoá `id` ổn định của máy chủ, xem `insights/rules.py`); luật mới chưa có ở
+// đây dùng icon của chủ đề.
 const ICON_BY_RULE: Readonly<Record<string, IconName>> = {
   facility_projector: "videocam",
-  program_theory_practice: "balance",
+  facility_ventilation: "air",
+  facility_computers: "computer",
+  facility_network: "speed",
+  facility_space: "domain",
+  program_practice: "balance",
+  program_exam: "fact_check",
+  program_materials: "menu_book",
+  program_workload: "schedule",
   lecturer_pace: "record_voice_over",
   lecturer_absence: "event_busy",
-  facility_ventilation: "air",
+  lecturer_engagement: "co_present",
 };
 
 function iconFor(recommendation: Recommendation): IconName {

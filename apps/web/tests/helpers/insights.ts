@@ -70,3 +70,117 @@ export function makeQuote(overrides: Partial<Quote> = {}): Quote {
     ...overrides,
   };
 }
+
+type Kpis = InsightsResponse["kpis"];
+type Recommendation = InsightsResponse["recommendations"][number];
+
+export function makeKpis(overrides: Partial<Kpis> = {}): Kpis {
+  return {
+    n_rows: 1000,
+    n_groups: 6,
+    shares: { negative: 0.541, neutral: 0.055, positive: 0.404 },
+    baseline_shares: { negative: 0.466, neutral: 0.04, positive: 0.494 },
+    delta_points: { negative: 7.46, neutral: 1.5, positive: -9.04 },
+    n_flagged: 100,
+    flagged_share: 0.1,
+    ...overrides,
+  };
+}
+
+export function makeRecommendation(overrides: Partial<Recommendation> = {}): Recommendation {
+  return {
+    id: "facility_projector",
+    topic: "facility",
+    action: "Bảo trì thiết bị trình chiếu và âm thanh ở phòng học",
+    evidence: "Căn cứ: 22 câu tiêu cực về Cơ sở vật chất nhắc “máy chiếu”, “mờ”.",
+    n: 22,
+    terms: ["máy chiếu", "mờ"],
+    note: null,
+    ...overrides,
+  };
+}
+
+/** Phản hồi insight đầy đủ cho test `InsightsView`: có nhóm, heatmap, ba cảnh báo, từ khoá, câu và khuyến nghị. */
+export function makeInsights(overrides: Partial<InsightsResponse> = {}): InsightsResponse {
+  return {
+    source: "batch",
+    illustrative_groups: false,
+    groups: [
+      { name: "Nhóm A", n: 60 },
+      { name: "Nhóm B", n: 40 },
+    ],
+    selected_groups: null,
+    kpis: makeKpis(),
+    topics: [
+      makeTopicStat({ topic: "lecturer", n: 600, sentiment_shares: { negative: 0.38, neutral: 0.03, positive: 0.59 } }),
+      makeTopicStat({
+        topic: "training_program",
+        n: 195,
+        baseline_negative_rate: 0.78,
+        sentiment_shares: { negative: 0.933, neutral: 0.031, positive: 0.036 },
+      }),
+      makeTopicStat({
+        topic: "facility",
+        n: 90,
+        baseline_negative_rate: 0.954,
+        sentiment_shares: { negative: 0.956, neutral: 0.011, positive: 0.033 },
+      }),
+      makeTopicStat({
+        topic: "others",
+        n: 9,
+        baseline_negative_rate: 0.402,
+        sentiment_shares: { negative: 0.4, neutral: 0.3, positive: 0.3 },
+      }),
+    ],
+    alerts: [
+      makeAlert(),
+      makeAlert({
+        topic: "lecturer",
+        group: "Nhóm A",
+        title: "Giảng dạy ở Nhóm A: tiêu cực cao hơn mức nền",
+        summary: "58% góp ý về giảng dạy ở nhóm này là tiêu cực (70/120 câu), cao hơn khoảng 23 điểm.",
+        evidence: { n: 120, k: 70, rate: 0.583, ci_low: 0.49, baseline: 0.356, delta_points: 22.7 },
+        note: "Tổng hợp theo nhóm, không gắn với cá nhân.",
+      }),
+      makeAlert({
+        kind: "topic_share",
+        topic: "facility",
+        title: "Cơ sở vật chất được nhắc nhiều hơn thường lệ",
+        summary: "9% góp ý nói về Cơ sở vật chất (90/1.000 câu), gấp đôi mức thường gặp 4,4%.",
+        evidence: { n: 1000, k: 90, rate: 0.09, ci_low: 0.074, baseline: 0.044, delta_points: 4.6 },
+        keywords: ["máy chiếu", "phòng máy", "quạt", "nóng"],
+      }),
+    ],
+    heatmap: makeHeatmap(),
+    keywords: [
+      {
+        topic: "facility",
+        n_negative: 86,
+        keywords: [
+          { term: "máy chiếu", n: 19, score: 9 },
+          { term: "mờ", n: 9, score: 8 },
+        ],
+      },
+      { topic: "training_program", n_negative: 182, keywords: [{ term: "thực hành", n: 34, score: 7 }] },
+      { topic: "lecturer", n_negative: 228, keywords: [{ term: "nhanh", n: 15, score: 6 }] },
+    ],
+    quotes: [
+      {
+        topic: "facility",
+        quotes: [
+          makeQuote({ text: "Máy chiếu quá mờ, thiết bị cũ.", matched: ["máy chiếu", "mờ"], group: "Nhóm A" }),
+          makeQuote({ text: "Phòng học cần rèm để máy chiếu rõ.", matched: ["máy chiếu"], group: "Nhóm B" }),
+          makeQuote({ text: "Quạt hỏng, phòng nóng.", matched: [], group: "Nhóm A" }),
+        ],
+      },
+      {
+        topic: "training_program",
+        quotes: [makeQuote({ text: "Môn này nặng lý thuyết, thiếu thực hành.", matched: ["thực hành"], group: "Nhóm B" })],
+      },
+      { topic: "lecturer", quotes: [] },
+      { topic: "others", quotes: [] },
+    ],
+    recommendations: [makeRecommendation(), makeRecommendation({ id: "chua_biet", topic: "lecturer", action: "Việc mới" })],
+    ...overrides,
+  };
+}

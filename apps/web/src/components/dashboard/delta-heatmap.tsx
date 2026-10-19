@@ -32,8 +32,12 @@ function Cell({ cell, label }: { cell: CellView; label: string }) {
     return (
       <div role="cell" aria-label={label} className={CELL_BASE} style={{ background, color }}>
         <b className="text-sm font-semibold">{formatPercent(cell.rate ?? 0)}</b>
-        <small className="text-xs opacity-90">
-          {formatPoints(cell.delta ?? 0)} · n {formatNumber(cell.n)}
+        <small className="flex flex-wrap justify-center gap-x-1 text-xs opacity-90 max-[640px]:flex-col max-[640px]:gap-x-0">
+          <span>{formatPoints(cell.delta ?? 0)}</span>
+          <span aria-hidden="true" className="max-[640px]:hidden">
+            ·
+          </span>
+          <span>n {formatNumber(cell.n)}</span>
         </small>
       </div>
     );
@@ -78,12 +82,11 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
         <div
           role="table"
           aria-label={`Tỉ lệ tiêu cực theo ${groupLabel} và chủ đề`}
-          className="grid min-w-[420px] grid-cols-[minmax(96px,1.3fr)_repeat(4,minmax(0,1fr))] gap-[3px]"
+          className="grid grid-cols-[minmax(96px,1.3fr)_repeat(4,minmax(0,1fr))] gap-[3px] max-[640px]:grid-cols-[minmax(68px,1.1fr)_repeat(4,minmax(0,1fr))]"
         >
           <div role="row" className="contents">
-            <span role="columnheader" className="sr-only">
-              {groupLabel}
-            </span>
+            {/* Ô trống phải nằm trong lưới (không dùng sr-only/absolute) để tiêu đề cột thẳng hàng với ô. */}
+            <span role="columnheader" aria-label={groupLabel} />
             {heatmap.topics.map((topic) => (
               <span
                 key={topic}

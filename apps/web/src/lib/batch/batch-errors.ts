@@ -43,6 +43,8 @@ export function batchFailureMessage(failure: ApiFailure, context: BatchErrorCont
       return "Không tìm thấy cột văn bản. File cần ít nhất một cột chữ (ví dụ “Góp ý”). Kiểm tra dòng tiêu đề rồi tải lại.";
     case "invalid_column":
       return "Cột đã chọn không có trong file. Hãy chọn lại cột văn bản.";
+    case "insights_unavailable":
+      return "Dashboard chưa dùng được: bản mô hình đang chạy thiếu số liệu mức nền. Hãy báo người triển khai.";
     case "invalid_budget":
       return "Ngân sách duyệt không hợp lệ. Hãy chọn lại một trong các mức có sẵn.";
     case "too_many_groups": {

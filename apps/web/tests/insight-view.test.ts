@@ -79,11 +79,11 @@ describe("topicBars", () => {
     expect(bars[1].n).toBe(90);
   });
 
-  it("chỉ ghi số trong đoạn đủ rộng", () => {
+  it("mang đúng tỉ lệ từng đoạn để vẽ", () => {
     const [bar] = topicBars([
       makeTopicStat({ sentiment_shares: { negative: 0.956, neutral: 0.011, positive: 0.033 } }),
     ]);
-    expect(bar.segments.map((segment) => segment.showLabel)).toEqual([true, false, false]);
+    expect(bar.segments.map((segment) => segment.share)).toEqual([0.956, 0.011, 0.033]);
   });
 
   it("đánh dấu chủ đề chưa có câu", () => {
@@ -91,7 +91,7 @@ describe("topicBars", () => {
       makeTopicStat({ n: 0, sentiment_shares: { negative: 0, neutral: 0, positive: 0 } }),
     ]);
     expect(bar.empty).toBe(true);
-    expect(bar.segments.every((segment) => !segment.showLabel)).toBe(true);
+    expect(bar.segments.every((segment) => segment.share === 0)).toBe(true);
   });
 });
 

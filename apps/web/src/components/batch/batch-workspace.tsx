@@ -10,6 +10,7 @@ import { retryAppConfig } from "@/lib/app-config";
 import { toFailure } from "@/lib/api/client";
 import { fileStem } from "@/lib/batch/download";
 
+import { BatchFailureNotice } from "./batch-failure-notice";
 import { ExportStep } from "./export-step";
 import { ResultsSection } from "./results-section";
 import { RunProgress } from "./run-progress";
@@ -120,7 +121,7 @@ export function BatchWorkspace() {
           <SectionHeading>3 · Kết quả &amp; duyệt</SectionHeading>
           {flow.results.status === "loading" ? <ResultsSkeleton /> : null}
           {flow.results.status === "error" ? (
-            <FailureNotice failure={toFailure(flow.results.failure)} />
+            <BatchFailureNotice failure={toFailure(flow.results.failure)} onRetry={flow.results.reload} />
           ) : null}
           {results !== null && stored !== null && config ? (
             <>

@@ -50,13 +50,9 @@ export function kpiDelta(metric: KpiMetric, deltaPoints: number, digits = 1): Kp
 
 // --- Cột chồng cảm xúc theo chủ đề -------------------------------------------------------------
 
-/** Đoạn có tỉ lệ nhỏ hơn mức này không ghi số trong ô (chật), số vẫn có trong chú thích văn bản. */
-export const SEGMENT_LABEL_MIN_SHARE = 0.07;
-
 export interface BarSegment {
   sentiment: SentimentLabel;
   share: number;
-  showLabel: boolean;
 }
 
 export interface TopicBar {
@@ -75,10 +71,7 @@ export function topicBars(topics: Topics): TopicBar[] {
     n: stat.n,
     empty: stat.n === 0,
     baseline: stat.baseline_negative_rate,
-    segments: LABEL_ORDER.sentiment.map((sentiment) => {
-      const share = stat.sentiment_shares[sentiment];
-      return { sentiment, share, showLabel: share >= SEGMENT_LABEL_MIN_SHARE };
-    }),
+    segments: LABEL_ORDER.sentiment.map((sentiment) => ({ sentiment, share: stat.sentiment_shares[sentiment] })),
   }));
 }
 

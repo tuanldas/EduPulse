@@ -27,7 +27,7 @@ import {
   type StoredRun,
 } from "@/lib/batch/stored-batch";
 import type { BatchStatus, BatchUpload, ResultsResponse } from "@/lib/batch/types";
-import { useAsyncData, type AsyncState } from "@/lib/batch/use-async-data";
+import { useAsyncData, type UseAsyncData } from "@/lib/batch/use-async-data";
 import { useBatchPolling } from "@/lib/batch/use-batch-polling";
 import { useBatchSession } from "@/lib/batch/use-batch-session";
 
@@ -68,7 +68,7 @@ export interface BatchFlow {
   runFailure: ApiFailure | null;
   pollFailure: ApiFailure | null;
   starting: boolean;
-  results: AsyncState<ResultsResponse>;
+  results: UseAsyncData<ResultsResponse>;
   edits: ReviewEditsApi;
   actions: {
     uploadFile: (file: File) => void;

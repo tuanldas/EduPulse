@@ -49,6 +49,7 @@ export function KeywordChips({ keywords, selected, onSelect }: KeywordChipsProps
                       <button
                         type="button"
                         aria-pressed={active}
+                        aria-label={`${keyword.term}, ${formatNumber(keyword.n)} câu`}
                         onClick={() => onSelect(active ? null : { topic: block.topic, term: keyword.term })}
                         className={cn(
                           "inline-flex min-h-[34px] items-center gap-1.5 rounded-full border px-3 py-[5px] text-sm leading-[1.35] outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
