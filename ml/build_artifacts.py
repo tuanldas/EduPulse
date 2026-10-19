@@ -21,6 +21,7 @@ import random
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -66,6 +67,8 @@ from ml.train_baseline import load_model
 LOG_PREFIX = "build_artifacts"
 GUARD_SAMPLES = 200
 GUARD_MIN_TOKENS = 4  # câu ngắn hơn có thể trùng một n-gram trong đếm nền
+FULL_SCAN_MIN_TOKENS = 8  # quét hết mọi câu: ngắn hơn thì trùng ngẫu nhiên với câu tự viết
+GUARD_TEXT_SUFFIXES = (".json", ".md")
 BASELINE_FILES = tuple(f"baseline/{task}_linearsvc.skops" for task in TASKS)
 BUNDLE_FILES = (
     "model.int8.onnx",
@@ -145,23 +148,59 @@ def assert_same_normalizer(
         raise BundleError(f"normalizer_version không đồng nhất: {versions}")
 
 
-def assert_no_source_sentences(bundle_dir: Path, samples: int = GUARD_SAMPLES) -> int:
-    """Không câu gốc UIT-VSFC nào (mẫu ngẫu nhiên) xuất hiện nguyên văn trong JSON của bundle."""
-    texts = {
-        path.name: path.read_text(encoding="utf-8") for path in sorted(bundle_dir.glob("*.json"))
+def guard_texts(directory: Path) -> dict[str, str]:
+    """Tệp văn bản ở gốc thư mục mà guard quét (JSON, Markdown); `.skops` là nhị phân nên bỏ qua."""
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(directory.iterdir())
+        if path.is_file() and path.suffix in GUARD_TEXT_SUFFIXES
     }
-    pool = [
+
+
+def corpus_sentences(column: str, min_tokens: int) -> list[str]:
+    """Câu của cả ba split ở dạng `column` (`sentence` gốc hoặc `text_rdr` đã tách từ)."""
+    return [
         sentence
         for split in SPLITS
         # Chỉ tìm chuỗi, không tính chỉ số nào trên test.
-        for sentence in load_processed(split, allow_test=True)["sentence"]
-        if len(sentence.split()) >= GUARD_MIN_TOKENS
+        for sentence in load_processed(split, allow_test=True)[column]
+        if len(sentence.split()) >= min_tokens
     ]
-    for sentence in random.Random(0).sample(pool, samples):
+
+
+def first_file_with(texts: dict[str, str], sentences: Iterable[str]) -> str | None:
+    for sentence in sentences:
         for name, text in texts.items():
             if sentence in text:
-                raise BundleError(f"bundle chứa câu gốc của dữ liệu trong {name}")
+                return name
+    return None
+
+
+def assert_no_source_sentences(bundle_dir: Path, samples: int = GUARD_SAMPLES) -> int:
+    """Không câu gốc UIT-VSFC nào (mẫu ngẫu nhiên) xuất hiện nguyên văn trong JSON của bundle."""
+    pool = corpus_sentences("sentence", GUARD_MIN_TOKENS)
+    leaked = first_file_with(guard_texts(bundle_dir), random.Random(0).sample(pool, samples))
+    if leaked:
+        raise BundleError(f"bundle chứa câu gốc của dữ liệu trong {leaked}")
     return samples
+
+
+def assert_no_source_sentences_anywhere(directory: Path) -> int:
+    """Như trên nhưng quét MỌI câu dài (dạng gốc và dạng đã tách từ): guard trước khi công khai.
+
+    Chỉ tính câu từ `FULL_SCAN_MIN_TOKENS` tiếng, vì quét hết thì câu ngắn dễ trùng ngẫu nhiên với
+    câu tự viết (vd. "em rất hài_lòng ." trong dự đoán vàng). Trả về số câu đã đối chiếu.
+    """
+    pool = dict.fromkeys(
+        [
+            *corpus_sentences("sentence", FULL_SCAN_MIN_TOKENS),
+            *corpus_sentences("text_rdr", FULL_SCAN_MIN_TOKENS),
+        ]
+    )
+    leaked = first_file_with(guard_texts(directory), pool)
+    if leaked:
+        raise BundleError(f"thư mục chứa câu gốc của dữ liệu trong {leaked}")
+    return len(pool)
 
 
 def model_card(
