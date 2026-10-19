@@ -15,8 +15,8 @@
       "name": "Viết Hoa Chữ Đầu Mỗi Từ",
       "kind": "invariance",
       "n": 1583,
-      "pass_rate": 0.8660770688566014,
-      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 212/1.583 câu."
+      "pass_rate": 0.8641819330385344,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 215/1.583 câu."
     },
     {
       "name": "Dấu câu và khoảng trắng thừa",
