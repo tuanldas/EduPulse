@@ -17,6 +17,8 @@ export interface StoredRun {
 export interface StoredBatch {
   batchId: string;
   filename: string;
+  /** Dung lượng file đã tải lên (byte); null với file mẫu hoặc khi không biết. */
+  sizeBytes: number | null;
   nRows: number;
   columns: string[];
   suggestedTextCol: string | null;
@@ -82,6 +84,10 @@ export function parseStoredBatch(raw: unknown): StoredBatch | null {
   return {
     batchId: value.batchId,
     filename: value.filename,
+    sizeBytes:
+      typeof value.sizeBytes === "number" && Number.isFinite(value.sizeBytes) && value.sizeBytes >= 0
+        ? value.sizeBytes
+        : null,
     nRows: value.nRows,
     columns: value.columns,
     suggestedTextCol: suggestedText,
@@ -94,10 +100,11 @@ export function parseStoredBatch(raw: unknown): StoredBatch | null {
 
 export const storedBatchStore = createSessionStore<StoredBatch | null>(KEY, null, parseStoredBatch);
 
-export function storedBatchFromUpload(upload: BatchUpload): StoredBatch {
+export function storedBatchFromUpload(upload: BatchUpload, sizeBytes: number | null = null): StoredBatch {
   return {
     batchId: upload.batch_id,
     filename: upload.filename,
+    sizeBytes,
     nRows: upload.n_rows,
     columns: upload.columns,
     suggestedTextCol: upload.suggested_text_col,
