@@ -12,7 +12,15 @@ from fastapi import APIRouter, File, Path, Response, UploadFile
 from edupulse.api import schemas
 from edupulse.api.batch_view import results_response, status_response, upload_response
 from edupulse.api.deps import AnalyzerDep, BackgroundDep, DemoDep, StoreDep
-from edupulse.api.errors import ApiError, not_implemented
+from edupulse.api.errors import ApiError
+from edupulse.api.export import (
+    ALL_FILENAME,
+    CORRECTED_FILENAME,
+    CSV_MEDIA_TYPE,
+    render_all,
+    render_corrected,
+    resolve_overrides,
+)
 from edupulse.api.jobs import Batch
 from edupulse.api.limits import DEMO_BATCH_ID
 from edupulse.api.parsing import is_illustrative, parse_upload
@@ -262,5 +270,21 @@ def batch_insights(
     },
     summary="Xuất CSV: toàn bộ kết quả hoặc chỉ nhãn đã sửa",
 )
-def export_batch(batch_id: BatchId, body: schemas.ExportRequest) -> Response:
-    raise not_implemented()
+def export_batch(
+    batch_id: BatchId, body: schemas.ExportRequest, store: StoreDep, analyzer: AnalyzerDep
+) -> Response:
+    batch = _finished(store.get(batch_id))
+    result = batch.result
+    assert result is not None
+    corrections = resolve_overrides(result, body.overrides)
+    if body.kind == "corrected":
+        data = render_corrected(result, corrections, analyzer.bundle.manifest.model_version)
+        filename = CORRECTED_FILENAME
+    else:
+        data = render_all(batch, result, corrections)
+        filename = ALL_FILENAME
+    return Response(
+        data,
+        media_type=CSV_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
