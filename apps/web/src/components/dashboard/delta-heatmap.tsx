@@ -85,8 +85,10 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
           className="grid grid-cols-[minmax(96px,1.3fr)_repeat(4,minmax(0,1fr))] gap-[3px] max-[640px]:grid-cols-[minmax(68px,1.1fr)_repeat(4,minmax(0,1fr))]"
         >
           <div role="row" className="contents">
-            {/* Ô trống phải nằm trong lưới (không dùng sr-only/absolute) để tiêu đề cột thẳng hàng với ô. */}
-            <span role="columnheader" aria-label={groupLabel} />
+            {/* Ô góc phải nằm trong lưới (để tiêu đề cột thẳng hàng với ô) và có chữ cho trình đọc màn hình. */}
+            <span role="columnheader" className="relative">
+              <span className="sr-only">{groupLabel}</span>
+            </span>
             {heatmap.topics.map((topic) => (
               <span
                 key={topic}

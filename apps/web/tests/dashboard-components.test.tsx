@@ -177,17 +177,17 @@ describe("KeywordChips", () => {
       "Từ khoá chủ đề Chương trình",
       "Từ khoá chủ đề Giảng viên",
     ]);
-    expect(screen.getByRole("button", { name: "máy chiếu, 19 câu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^máy chiếu\s*19 câu$/ })).toBeInTheDocument();
   });
 
   it("chọn một từ báo cả chủ đề; chọn lại từ đang chọn thì bỏ chọn", async () => {
     const onSelect = vi.fn();
     const { rerender } = render(<KeywordChips keywords={keywords} selected={null} onSelect={onSelect} />);
-    await userEvent.click(screen.getByRole("button", { name: "thực hành, 34 câu" }));
+    await userEvent.click(screen.getByRole("button", { name: /^thực hành\s*34 câu$/ }));
     expect(onSelect).toHaveBeenCalledWith({ topic: "training_program", term: "thực hành" });
 
     rerender(<KeywordChips keywords={keywords} selected={{ topic: "training_program", term: "thực hành" }} onSelect={onSelect} />);
-    const pressed = screen.getByRole("button", { name: "thực hành, 34 câu" });
+    const pressed = screen.getByRole("button", { name: /^thực hành\s*34 câu$/ });
     expect(pressed).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(pressed);
     expect(onSelect).toHaveBeenLastCalledWith(null);
@@ -312,7 +312,7 @@ describe("InsightsView", () => {
 
   it("chọn từ khoá chuyển sang chủ đề của từ đó; tự đổi tab thì bỏ lọc từ khoá của chủ đề khác", async () => {
     render(<InsightsView data={makeInsights()} groupLabel="Môn học" />);
-    await userEvent.click(screen.getByRole("button", { name: "thực hành, 34 câu" }));
+    await userEvent.click(screen.getByRole("button", { name: /^thực hành\s*34 câu$/ }));
     expect(selectedTab()).toHaveTextContent("Chương trình");
     expect(screen.getByRole("button", { name: "Bỏ lọc từ khoá thực hành" })).toBeInTheDocument();
 

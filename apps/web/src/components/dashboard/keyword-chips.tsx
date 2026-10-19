@@ -49,7 +49,6 @@ export function KeywordChips({ keywords, selected, onSelect }: KeywordChipsProps
                       <button
                         type="button"
                         aria-pressed={active}
-                        aria-label={`${keyword.term}, ${formatNumber(keyword.n)} câu`}
                         onClick={() => onSelect(active ? null : { topic: block.topic, term: keyword.term })}
                         className={cn(
                           "inline-flex min-h-[34px] items-center gap-1.5 rounded-full border px-3 py-[5px] text-sm leading-[1.35] outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
@@ -60,7 +59,9 @@ export function KeywordChips({ keywords, selected, onSelect }: KeywordChipsProps
                       >
                         {keyword.term}
                         <span className={cn("text-xs tabular-nums", active ? "text-inherit" : "text-muted-foreground")}>
-                          {formatNumber(keyword.n)}
+                          <span aria-hidden="true">{formatNumber(keyword.n)}</span>
+                          {/* Tên của nút phải chứa chữ nhìn thấy (WCAG 2.5.3) và nói rõ con số là số câu. */}
+                          <span className="sr-only"> {formatNumber(keyword.n)} câu</span>
                         </span>
                       </button>
                     </li>
