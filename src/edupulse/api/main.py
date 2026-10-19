@@ -25,6 +25,7 @@ from edupulse.api.paths import is_api_path
 from edupulse.api.routes import analyze, batches, meta
 from edupulse.api.schemas import ErrorResponse
 from edupulse.api.security_headers import SecurityHeadersMiddleware
+from edupulse.api.upload_limit import UploadLimitMiddleware
 from edupulse.config import Settings, load_settings
 from edupulse.demo_data import load_demo
 from edupulse.engine.bundle import (
@@ -138,6 +139,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(batches.router)
     _serve_web(app, settings.web_dir)
 
+    # Giới hạn upload nằm trong cùng: phản hồi 413 của nó vẫn qua header an toàn và nhật ký.
+    app.add_middleware(UploadLimitMiddleware)
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.
     if settings.cors_origins:
         app.add_middleware(
