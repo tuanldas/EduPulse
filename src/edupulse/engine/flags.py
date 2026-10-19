@@ -4,8 +4,13 @@
 - Cả lô: cờ ⌈B·n/100⌉ câu điểm thấp nhất (`scoring.rank_batch`).
 - Câu gõ không dấu luôn được cờ (mô hình kém hẳn), và tính vào ngân sách trong một lô.
 - Câu quá dài để giải thích (> XAI_MAX_WORDS từ) KHÔNG vì thế mà bị cờ.
+- Cả lô còn có mẫu kiểm tra: một phần nhỏ câu KHÔNG cờ được chọn ngẫu nhiên (cố định theo seed của
+  batch) để người duyệt đo độ chính xác không thiên lệch. Hàng đợi duyệt = cờ + mẫu kiểm tra,
+  sắp độ tin cậy tăng dần.
 """
 
+import hashlib
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -84,3 +89,36 @@ def build_flag(*, flagged: bool, no_diacritics: bool, task: str, probs: Sequence
     if no_diacritics:
         return Flag(True, (FlagReason(NO_DIACRITICS),))
     return Flag(True, (FlagReason(LOW_CONFIDENCE, task, top_candidates(task, probs)),))
+
+
+def seed_from(text: str) -> int:
+    """Seed ổn định (không phụ thuộc PYTHONHASHSEED) tính từ một chuỗi, vd. id của batch."""
+    return int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest()[:8], "big")
+
+
+def audit_sample(flagged: ArrayLike, rate: float, seed: int) -> NDArray[np.bool_]:
+    """Mẫu kiểm tra: ⌈rate · số câu không cờ⌉ câu không cờ, chọn ngẫu nhiên theo `seed`.
+
+    Câu đã cờ không vào mẫu (chúng đã nằm trong hàng đợi duyệt). Cùng `flagged` và `seed` luôn cho
+    cùng mẫu. Có câu không cờ thì có ít nhất một câu kiểm tra.
+    """
+    if not 0 < rate <= 1:
+        raise ValueError(f"tỉ lệ mẫu phải trong (0, 1], nhận {rate!r}")
+    mask = np.asarray(flagged, dtype=bool)
+    candidates = np.flatnonzero(~mask)
+    chosen = np.zeros(mask.shape, dtype=bool)
+    if candidates.size == 0:
+        return chosen
+    count = min(candidates.size, math.ceil(round(rate * candidates.size, 9)))
+    picked = np.random.default_rng(seed).choice(candidates, size=count, replace=False)
+    chosen[picked] = True
+    return chosen
+
+
+def review_order(scores: ArrayLike, in_review: ArrayLike) -> list[int]:
+    """Chỉ số các câu trong hàng đợi duyệt, điểm tăng dần (ít chắc chắn trước); bằng điểm thì theo
+    thứ tự dòng, nên thứ tự cố định giữa các lần gọi."""
+    values = np.asarray(scores, dtype=np.float64)
+    members = np.flatnonzero(np.asarray(in_review, dtype=bool))
+    order = np.lexsort((members, values[members]))
+    return [int(i) for i in members[order]]

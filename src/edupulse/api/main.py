@@ -21,10 +21,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from edupulse.api.access_log import AccessLogMiddleware
 from edupulse.api.errors import http_error_handler, install_error_handlers
+from edupulse.api.jobs import JobStore
 from edupulse.api.paths import is_api_path
 from edupulse.api.routes import analyze, batches, meta
 from edupulse.api.schemas import ErrorResponse
 from edupulse.api.security_headers import SecurityHeadersMiddleware
+from edupulse.api.upload_limit import UploadLimitMiddleware
 from edupulse.config import Settings, load_settings
 from edupulse.demo_data import load_demo
 from edupulse.engine.bundle import (
@@ -74,6 +76,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.demo = demo
     if not demo.available:
         logger.warning("Không có dữ liệu demo: %s", demo.reason)
+    store = JobStore(analyzer, ttl_s=settings.job_ttl_s)
+    if demo.available:
+        store.set_demo(list(demo.rows))
+    store.start()
+    app.state.jobs = store
     logger.info(
         "Sẵn sàng: bundle %s (%s, mô hình %s), demo %s, web %s",
         manifest.bundle_version,
@@ -82,7 +89,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         "có" if demo.available else "không",
         settings.web_dir,
     )
-    yield
+    try:
+        yield
+    finally:
+        await run_in_threadpool(store.shutdown)
 
 
 def _web_not_found_handler(
@@ -138,6 +148,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(batches.router)
     _serve_web(app, settings.web_dir)
 
+    # Giới hạn upload nằm trong cùng: phản hồi 413 của nó vẫn qua header an toàn và nhật ký.
+    app.add_middleware(UploadLimitMiddleware)
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.
     if settings.cors_origins:
         app.add_middleware(

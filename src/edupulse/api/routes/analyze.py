@@ -23,20 +23,20 @@ router = APIRouter(
 _DIGITS = 4
 
 
-def _p(value: float) -> float:
+def prob(value: float) -> float:
     return round(value, _DIGITS)
 
 
 def _probs(task: str, head: HeadResult) -> dict[str, float]:
-    return {label: _p(p) for label, p in zip(LABELS[task], head.probs, strict=True)}
+    return {label: prob(p) for label, p in zip(LABELS[task], head.probs, strict=True)}
 
 
-def _reason(reason: flags.FlagReason) -> schemas.FlagReason:
+def to_reason(reason: flags.FlagReason) -> schemas.FlagReason:
     return schemas.FlagReason(
         code=reason.code,
         task=reason.task,
         candidates=[
-            schemas.Candidate(label=c.label, probability=_p(c.probability))
+            schemas.Candidate(label=c.label, probability=prob(c.probability))
             for c in reason.candidates
         ],
         message=reason.message,
@@ -53,17 +53,17 @@ def to_analyze_response(analysis: Analysis, xai_max_words: int) -> schemas.Analy
         xai_available=prepared.n_words <= xai_max_words,
         sentiment=schemas.SentimentPrediction(
             label=analysis.sentiment.label,
-            confidence=_p(analysis.sentiment.confidence),
+            confidence=prob(analysis.sentiment.confidence),
             probs=_probs("sentiment", analysis.sentiment),
         ),
         topic=schemas.TopicPrediction(
             label=analysis.topic.label,
-            confidence=_p(analysis.topic.confidence),
+            confidence=prob(analysis.topic.confidence),
             probs=_probs("topic", analysis.topic),
         ),
         flag=schemas.Flag(
             needs_review=analysis.flag.needs_review,
-            reasons=[_reason(r) for r in analysis.flag.reasons],
+            reasons=[to_reason(r) for r in analysis.flag.reasons],
         ),
         baseline=None,
     )
@@ -72,9 +72,9 @@ def to_analyze_response(analysis: Analysis, xai_max_words: int) -> schemas.Analy
 def _head_explanation(head: xai.HeadExplanation) -> schemas.HeadExplanation:
     return schemas.HeadExplanation(
         label=head.label,
-        probability=_p(head.probability),
+        probability=prob(head.probability),
         tokens=[
-            schemas.TokenEffect(text=t.text, delta=_p(t.delta), p_without=_p(t.p_without))
+            schemas.TokenEffect(text=t.text, delta=prob(t.delta), p_without=prob(t.p_without))
             for t in head.tokens
         ],
         support=list(head.support),

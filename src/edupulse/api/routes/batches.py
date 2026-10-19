@@ -10,13 +10,33 @@ from typing import Annotated
 from fastapi import APIRouter, File, Path, Response, UploadFile
 
 from edupulse.api import schemas
-from edupulse.api.errors import not_implemented
+from edupulse.api.batch_view import results_response, status_response, upload_response
+from edupulse.api.deps import AnalyzerDep, DemoDep, StoreDep
+from edupulse.api.errors import ApiError, not_implemented
+from edupulse.api.jobs import Batch
 from edupulse.api.limits import DEMO_BATCH_ID
+from edupulse.api.parsing import is_illustrative, parse_upload
+from edupulse.api.routes.analyze import NO_CONTENT_MESSAGE, to_explain_response
+from edupulse.api.upload_limit import MAX_UPLOAD_BYTES
+from edupulse.config import MAX_UPLOAD_MB
+from edupulse.engine.explain import ExplanationUnavailable
 
 router = APIRouter(prefix="/api", tags=["batches"])
 
 BatchId = Annotated[str, Path(max_length=64, description=f"Id batch, hoặc `{DEMO_BATCH_ID}`.")]
 RowIndex = Annotated[int, Path(ge=0)]
+
+
+SAMPLE_FILENAME = "edupulse-file-mau.csv"
+
+
+def _finished(batch: Batch) -> Batch:
+    """Batch đã chạy xong và có kết quả để đọc; demo và batch chưa xong thì 409."""
+    if batch.readonly:
+        raise ApiError(409, "batch_readonly", "Batch demo chỉ có insight, không có kết quả dòng.")
+    if batch.state != "done" or batch.result is None:
+        raise ApiError(409, "not_done", "Batch chưa phân tích xong.")
+    return batch
 
 
 def _errors(codes: dict[int, str]) -> dict[int | str, dict[str, object]]:
@@ -45,8 +65,24 @@ NOT_FOUND = {404: "batch_not_found (không có hoặc đã hết hạn)"}
 )
 def upload_batch(
     file: Annotated[UploadFile, File(description="CSV hoặc XLSX, tối đa 10MB và 2.000 dòng.")],
+    store: StoreDep,
 ) -> schemas.BatchUpload:
-    raise not_implemented()
+    # Middleware đã chặn thân quá lớn trước khi parse; ở đây kiểm đúng dung lượng của file.
+    too_large = ApiError(
+        413, "file_too_large", f"File vượt quá {MAX_UPLOAD_MB}MB.", params={"max_mb": MAX_UPLOAD_MB}
+    )
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        raise too_large
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise too_large
+    filename = file.filename or ""
+    table = parse_upload(filename, data)
+    del data
+    batch = store.create(
+        filename, table, illustrative=is_illustrative("upload", None, table.columns)
+    )
+    return upload_response(batch, table)
 
 
 @router.post(
@@ -55,8 +91,12 @@ def upload_batch(
     responses=_errors({404: "demo_unavailable", 429: "busy"}),
     summary="Tạo batch từ file mẫu dựng lúc build image",
 )
-def create_sample_batch() -> schemas.BatchUpload:
-    raise not_implemented()
+def create_sample_batch(demo: DemoDep, store: StoreDep) -> schemas.BatchUpload:
+    if not demo.available:
+        raise ApiError(404, "demo_unavailable", demo.reason or "Chưa có file mẫu.")
+    table = parse_upload("sample.csv", demo.sample_csv)
+    batch = store.create(SAMPLE_FILENAME, table, kind="sample", illustrative=True)
+    return upload_response(batch, table)
 
 
 @router.post(
@@ -72,13 +112,17 @@ def create_sample_batch() -> schemas.BatchUpload:
     ),
     summary="Chạy phân tích nền",
 )
-def run_batch(batch_id: BatchId, body: schemas.RunRequest) -> schemas.BatchStatus:
-    raise not_implemented()
+def run_batch(batch_id: BatchId, body: schemas.RunRequest, store: StoreDep) -> schemas.BatchStatus:
+    batch = store.get(batch_id)
+    snapshot = store.run(
+        batch, text_col=body.text_col, group_col=body.group_col, budget=body.review_budget
+    )
+    return status_response(snapshot)
 
 
 @router.get("/batches/{batch_id}", responses=_errors(NOT_FOUND), summary="Trạng thái và tiến độ")
-def batch_status(batch_id: BatchId) -> schemas.BatchStatus:
-    raise not_implemented()
+def batch_status(batch_id: BatchId, store: StoreDep) -> schemas.BatchStatus:
+    return status_response(store.snapshot(store.get(batch_id)))
 
 
 @router.post(
@@ -87,8 +131,9 @@ def batch_status(batch_id: BatchId) -> schemas.BatchStatus:
     responses=_errors(NOT_FOUND),
     summary="Gia hạn batch khi tab còn mở",
 )
-def heartbeat(batch_id: BatchId) -> Response:
-    raise not_implemented()
+def heartbeat(batch_id: BatchId, store: StoreDep) -> Response:
+    store.get(batch_id)  # tra cứu cũng gia hạn TTL; id lạ hoặc hết hạn thì 404
+    return Response(status_code=204)
 
 
 @router.post(
@@ -97,8 +142,9 @@ def heartbeat(batch_id: BatchId) -> Response:
     responses=_errors(NOT_FOUND),
     summary="Xoá batch khi đóng tab (navigator.sendBeacon chỉ gửi được POST)",
 )
-def close_batch(batch_id: BatchId) -> Response:
-    raise not_implemented()
+def close_batch(batch_id: BatchId, store: StoreDep) -> Response:
+    store.remove(batch_id)
+    return Response(status_code=204)
 
 
 @router.delete(
@@ -107,8 +153,9 @@ def close_batch(batch_id: BatchId) -> Response:
     responses=_errors(NOT_FOUND),
     summary="Xoá batch",
 )
-def delete_batch(batch_id: BatchId) -> Response:
-    raise not_implemented()
+def delete_batch(batch_id: BatchId, store: StoreDep) -> Response:
+    store.remove(batch_id)
+    return Response(status_code=204)
 
 
 @router.get(
@@ -116,8 +163,12 @@ def delete_batch(batch_id: BatchId) -> Response:
     responses=_errors({**NOT_FOUND, 409: "not_done | batch_readonly"}),
     summary="Kết quả từng dòng và thống kê",
 )
-def batch_results(batch_id: BatchId) -> schemas.ResultsResponse:
-    raise not_implemented()
+def batch_results(
+    batch_id: BatchId, store: StoreDep, analyzer: AnalyzerDep
+) -> schemas.ResultsResponse:
+    batch = _finished(store.get(batch_id))
+    assert batch.result is not None
+    return results_response(batch, batch.result, analyzer.xai_max_words)
 
 
 @router.get(
@@ -131,8 +182,32 @@ def batch_results(batch_id: BatchId) -> schemas.ResultsResponse:
     ),
     summary="Giải thích một dòng (tính khi mở nếu chưa có sẵn)",
 )
-def explain_row(batch_id: BatchId, index: RowIndex) -> schemas.ExplainResponse:
-    raise not_implemented()
+def explain_row(
+    batch_id: BatchId, index: RowIndex, store: StoreDep, analyzer: AnalyzerDep
+) -> schemas.ExplainResponse:
+    batch = _finished(store.get(batch_id))
+    result = batch.result
+    assert result is not None
+    if index >= len(result.rows):
+        raise ApiError(404, "row_not_found", "Batch không có dòng này.")
+    row = result.rows[index]
+    if row.analysis is None:
+        raise ApiError(422, "no_content", NO_CONTENT_MESSAGE)
+    with batch.lock:
+        explanation = result.explanations.get(index)
+    if explanation is None:
+        try:
+            explanation = analyzer.explain_prepared(row.prepared)
+        except ExplanationUnavailable as exc:
+            raise ApiError(
+                422,
+                exc.code,
+                f"Câu có {exc.n_words} từ, giải thích chỉ hỗ trợ tối đa {exc.max_words} từ.",
+                params={"n_words": exc.n_words, "max_words": exc.max_words},
+            ) from exc
+        with batch.lock:
+            explanation = result.explanations.setdefault(index, explanation)
+    return to_explain_response(explanation)
 
 
 @router.post(
