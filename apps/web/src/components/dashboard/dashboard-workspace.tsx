@@ -6,13 +6,14 @@ import { useState } from "react";
 
 import { Callout } from "@/components/shared/callout";
 import { DemoUnavailableNotice } from "@/components/shared/demo-unavailable-notice";
+import { FailureNotice } from "@/components/shared/failure-notice";
 import { Icon } from "@/components/shared/icon";
 import { BatchFailureNotice } from "@/components/batch/batch-failure-notice";
 import { Caption } from "@/components/shared/section-heading";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toFailure } from "@/lib/api/client";
-import { useAppConfig } from "@/lib/app-config";
+import { retryAppConfig, useAppConfig } from "@/lib/app-config";
 import { getInsights, sendClose, sendHeartbeat } from "@/lib/batch/batch-api";
 import { useReviewEdits } from "@/lib/batch/review-edits";
 import { useStoredBatch } from "@/lib/batch/stored-batch";
@@ -66,7 +67,10 @@ export function DashboardWorkspace() {
   let source: InsightSource | "none" | null;
   if (batchParam === DEMO_BATCH_ID) source = "demo";
   else if (batchParam !== null) source = "batch";
-  else if (config === undefined) source = appConfig.status === "error" ? "none" : null;
+  else if (config === undefined) {
+    // Cấu hình lỗi vẫn xem được file đang có (cấu hình chỉ cho biết demo và chu kỳ heartbeat).
+    source = appConfig.status === "error" ? (fileId !== null ? "batch" : "none") : null;
+  }
   else if (demoAvailable) source = "demo";
   else if (fileId !== null) source = "batch";
   else source = "none";
@@ -134,7 +138,12 @@ export function DashboardWorkspace() {
         file có cột nhóm. Tỉ lệ tính trên nhãn dự đoán, không phản ánh nhãn bạn đã sửa ở bảng duyệt.
       </Caption>
 
-      {source === "none" ? <NoSource demoReason={config?.demo_reason} demoAvailable={demoAvailable} /> : null}
+      {appConfig.status === "error" ? (
+        <FailureNotice failure={appConfig.failure} onRetry={() => void retryAppConfig()} />
+      ) : null}
+      {source === "none" ? (
+        <NoSource demoReason={config?.demo_reason} showDemoNotice={config !== undefined && !demoAvailable} />
+      ) : null}
       {source === null || (insights.status === "loading" && data === null) ? <DashboardSkeleton /> : null}
 
       {ended ? (
@@ -176,10 +185,10 @@ export function DashboardWorkspace() {
   );
 }
 
-function NoSource({ demoReason, demoAvailable }: { demoReason: string | null | undefined; demoAvailable: boolean }) {
+function NoSource({ demoReason, showDemoNotice }: { demoReason: string | null | undefined; showDemoNotice: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      {!demoAvailable ? <DemoUnavailableNotice reason={demoReason} /> : null}
+      {showDemoNotice ? <DemoUnavailableNotice reason={demoReason} /> : null}
       <Callout
         tone="info"
         icon="upload_file"
