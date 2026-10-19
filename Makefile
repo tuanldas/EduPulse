@@ -105,8 +105,8 @@ test: ## Chạy pytest (và Vitest khi đã có apps/web)
 	uv run pytest
 	$(call web,run --if-present test)
 
-e2e: ## Chạy Playwright trên container đang chạy (cần `make up`)
-	cd apps/web && pnpm exec playwright test
+e2e: ## Chạy Playwright trên container đang chạy (cần `make up`; E2E_BASE_URL để trỏ nơi khác)
+	cd apps/web && E2E_BASE_URL=$${E2E_BASE_URL:-http://127.0.0.1:$${EDUPULSE_PORT:-8000}} pnpm exec playwright test
 
 lint: ## ruff, eslint và tsc --noEmit
 	uv run ruff check .
