@@ -89,16 +89,16 @@ Modify:
 12. Commit (`feat: add experiment runner and final evaluation`, `docs: add evaluation results`).
 
 ## Todo list
-- [ ] (Should) Thăm dò 6 epoch → chốt E*
-- [ ] `ml/run-experiments.sh` (kiểm Docker tắt) + chạy 8–9 run (khoá MPS, `caffeinate`)
-- [ ] `evaluate --split val`: mean ± std, MTL vs STL, kiểm quy tắc 1,5 điểm
-- [ ] Seed deploy, export int8 (cổng), calibrate cuối, baseline calibrated
-- [ ] `evaluate --freeze` → `results/freeze.json` + commit
-- [ ] `evaluate --split test --final` (đúng 1 lần)
-- [ ] `make report`: significance · error analysis + bias · CheckList · ngân sách trên test
-- [ ] `artifacts/v1.0/` (schema, guard) + chạy lại test model + bench
+- [x] ~~(Should) Thăm dò 6 epoch → chốt E*~~ — bỏ theo phạm vi Session 6 (2026-10-17)
+- [x] ~~`ml/run-experiments.sh` (kiểm Docker tắt) + chạy 8–9 run (khoá MPS, `caffeinate`)~~ — bỏ theo phạm vi Session 6 (2026-10-17)
+- [x] ~~`evaluate --split val`: mean ± std, MTL vs STL, kiểm quy tắc 1,5 điểm~~ — thay bằng khoảng tin cậy bootstrap trên test; MTL vs STL chỉ lấy số sơ bộ của research (Session 6)
+- [x] Seed deploy, export int8 (cổng), calibrate cuối, baseline calibrated
+- [x] `evaluate --freeze` → `results/freeze.json` + commit (`bac46b8`, trước dự đoán test)
+- [x] `evaluate --split test --final` (đúng 1 lần; `freeze.reruns` rỗng)
+- [x] `make report`: significance · error analysis + bias · CheckList · ngân sách trên test
+- [x] `artifacts/v1.0/` (schema, guard) + chạy lại test model + bench
 - [ ] Mốc M2 (kết quả test) + M3 (duyệt) đẩy HF Hub, ghim revision
-- [ ] Commit kết quả
+- [x] Commit kết quả
 
 ## Success Criteria
 - 9 run PhoBERT có log + `val_logits.npz`; bảng val mean ± std cho MTL, STL-sentiment, STL-topic.

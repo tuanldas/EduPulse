@@ -96,8 +96,8 @@ Create:
 9. `pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build` sạch; **dừng M5** (người dùng xem ảnh 4 trang); commit theo trang (`feat(web): …`).
 
 ## Todo list
-- [ ] Cập nhật design-guidelines §4, §5, §6.1, §10 cho Next.js
-- [ ] Nền tảng: shadcn (Base UI, kiểm `cn`), token, font, theme, khung, icon, lib, client API, `use-batch-session`, badge minh hoạ
+- [x] Cập nhật design-guidelines §4, §5, §6.1, §10 cho Next.js
+- [x] Nền tảng: shadcn (Base UI, kiểm `cn`), token, font, theme, khung, icon, lib, client API, `use-batch-session`, badge minh hoạ
 - [ ] Trang 1 Phân tích câu (+ XAI, trạng thái, compare Must)
 - [ ] Trang 4 Mô hình & đạo đức (nhãn stage, ghi chú x86/demo)
 - [ ] Trang 2 Phân tích hàng loạt (upload/file mẫu → ngân sách → tiến trình → bảng duyệt → Sheet → xuất; heartbeat/close)

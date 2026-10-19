@@ -27,13 +27,13 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 ## Phases
 | # | Phase | Ngày (10/2026) | Effort | Phụ thuộc | Status |
 |---|---|---|---|---|---|
-| 1 | [Thiết lập repo & tooling](./phase-01-start.md) | 15 | 4h | — | Pending |
-| 2 | [Dữ liệu, chuẩn hoá dùng chung, EDA](./phase-02-data-normalize-eda.md) | 15–16 | 10.5h | 1 | Pending |
-| 3 | [Baseline, PhoBERT run đầu, ONNX int8, bundle v0](./phase-03-baselines-first-phobert-onnx.md) | 16–17 | 13.5h | 2 (bước 1–8) | Pending |
-| 4 | [API skeleton, Docker, smoke test giới hạn tài nguyên](./phase-04-api-skeleton-docker-smoke-test.md) | 16–17 (≤ sáng 18) | 9.5h | 1 (phần A); 3 (phần B) | Pending |
-| 5 | [PhoBERT đầy đủ, đánh giá cuối, calibration, bundle v1](./phase-05-phobert-experiments-eval-calibration.md) | 17–21 | 12h (+3h MPS nền) | 3, 4 (sau M1) | Pending |
-| 6 | [Backend đủ tính năng](./phase-06-backend-features.md) | 18–22 | 24h | 4 | Pending |
-| 7 | [Frontend 4 trang](./phase-07-frontend-four-pages.md) | 18–24 | 32.5h | 4, 6 (bước 1) | Pending |
+| 1 | [Thiết lập repo & tooling](./phase-01-start.md) | 15 | 4h | — | Completed |
+| 2 | [Dữ liệu, chuẩn hoá dùng chung, EDA](./phase-02-data-normalize-eda.md) | 15–16 | 10.5h | 1 | Completed |
+| 3 | [Baseline, PhoBERT run đầu, ONNX int8, bundle v0](./phase-03-baselines-first-phobert-onnx.md) | 16–17 | 13.5h | 2 (bước 1–8) | Completed |
+| 4 | [API skeleton, Docker, smoke test giới hạn tài nguyên](./phase-04-api-skeleton-docker-smoke-test.md) | 16–17 (≤ sáng 18) | 9.5h | 1 (phần A); 3 (phần B) | Completed |
+| 5 | [PhoBERT đầy đủ, đánh giá cuối, calibration, bundle v1](./phase-05-phobert-experiments-eval-calibration.md) | 17–21 | 12h (+3h MPS nền) | 3, 4 (sau M1) | In progress (chờ M2, M3) |
+| 6 | [Backend đủ tính năng](./phase-06-backend-features.md) | 18–22 | 24h | 4 | In progress (chờ build Docker, M4) |
+| 7 | [Frontend 4 trang](./phase-07-frontend-four-pages.md) | 18–24 | 32.5h | 4, 6 (bước 1) | In progress |
 | 8 | [Kiểm thử, review, hiệu năng](./phase-08-testing-review-performance.md) | 23–26 | 12h | 5, 6, 7 | Pending |
 | 9 | [Deploy VPS, docs, gói artifact báo cáo](./phase-09-vps-deploy-docs-report-artifacts.md) | 25–27 (+28 dự phòng) | 10h | 8 | Pending |
 
@@ -56,8 +56,8 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Mốc lịch: M1 17/10 · M2 20–21/10 · M4 22/10 · M5 24/10 → đóng băng tính năng · E2E + perf cuối 26/10 · deploy + docs 27/10 · 28/10 dự phòng. Trễ mốc ≥1 ngày → cắt Could rồi Should theo thứ tự trên; vẫn trễ → dừng M6.
 
 ## Success Criteria
-- [ ] PDR 1: clone sạch → `make setup data eda baseline experiments export calibrate evaluate report artifacts` (+ `make demo-data`) chạy lại được.
-- [ ] PDR 2–3: `results/tables/test_main.md` đủ ô, PhoBERT mean ± std, kiểm định ghép cặp; PhoBERT không thắng baseline thì có phân tích.
+- [ ] PDR 1: clone sạch → `make setup data eda baseline train export calibrate freeze` → commit `results/freeze.json` → `make evaluate report hitl artifacts` (+ `make demo-data`) chạy lại được. (Session 6: `experiments` ngoài phạm vi.)
+- [x] PDR 2–3: `results/tables/test_main.md` đủ ô, khoảng tin cậy 95% bootstrap (thay mean ± std, Session 6), kiểm định ghép cặp (`significance.md`); PhoBERT thắng baseline tốt nhất nên không cần mục phân tích thua.
 - [ ] PDR 4: `results/metrics/onnx_gate_v1.json` giảm mF1 val ≤1 điểm cả 2 task (M1); QEMU amd64: golden 20/20 và ≥98% của 200 câu val cùng nhãn; model card ghi "chưa đo x86" tới khi đo trên VPS.
 - [ ] PDR 5: trên compose cuối (2 CPU/1,5GB, M1, hệ số an toàn ×3): 1 câu+XAI p95 ≤0,6 s; 1.000 câu gồm auto-XAI ≤30 s; RAM ≤1,2GB; upload 5MB chạy xong; không OOM.
 - [ ] PDR 6: pytest + Vitest + Playwright pass trên image cuối; `docker compose up` từ clone sạch chạy; link public khi người dùng dựng VPS.
@@ -75,10 +75,22 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Người dùng duyệt bỏ 8 run MPS còn lại của phase 5 (không tắt Docker, không chạy đêm). Thay bằng: bootstrap CI 95% trên test thay cho mean ± std 3 seed; so sánh MTL/STL dùng thí nghiệm sơ bộ của research (val, 1 seed, p=0,31/0,46) và ghi rõ là sơ bộ; vòng người duyệt (HITL) chạy trọn với LinearSVC trên CPU + smoke retrain PhoBERT 20 bước trên CPU. Bản deploy = MTL seed 42 (`v0-smoke` → đánh giá test 1 lần → `v1.0`).
 - Bối cảnh: mạng mất 2 lần (tối 15/10) làm toàn bộ agent dừng tới 19/10; mất ~3,5 ngày lịch. Docker Desktop của người dùng đang tắt (không do team).
 
+### M2 — 2026-10-19 (sớm 1–2 ngày): trình người dùng duyệt
+- Test (n = 3.166) chấm đúng 1 lần: freeze commit `bac46b8` có trước dự đoán test, `freeze.reruns` rỗng. Bảng: `results/tables/test_main.md`, `significance.md`, `review_budget_test.md`, `checklist.md`, `error_analysis.md`, `hitl_retrain.md`.
+- Bản triển khai (int8, batch=1): cảm xúc 94,0 / 82,1 [79,3–84,6], chủ đề 90,0 / 81,3 [79,0–83,4] (acc / mF1 [KTC 95%]); ECE 0,014 / 0,023. Hơn LinearSVC mF1 +8,6 / +8,0 điểm (McNemar p < 0,0001); không khác FP32 (p = 0,58 / 0,35). Khớp paper (≈ 94/83, 89/80).
+- Ngân sách duyệt 10% trên test bắt 45,3% lỗi cảm xúc và 34,4% lỗi chủ đề; phần không cờ đúng cả hai 89,8% (không gắn cờ: 85,5%). Lớp yếu: trung tính (recall 43,1%), Khác (48,4%).
+- Giới hạn ghi trong thẻ mô hình: luật ẩn tên che nhầm câu Viết Hoa Chữ Đầu (CheckList 86,6%); thêm "không" 83,2%. HITL mô phỏng (80 câu cờ) không cải thiện có ý nghĩa.
+- Bundle `v1.0` (stage release) ở `$EDUPULSE_HOME/artifacts/v1.0`, mặc định từ 2026-10-19; golden 20/20, guard câu gốc 0/200.
+
+### M4 — 2026-10-19 (sớm 3 ngày): khối API xong, chờ build Docker
+- 17 operation (`apps/web/openapi.json`): export CSV (BOM, chống formula injection, `all`/`corrected`), so sánh LinearSVC nạp lười, gzip, `model_url` (env `EDUPULSE_MODEL_URL`). Host Mac: 1.000 câu qua HTTP kèm tự giải thích 20 câu 10,4 s; `/api/analyze` giữa batch ≤27 ms.
+- Lỗi tích hợp sửa khi gộp: file "nhãn đã sửa" của API (`label_sentiment`/`label_topic`) không khớp cột `ml/retrain.py` đọc (`label_s`/`label_t`); retrain giờ đọc đúng `CORRECTED_HEADER` và có test đọc ngược từ API thật. Trùng tên module test `test_stats.py` → đổi `tests/ml/test_bootstrap_stats.py`.
+- Còn lại: build stage `demo`/`final` + smoke trong container (cần Docker); `scripts/smoke_test.py` còn cổng cũ `single_p95_s=0.6`, cần tách nhãn ≤0,5 s / giải thích ≤2 s.
+
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
-2. Chấp nhận mốc smoke 17/10 (muộn nhất sáng 18/10) thay cho "ngày 2–3"? Smoke vẫn trước mọi việc UI (xem Unresolved contradictions).
-3. Retrain PhoBERT: chỉ chứng minh script chạy (`--max-steps 20`, mặc định) hay cần 1 lần retrain đầy đủ (~12 phút MPS + đánh giá) cho báo cáo?
+2. ~~Chấp nhận mốc smoke 17/10?~~ Đã chốt: chấp nhận (Session 3); smoke chạy 15/10.
+3. ~~Retrain PhoBERT đầy đủ hay chỉ smoke?~~ Đã chốt Session 6: chỉ smoke 20 bước CPU; HITL đầy đủ chạy bằng LinearSVC.
 4. `docs/wireframes/*.html` có vài câu ví dụ có thể trích UIT-VSFC: giữ như "vài câu ví dụ" (mặc định) hay thay bằng câu tự viết?
 
 ## Validation Log
