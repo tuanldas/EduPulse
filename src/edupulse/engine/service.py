@@ -18,6 +18,7 @@ from numpy.typing import NDArray
 
 from edupulse.bundle_schema import Calibration
 from edupulse.config import AUDIT_RATE, AUTO_XAI_TOP, DEFAULT_BUDGET, XAI_MAX_WORDS, Settings
+from edupulse.engine.baseline import Baseline
 from edupulse.engine.bundle import Bundle, load_bundle
 from edupulse.engine.explain import Explanation, ExplanationUnavailable, explain_tokens
 from edupulse.engine.flags import (
@@ -131,6 +132,7 @@ class Analyzer:
         self._model = model
         self._use_ner = use_ner
         self.xai_max_words = xai_max_words  # câu dài hơn thì không giải thích
+        self.baseline = Baseline(bundle.root / "baseline")  # nạp lười khi có người so sánh
 
     @classmethod
     def load(cls, settings: Settings) -> "Analyzer":
