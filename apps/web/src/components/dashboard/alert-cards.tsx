@@ -1,5 +1,6 @@
 import { Callout } from "@/components/shared/callout";
 import { Icon } from "@/components/shared/icon";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { LabelBadge } from "@/components/shared/label-badge";
 import { Caption } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,15 @@ function lowerBound(value: number): string {
   return formatPercent(value, value < 0.1 ? 1 : 0);
 }
 
-function AlertCard({ alert, onSeeQuotes }: { alert: Alert; onSeeQuotes: (alert: Alert) => void }) {
+function AlertCard({
+  alert,
+  illustrativeGroups,
+  onSeeQuotes,
+}: {
+  alert: Alert;
+  illustrativeGroups: boolean;
+  onSeeQuotes: (alert: Alert) => void;
+}) {
   const topic = labelMeta("topic", alert.topic);
   const share = alert.kind === "topic_share";
   const accent = share ? TONE_CLASS[topic.tone] : TONE_CLASS.neg;
@@ -52,6 +61,7 @@ function AlertCard({ alert, onSeeQuotes }: { alert: Alert; onSeeQuotes: (alert: 
         <span>Khoảng tin cậy 95%: ít nhất {lowerBound(alert.evidence.ci_low)}</span>
         <span className="tabular-nums">n = {formatNumber(alert.evidence.n)}</span>
         {alert.group !== null ? <span>Nhóm: {alert.group}</span> : null}
+        {alert.group !== null && illustrativeGroups ? <IllustrativeBadge /> : null}
         {keywords.length > 0 ? <span>Nổi bật: {keywords.join(", ")}</span> : null}
         {alert.note ? <span>{alert.note}</span> : null}
       </div>
@@ -66,6 +76,8 @@ function AlertCard({ alert, onSeeQuotes }: { alert: Alert; onSeeQuotes: (alert: 
 interface AlertCardsProps {
   alerts: InsightsResponse["alerts"];
   topics: Topics;
+  /** Nhóm là dữ liệu minh hoạ (file mẫu): cảnh báo theo nhóm phải ghi rõ điều đó. */
+  illustrativeGroups: boolean;
   onSeeQuotes: (alert: Alert) => void;
 }
 
@@ -86,7 +98,7 @@ function BaselineList({ topics }: { topics: Topics }) {
 }
 
 /** Tối đa ba thẻ cảnh báo so với mức nền, hoặc thông báo "không chủ đề nào vượt mức nền đáng kể". */
-export function AlertCards({ alerts, topics, onSeeQuotes }: AlertCardsProps) {
+export function AlertCards({ alerts, topics, illustrativeGroups, onSeeQuotes }: AlertCardsProps) {
   const calm = calmTopics(topics, alerts);
   return (
     <div className="flex flex-col gap-3">
@@ -97,7 +109,12 @@ export function AlertCards({ alerts, topics, onSeeQuotes }: AlertCardsProps) {
       ) : (
         <div className="grid grid-cols-3 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
           {alerts.map((alert, index) => (
-            <AlertCard key={`${alert.kind}-${alert.topic}-${alert.group ?? ""}-${index}`} alert={alert} onSeeQuotes={onSeeQuotes} />
+            <AlertCard
+              key={`${alert.kind}-${alert.topic}-${alert.group ?? ""}-${index}`}
+              alert={alert}
+              illustrativeGroups={illustrativeGroups}
+              onSeeQuotes={onSeeQuotes}
+            />
           ))}
         </div>
       )}

@@ -70,7 +70,12 @@ export function InsightsView({ data, groupLabel }: InsightsViewProps) {
       <KpiRow kpis={data.kpis} />
 
       <SectionHeading icon="notifications">Cảnh báo so với mức nền</SectionHeading>
-      <AlertCards alerts={data.alerts} topics={data.topics} onSeeQuotes={seeQuotes} />
+      <AlertCards
+        alerts={data.alerts}
+        topics={data.topics}
+        illustrativeGroups={data.illustrative_groups}
+        onSeeQuotes={seeQuotes}
+      />
 
       <div className="grid grid-cols-2 items-start gap-4 max-[900px]:grid-cols-1">
         <SentimentByTopic topics={data.topics} className={data.heatmap === null ? "col-span-2 max-[900px]:col-span-1" : undefined} />

@@ -51,14 +51,14 @@ describe("AlertCards", () => {
   const topics = makeInsights().topics;
 
   it("không có cảnh báo thì nói rõ và liệt kê tiêu cực so với nền từng chủ đề", () => {
-    render(<AlertCards alerts={[]} topics={topics} onSeeQuotes={vi.fn()} />);
+    render(<AlertCards alerts={[]} topics={topics} illustrativeGroups={false} onSeeQuotes={vi.fn()} />);
     expect(screen.getByText("Không chủ đề nào vượt mức nền đáng kể.")).toBeInTheDocument();
     expect(screen.getByText(/Giảng viên 38,0% \(nền 35,6\)/)).toBeInTheDocument();
     expect(screen.getByText(/Chương trình 93,3% \(78,0\)/)).toBeInTheDocument();
   });
 
   it("thẻ cảnh báo viết thành lời, in đậm số chính và nêu căn cứ", () => {
-    render(<AlertCards alerts={makeInsights().alerts} topics={topics} onSeeQuotes={vi.fn()} />);
+    render(<AlertCards alerts={makeInsights().alerts} topics={topics} illustrativeGroups={false} onSeeQuotes={vi.fn()} />);
     expect(screen.getByRole("heading", { name: "Chương trình: tỉ lệ tiêu cực cao hơn mức nền" })).toBeInTheDocument();
     expect(screen.getByText("93%").tagName).toBe("B");
     expect(screen.getByText("Khoảng tin cậy 95%: ít nhất 89%")).toBeInTheDocument();
@@ -71,16 +71,26 @@ describe("AlertCards", () => {
     expect(screen.getByText("Tổng hợp theo nhóm, không gắn với cá nhân.")).toBeInTheDocument();
   });
 
+  it("cảnh báo theo nhóm gán ngẫu nhiên phải ghi rõ là dữ liệu minh hoạ, cảnh báo cả tập thì không cần", () => {
+    const { rerender } = render(
+      <AlertCards alerts={makeInsights().alerts} topics={topics} illustrativeGroups onSeeQuotes={vi.fn()} />,
+    );
+    // Chỉ cảnh báo riêng một nhóm (cảnh báo thứ hai trong dữ liệu mẫu) mang nhãn.
+    expect(screen.getAllByText("Dữ liệu minh hoạ — nhóm gán ngẫu nhiên")).toHaveLength(1);
+    rerender(<AlertCards alerts={makeInsights().alerts} topics={topics} illustrativeGroups={false} onSeeQuotes={vi.fn()} />);
+    expect(screen.queryByText("Dữ liệu minh hoạ — nhóm gán ngẫu nhiên")).not.toBeInTheDocument();
+  });
+
   it("'Xem câu liên quan' báo đúng cảnh báo được chọn", async () => {
     const onSeeQuotes = vi.fn();
     const alerts = makeInsights().alerts;
-    render(<AlertCards alerts={alerts} topics={topics} onSeeQuotes={onSeeQuotes} />);
+    render(<AlertCards alerts={alerts} topics={topics} illustrativeGroups={false} onSeeQuotes={onSeeQuotes} />);
     await userEvent.click(screen.getAllByRole("button", { name: /Xem câu liên quan/ })[1]);
     expect(onSeeQuotes).toHaveBeenCalledWith(alerts[1]);
   });
 
   it("phân biệt chủ đề bình thường với chủ đề chưa đủ câu và ghi rõ cảnh báo chỉ ở một nhóm", () => {
-    render(<AlertCards alerts={makeInsights().alerts} topics={topics} onSeeQuotes={vi.fn()} />);
+    render(<AlertCards alerts={makeInsights().alerts} topics={topics} illustrativeGroups={false} onSeeQuotes={vi.fn()} />);
     expect(screen.getByText("Giảng viên (toàn tập):")).toBeInTheDocument();
     expect(screen.getByText(/trong mức bình thường \(38%\)/)).toBeInTheDocument();
     expect(screen.getByText(/chưa đủ câu để kết luận \(n = 9\)/)).toBeInTheDocument();

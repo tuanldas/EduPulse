@@ -117,6 +117,32 @@ describe("ResultsSection (dữ liệu thật)", () => {
     expect(document.body.textContent).not.toContain("0912345678");
   });
 
+  it("dòng chỉ còn thông tin cá nhân hoặc ký hiệu hiện riêng, không lẫn vào bảng", async () => {
+    const withSkipped = {
+      ...batchResults,
+      summary: { ...batchResults.summary, n_skipped: 1 },
+      skipped: [{ index: 30, source_row: 31, text: "[SĐT]" }],
+    };
+    render(
+      <ResultsSection
+        batchId="fixture-batch"
+        results={withSkipped}
+        groupLabel={null}
+        xaiMaxWords={25}
+        overrides={NO_OVERRIDES}
+        correctedCount={0}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Bỏ qua 1 dòng không có nội dung")).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: /1 dòng không có nội dung để phân tích/ });
+    await userEvent.click(toggle);
+    expect(await screen.findByText("31")).toBeInTheDocument();
+    expect(screen.getByText(/không có nhãn và không nằm trong danh sách duyệt/)).toBeInTheDocument();
+    // Dòng bị bỏ qua không có trong bảng duyệt.
+    expect(within(screen.getByRole("table")).queryByText("[SĐT]")).not.toBeInTheDocument();
+  });
+
   it("câu quá dài ghi rõ số từ ở cột Lý do để hiểu vì sao không tô được", async () => {
     setup();
     await userEvent.click(screen.getByRole("tab", { name: /Tất cả kết quả/ }));
