@@ -16,6 +16,23 @@ export const TONE_CLASS: Record<Tone, { badge: string; text: string; solid: stri
   flag: { badge: "bg-flag-bg text-flag-fg", text: "text-flag-fg", solid: "bg-flag" },
 };
 
+/**
+ * Màu chữ đặt thẳng lên nền đặc của khoá màu (nhãn trong cột chồng, ô biểu đồ). Nền đặc giống nhau ở
+ * hai theme nên chữ cũng cố định: trắng hoặc `ink` (#14171E, `--ink` ở globals.css), chọn theo nền nào
+ * tương phản cao hơn; `tests/contrast.test.ts` canh các cặp này. Riêng `khac` không màu chữ nào đạt
+ * 4,5:1 (chữ tối chỉ 4,35:1): không đặt chữ nhỏ lên nền đó.
+ */
+export const TEXT_ON_SOLID: Record<Tone, string> = {
+  neg: "text-white",
+  neu: "text-ink",
+  pos: "text-ink",
+  gv: "text-white",
+  ct: "text-white",
+  csvc: "text-ink",
+  khac: "text-ink",
+  flag: "text-ink",
+};
+
 /** Giá trị CSS của màu nền đặc (SVG, style nội tuyến). */
 export function toneVar(tone: Tone): string {
   return `var(--${tone})`;

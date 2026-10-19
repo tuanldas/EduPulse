@@ -88,6 +88,9 @@
   --color-xai-3: var(--xai-3);
   --color-xai-opp: var(--xai-opp);
 
+  /* Chữ tối đặt trên nền đặc của khoá màu (cùng giá trị ở hai theme); xem TEXT_ON_SOLID ở lib/colors.ts. */
+  --color-ink: var(--ink);
+
   --radius-sm: calc(var(--radius) * 0.75);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
@@ -165,6 +168,8 @@
   --xai-2: rgba(91, 104, 238, 0.3);
   --xai-1: rgba(91, 104, 238, 0.18);
   --xai-opp: rgba(139, 144, 154, 0.3);
+
+  --ink: #14171e;
 }
 
 .dark {

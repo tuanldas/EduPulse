@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { TEXT_ON_SOLID } from "@/lib/colors";
+
 import { contrast, over, parseColor, type Rgba } from "./helpers/contrast";
 
 // Canh tương phản WCAG 2.1 AA của các cặp token trong app/globals.css ở cả hai theme: chữ ≥ 4,5:1,
@@ -71,6 +73,14 @@ describe.each(THEMES)("tương phản token · theme %s", (theme) => {
 
   it.each(["neg", "neu", "pos", "gv", "ct", "csvc", "khac"] as const)("màu nền biểu đồ %s nhìn rõ trên nền trang", (tone) => {
     expect(ratio(tone, "background")).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(TONES)("chữ chọn sẵn trên nền đặc %s (TEXT_ON_SOLID) đọc được", (tone) => {
+    const textClass = TEXT_ON_SOLID[tone];
+    const text = textClass === "text-white" ? parseColor("#ffffff") : colorOf(theme, "ink");
+    // `khac` (#66837A) không có màu chữ nào đạt 4,5:1; chữ tối cho 4,35:1 là mức tốt nhất, nên chỉ đặt chữ lớn lên đó.
+    const needed = tone === "khac" ? 4.3 : 4.5;
+    expect(contrast(text, colorOf(theme, tone))).toBeGreaterThanOrEqual(needed);
   });
 
   it.each(["xai-3", "xai-2", "xai-1", "xai-opp"])("chữ đọc được trên nền tô giải thích %s", (token) => {
