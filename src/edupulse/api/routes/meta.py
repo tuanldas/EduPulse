@@ -77,6 +77,7 @@ async def app_config(analyzer: AnalyzerDep, settings: SettingsDep, demo: DemoDep
         demo_available=demo.available,
         demo_reason=demo.reason,
         source_url=settings.source_url,
+        model_url=settings.model_url,
     )
 
 

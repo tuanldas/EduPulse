@@ -136,6 +136,7 @@ class Settings:
     source_url: str  # EDUPULSE_SOURCE_URL
     job_ttl_min: float  # EDUPULSE_JOB_TTL_MIN, phút
     xai_max_words: int = XAI_MAX_WORDS  # EDUPULSE_XAI_MAX_WORDS
+    model_url: str = ""  # EDUPULSE_MODEL_URL, liên kết tới model trên Hugging Face
 
     @property
     def data_dir(self) -> Path:
@@ -181,4 +182,5 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         source_url=_url(env, "EDUPULSE_SOURCE_URL"),
         job_ttl_min=_positive_float(env, "EDUPULSE_JOB_TTL_MIN", 30.0),
         xai_max_words=_int(env, "EDUPULSE_XAI_MAX_WORDS", XAI_MAX_WORDS),
+        model_url=_url(env, "EDUPULSE_MODEL_URL"),
     )
