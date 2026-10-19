@@ -54,7 +54,7 @@ export function KeywordChips({ keywords, selected, onSelect }: KeywordChipsProps
                         className={cn(
                           "inline-flex min-h-[34px] items-center gap-1.5 rounded-full border px-3 py-[5px] text-sm leading-[1.35] outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
                           active
-                            ? "border-primary bg-primary-soft font-medium text-primary"
+                            ? "border-primary bg-primary-soft font-medium text-primary-text"
                             : "border-border bg-background hover:bg-accent",
                         )}
                       >

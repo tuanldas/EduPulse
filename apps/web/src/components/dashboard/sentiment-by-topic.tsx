@@ -1,20 +1,12 @@
 import { Icon } from "@/components/shared/icon";
 import { Caption } from "@/components/shared/section-heading";
 import { Card } from "@/components/ui/card";
-import type { InsightsResponse, SentimentLabel } from "@/lib/batch/types";
-import { TONE_CLASS } from "@/lib/colors";
+import type { InsightsResponse } from "@/lib/batch/types";
+import { TEXT_ON_SOLID, TONE_CLASS } from "@/lib/colors";
 import { topicBars, type TopicBar } from "@/lib/dashboard/insight-view";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { labelMeta, SENTIMENT_META } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-
-// Chữ trong đoạn: trắng trên Tiêu cực, tối trên Trung tính/Tích cực để đủ tương phản ở cả hai theme
-// (màu nền của đoạn không đổi theo theme nên màu chữ cũng không đổi).
-const TEXT_ON_FILL: Record<SentimentLabel, string> = {
-  negative: "text-white",
-  neutral: "text-black",
-  positive: "text-black",
-};
 
 /** Câu mô tả đầy đủ của một hàng cho trình đọc màn hình, vì thanh chỉ là hình. */
 function describe(bar: TopicBar): string {
@@ -49,7 +41,7 @@ function Row({ bar }: { bar: TopicBar }) {
                   className={cn(
                     "@container flex items-center justify-center overflow-hidden text-xs font-semibold whitespace-nowrap not-italic first:rounded-l-[4px] last:rounded-r-[4px]",
                     TONE_CLASS[SENTIMENT_META[segment.sentiment].tone].solid,
-                    TEXT_ON_FILL[segment.sentiment],
+                    TEXT_ON_SOLID[SENTIMENT_META[segment.sentiment].tone],
                   )}
                   style={{ width: `${segment.share * 100}%` }}
                 >

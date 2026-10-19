@@ -104,7 +104,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
                   hơn nhưng tốn công duyệt hơn.
                 </HelpTip>
               </span>
-              <b className="font-semibold text-primary tabular-nums">{formatPercent(budget / 100)}</b>
+              <b className="font-semibold text-primary-text tabular-nums">{formatPercent(budget / 100)}</b>
             </div>
             <div className="px-2 py-3">
               <Slider
@@ -123,7 +123,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
             </div>
             <div className="flex justify-between px-2 text-[13px] text-muted-foreground tabular-nums" aria-hidden="true">
               {budgets.map((option) => (
-                <span key={option.budget} className={cn(option.budget === budget && "font-semibold text-primary")}>
+                <span key={option.budget} className={cn(option.budget === budget && "font-semibold text-primary-text")}>
                   {formatPercent(option.budget / 100)}
                 </span>
               ))}
