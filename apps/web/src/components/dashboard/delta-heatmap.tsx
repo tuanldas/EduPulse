@@ -78,7 +78,7 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
         </div>
         <Caption>Ô ghi % tiêu cực · màu = cao hơn mức nền của chủ đề bao nhiêu điểm</Caption>
       </div>
-      <div className="overflow-x-auto">
+      <div>
         <div
           role="table"
           aria-label={`Tỉ lệ tiêu cực theo ${groupLabel} và chủ đề`}
