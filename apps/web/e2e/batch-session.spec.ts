@@ -1,6 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { leavePage } from "./batch-helpers";
+import { leavePage, runAnalysis, uploadFeedback } from "./batch-helpers";
 
 // Vòng đời phiên của batch trên trình duyệt thật: heartbeat khi tab mở, `close` khi rời trang, và việc
 // chuyển sang dashboard bằng liên kết không đóng batch. Cần chạy trên bản export do uvicorn phục vụ cùng
@@ -13,18 +13,10 @@ test.afterEach(async ({ page }) => {
   await leavePage(page);
 });
 
-async function createSampleBatch(page: Page): Promise<string> {
-  await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-  await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
-  const stored = await page.evaluate(() => window.sessionStorage.getItem("edupulse.batch"));
-  expect(stored).not.toBeNull();
-  return (JSON.parse(stored ?? "{}") as { batchId: string }).batchId;
-}
-
 test("gửi heartbeat theo chu kỳ cấu hình khi tab còn mở", async ({ page }) => {
   await page.clock.install();
   await page.goto("/batch/");
-  const batchId = await createSampleBatch(page);
+  const batchId = await uploadFeedback(page);
 
   const config = await page.request.get("/api/config");
   const { heartbeat_s: heartbeatS } = (await config.json()) as { heartbeat_s: number };
@@ -40,7 +32,7 @@ test("gửi heartbeat theo chu kỳ cấu hình khi tab còn mở", async ({ pag
 
 test("rời trang thì báo máy chủ xoá batch (sendBeacon khi pagehide)", async ({ page }) => {
   await page.goto("/batch/");
-  const batchId = await createSampleBatch(page);
+  const batchId = await uploadFeedback(page);
   expect((await page.request.get(`/api/batches/${batchId}`)).status()).toBe(200);
 
   await page.goto("about:blank");
@@ -51,9 +43,8 @@ test("rời trang thì báo máy chủ xoá batch (sendBeacon khi pagehide)", as
 
 test("sang dashboard bằng liên kết trong ứng dụng thì batch vẫn còn và dashboard hiện đúng file", async ({ page }) => {
   await page.goto("/batch/");
-  const batchId = await createSampleBatch(page);
-  await page.getByRole("button", { name: /^Phân tích \d/ }).click();
-  await expect(page.getByText("Đã phân tích xong.")).toBeVisible({ timeout: 90_000 });
+  const batchId = await uploadFeedback(page);
+  await runAnalysis(page);
 
   await page.getByRole("link", { name: /Xem dashboard cho file này/ }).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard/\\?batch=${batchId}`));
@@ -69,9 +60,8 @@ test("sang dashboard bằng liên kết trong ứng dụng thì batch vẫn còn
 
 test("đang có nhãn sửa chưa xuất thì rời trang bị hỏi lại", async ({ page }) => {
   await page.goto("/batch/");
-  await createSampleBatch(page);
-  await page.getByRole("button", { name: /^Phân tích \d/ }).click();
-  await expect(page.getByText("Đã phân tích xong.")).toBeVisible({ timeout: 90_000 });
+  await uploadFeedback(page);
+  await runAnalysis(page);
 
   await page.getByLabel(/^Sửa cảm xúc câu/).first().selectOption({ index: 1 });
 

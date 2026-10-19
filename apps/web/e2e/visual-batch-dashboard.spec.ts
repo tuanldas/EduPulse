@@ -1,23 +1,31 @@
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { analyzeSample, usingPage } from "./batch-helpers";
+import { analyzeFeedback, runAnalysis, showHighlightedExplanation, uploadFeedback, usingPage } from "./batch-helpers";
 import { SCREENSHOTS, THEMES, VIEWPORTS, settle } from "./helpers";
 
 // Chụp ảnh trang 2 (Phân tích hàng loạt) và trang 3 (Dashboard & insight) ở 1440 và 390, sáng và tối, để
 // đối chiếu với `docs/wireframes/screenshots/`. Ảnh nằm ở apps/web/test-results/visual/ (đã gitignore). Cần app
-// đang chạy (E2E_BASE_URL) và API thật phía sau, có dữ liệu demo (file mẫu 200 câu). Dữ liệu của các ảnh là
-// file mẫu dựng lúc build và kết quả của mô hình thật; các câu tự viết dùng cho test nằm ở e2e/helpers.ts.
+// đang chạy (E2E_BASE_URL) và API thật phía sau. Mọi file tải lên là file góp ý tự viết (feedback-file.ts) nên
+// ảnh không có câu UIT-VSFC nào; riêng ảnh dashboard của dữ liệu demo (số liệu thật của tập test UIT-VSFC) có
+// danh sách "Câu tiêu biểu" là câu của tập đó, nên vùng này được phủ khối màu xám trong ảnh.
 
 // Mỗi kịch bản chạy thật một batch qua mô hình, nên cho thời gian rộng hơn mặc định 30 giây.
 test.describe.configure({ timeout: 180_000 });
 
+interface ShotOptions {
+  /** Chụp cả trang (mặc định) hay chỉ khung nhìn, vd. ngăn giải thích là lớp phủ cố định. */
+  fullPage?: boolean;
+  /** Vùng được phủ khối màu xám để không lộ nội dung. */
+  mask?: Locator[];
+}
+
 /** Cuộn lên đầu trước khi chụp: thanh bên dính theo khung nhìn nên chụp cả trang lúc đang cuộn sẽ lệch chỗ. */
-async function shot(page: Page, name: string, fullPage = true) {
+async function shot(page: Page, name: string, { fullPage = true, mask }: ShotOptions = {}) {
   await settle(page);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: path.join(SCREENSHOTS, `${name}.png`), fullPage });
+  await page.screenshot({ path: path.join(SCREENSHOTS, `${name}.png`), fullPage, mask, maskColor: "#a1a1aa" });
 }
 
 for (const viewport of VIEWPORTS) {
@@ -30,11 +38,10 @@ for (const viewport of VIEWPORTS) {
         await expect(page.getByRole("heading", { name: "1 · Tải file" })).toBeVisible();
         await shot(page, `02-phan-tich-hang-loat-trong-${tag}`);
 
-        await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-        await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+        await uploadFeedback(page);
         await shot(page, `02-phan-tich-hang-loat-thiet-lap-${tag}`);
 
-        await analyzeSample(page);
+        await runAnalysis(page);
         await expect(page.getByRole("heading", { name: /Kết quả/ })).toBeVisible();
         await shot(page, `02-phan-tich-hang-loat-${tag}`);
 
@@ -42,7 +49,10 @@ for (const viewport of VIEWPORTS) {
         await page.getByRole("button", { name: /^Giải thích câu/ }).first().click();
         await expect(page.getByRole("dialog")).toBeVisible();
         await expect(page.getByLabel("Đang tính giải thích")).toHaveCount(0, { timeout: 30_000 });
-        await shot(page, `02-giai-thich-${tag}`, false);
+        await shot(page, `02-giai-thich-${tag}`, { fullPage: false });
+        // Câu có từ được tô kèm bảng xác suất (trạng thái chính của ngăn, như trong wireframe).
+        await showHighlightedExplanation(page);
+        await shot(page, `02-giai-thich-co-tu-to-${tag}`, { fullPage: false });
         await page.keyboard.press("Escape");
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
@@ -82,8 +92,7 @@ for (const viewport of VIEWPORTS) {
         await shot(page, `02-qua-gioi-han-${tag}`);
 
         // F5 sau khi có file: tab cũ đã đóng batch (pagehide) nên trang báo phiên đã kết thúc.
-        await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-        await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+        await uploadFeedback(page);
         await page.reload();
         await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
         await shot(page, `02-phien-ket-thuc-${tag}`);
@@ -95,14 +104,14 @@ for (const viewport of VIEWPORTS) {
 
     test(`trang 3 · dashboard & insight · ${tag}`, async ({ browser }) => {
       await usingPage(browser, viewport, theme, async (page, problems) => {
-        // Mặc định: dữ liệu demo (số thật của tập test UIT-VSFC).
+        // Mặc định: dữ liệu demo (số thật của tập test UIT-VSFC); che danh sách câu của tập đó.
         await page.goto("/dashboard/");
         await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
-        await shot(page, `03-dashboard-demo-${tag}`);
+        await shot(page, `03-dashboard-demo-${tag}`, { mask: [page.getByRole("tabpanel").locator("ul")] });
 
-        // File vừa tải: chạy file mẫu ở trang 2 rồi sang dashboard bằng liên kết (điều hướng trong ứng dụng).
+        // File vừa tải: chạy file góp ý tự viết ở trang 2 rồi sang dashboard bằng liên kết (điều hướng trong ứng dụng).
         await page.goto("/batch/");
-        await analyzeSample(page);
+        await analyzeFeedback(page);
         await page.getByRole("link", { name: /Xem dashboard cho file này/ }).click();
         await expect(page).toHaveURL(/\/dashboard\/\?batch=/);
         await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });

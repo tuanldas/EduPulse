@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { analyzeSample, usingPage } from "./batch-helpers";
+import { analyzeFeedback, showHighlightedExplanation, uploadFeedback, usingPage } from "./batch-helpers";
 import {
   THEMES,
   VIEWPORTS,
@@ -12,8 +12,9 @@ import {
 } from "./helpers";
 
 // Quét trợ năng bằng axe-core (WCAG 2.1 AA + thực hành tốt) trên trang 2 và trang 3 ở các trạng thái chính,
-// sáng/tối, 1440/390; ở 390 còn kiểm trang không cuộn ngang. Chạy trên app thật (E2E_BASE_URL), tốt nhất là bản
-// export do FastAPI phục vụ cùng origin với /api (xem helpers.ts và golden-path.spec.ts).
+// sáng/tối, 1440/390; ở 390 còn kiểm trang không cuộn ngang. Mọi file tải lên là file góp ý tự viết (không có câu
+// UIT-VSFC), xem feedback-file.ts. Chạy trên app thật (E2E_BASE_URL), tốt nhất là bản export do FastAPI phục vụ
+// cùng origin với /api (xem helpers.ts và golden-path.spec.ts).
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -46,11 +47,12 @@ for (const viewport of VIEWPORTS) {
           await settle(page);
           await expectNoA11yViolations(page, "trang 2 trạng thái đầu");
 
-          await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-          await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+          await uploadFeedback(page);
           await expectNoA11yViolations(page, "trang 2 thiết lập");
 
-          await analyzeSample(page);
+          await page.getByRole("button", { name: /^Phân tích \d/ }).click();
+          await expect(page.getByText("Đã phân tích xong.")).toBeVisible({ timeout: 90_000 });
+          await expect(page.getByRole("table")).toBeVisible();
           await expectNoA11yViolations(page, "trang 2 kết quả");
           if (viewport.width <= 640) await expectNoHorizontalScroll(page);
 
@@ -61,6 +63,9 @@ for (const viewport of VIEWPORTS) {
           await expect(page.getByRole("dialog")).toBeVisible();
           await expect(page.getByLabel("Đang tính giải thích")).toHaveCount(0, { timeout: 30_000 });
           await expectNoA11yViolations(page, "trang 2 ngăn giải thích");
+
+          await showHighlightedExplanation(page);
+          await expectNoA11yViolations(page, "trang 2 ngăn giải thích có từ được tô và bảng xác suất");
         });
       });
 
@@ -86,8 +91,7 @@ for (const viewport of VIEWPORTS) {
           await expect(page.getByText(/vượt giới hạn/)).toBeVisible({ timeout: 30_000 });
           await expectNoA11yViolations(page, "trang 2 quá giới hạn");
 
-          await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-          await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+          await uploadFeedback(page);
           await page.reload();
           await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
           await expectNoA11yViolations(page, "trang 2 phiên đã kết thúc");
@@ -103,12 +107,25 @@ for (const viewport of VIEWPORTS) {
           if (viewport.width <= 640) await expectNoHorizontalScroll(page);
 
           await page.goto("/batch/");
-          await analyzeSample(page);
+          await analyzeFeedback(page);
           await page.getByRole("link", { name: /Xem dashboard cho file này/ }).click();
           await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
           await expect(page.getByRole("button", { name: /Tất cả \d+ nhóm/ })).toBeVisible();
+          // File tự viết được dựng để có thẻ cảnh báo theo nhóm (nhóm B bị chê giảng viên); nếu mô hình đổi mà thẻ
+          // này biến mất thì phải chỉnh lại bảng số lượng ở feedback-file.ts chứ không bỏ qua phần quét thẻ cảnh báo.
+          const groupAlert = page.locator('[data-slot="card"]', {
+            has: page.getByRole("heading", { name: /ở nhóm/ }),
+          });
+          await expect(groupAlert).toBeVisible();
           await expectNoA11yViolations(page, "trang 3 file vừa tải");
           if (viewport.width <= 640) await expectNoHorizontalScroll(page);
+
+          // Từ thẻ cảnh báo sang danh sách câu liên quan: bộ lọc nhóm hiện thành chip có nút bỏ lọc.
+          await groupAlert.getByRole("button", { name: "Xem câu liên quan" }).click();
+          // Panel của tab cũ còn nằm lại trong lúc chuyển tab; đợi chỉ còn panel của chủ đề mới rồi mới tìm chip.
+          await expect(page.getByRole("tabpanel")).toHaveCount(1);
+          await expect(page.getByRole("button", { name: /^Bỏ lọc nhóm/ })).toBeVisible();
+          await expectNoA11yViolations(page, "trang 3 câu tiêu biểu đã lọc theo cảnh báo");
 
           await page.getByRole("button", { name: /Tất cả \d+ nhóm/ }).click();
           await expect(page.getByRole("menu")).toBeVisible();
