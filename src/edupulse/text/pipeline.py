@@ -8,6 +8,15 @@
 
 `NORMALIZER_VERSION` đi theo dữ liệu đã tiền xử lý, bundle và API: đổi bất kỳ bước nào ở đây (hay
 trong `normalize.py`, `pii.py`) thì phải tăng nó, chạy lại `make data` và huấn luyện lại.
+
+Lịch sử:
+- "1": bản đầu.
+- "2": ẩn thêm tên sau "thầy giáo", "cô giáo", "hiệu trưởng", "trưởng khoa", "trợ giảng", "cố vấn"
+  (bỏ qua chức danh đứng trước tên); MSSV chữ + số (B20DCCN123); SĐT bàn có ngoặc ((028) 3812
+  3456); URL không có http của các mạng xã hội thông dụng; @tên tài khoản. Dữ liệu UIT-VSFC toàn
+  chữ thường và không có PII nên "1" và "2" cho model_text giống hệt trên cả 16.175 câu: mô hình
+  đã huấn luyện và số liệu test của bản "1" vẫn đúng nguyên vẹn (bằng chứng ghi trong
+  `results/metrics/normalizer_v2_invariance.json`, do `python -m ml.normalizer_invariance` sinh).
 """
 
 from __future__ import annotations
@@ -20,7 +29,7 @@ from edupulse.text.normalize import clean_text, is_no_diacritics, normalize_text
 from edupulse.text.pii import mask
 from edupulse.text.segment import get_segmenter
 
-NORMALIZER_VERSION = "1"
+NORMALIZER_VERSION = "2"
 
 # Chặn đầu vào bất thường trước khi chạy regex; API đã giới hạn 500 ký tự mỗi câu.
 MAX_INPUT_CHARS = 5000
