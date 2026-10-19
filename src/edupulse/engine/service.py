@@ -1,27 +1,32 @@
 """Điểm vào suy luận cho API và job nền: chuẩn hoá → ONNX → hiệu chỉnh → cờ → giải thích.
 
 `Analyzer` nạp một lần lúc khởi động rồi dùng chung giữa các luồng (khoá nằm ở từng lô ONNX và ở
-bộ tách từ). Các bước tách riêng (`prepare_many`, `infer`, `flag`) để job nền báo tiến độ và để
-`bench` đo từng bước; `analyze` / `analyze_many` là đường ghép sẵn.
+bộ tách từ). Các bước tách riêng (`prepare_many`, `infer`, `flag`) để `bench` đo từng bước;
+`analyze` / `analyze_many` là đường ghép sẵn cho một câu / một lô nhỏ, còn `run_batch` là đường
+của job nền: cùng các bước đó kèm mẫu kiểm tra, giải thích tự động, tiến độ và huỷ giữa chừng.
 
 Một câu và cả lô dùng luật cờ khác nhau (xem `flags`): `analyze` so với ngưỡng ngân sách mặc định,
 `analyze_many` xếp hạng cả lô theo ngân sách người dùng chọn.
 """
 
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
 import numpy as np
+from numpy.typing import NDArray
 
 from edupulse.bundle_schema import Calibration
-from edupulse.config import DEFAULT_BUDGET, XAI_MAX_WORDS, Settings
+from edupulse.config import AUDIT_RATE, AUTO_XAI_TOP, DEFAULT_BUDGET, XAI_MAX_WORDS, Settings
 from edupulse.engine.bundle import Bundle, load_bundle
 from edupulse.engine.explain import Explanation, ExplanationUnavailable, explain_tokens
 from edupulse.engine.flags import (
     NOT_FLAGGED,
     Flag,
+    audit_sample,
     batch_needs_review,
     build_flag,
+    review_order,
     single_needs_review,
     weakest_task,
 )
@@ -32,6 +37,8 @@ from edupulse.text import Prepared, prepare, prepare_many
 
 # Câu có chữ hoa, để lần khởi động nạp luôn JVM và (khi bật) NER thay vì đợi yêu cầu đầu tiên.
 WARMUP_SENTENCE = "Xin chào Thầy Nguyễn Văn An"
+# Số câu mỗi lần gọi tiền xử lý trong job nền: đủ nhỏ để báo tiến độ và nhận lệnh huỷ kịp thời.
+PREPARE_CHUNK = 50
 
 
 class NoContent(ValueError):
@@ -49,6 +56,10 @@ class NoContent(ValueError):
         self.rows = tuple(rows)
 
 
+class BatchCancelled(Exception):
+    """Job nền bị huỷ giữa chừng (batch đã đóng hoặc hết hạn)."""
+
+
 @dataclass(frozen=True, slots=True)
 class HeadResult:
     label: str
@@ -64,6 +75,30 @@ class Analysis:
     topic: HeadResult
     score: float  # điểm cờ = min(phân vị cảm xúc, phân vị chủ đề); thấp là ít chắc chắn
     flag: Flag = NOT_FLAGGED
+
+
+@dataclass(frozen=True, slots=True)
+class BatchOutcome:
+    """Kết quả của `run_batch`; mọi danh sách khớp thứ tự câu đầu vào."""
+
+    prepared: list[Prepared]
+    analyses: list[Analysis | None]  # None: câu không còn nội dung nên không có nhãn
+    audit: NDArray[np.bool_]  # mẫu kiểm tra (câu không cờ được chọn ngẫu nhiên)
+    review_order: list[int]  # chỉ số câu cần duyệt (cờ + kiểm tra), độ tin cậy tăng dần
+    explanations: dict[int, Explanation]  # giải thích tính sẵn, khoá theo chỉ số câu
+    steps_s: dict[str, float]  # thời gian từng bước, giây
+
+    @property
+    def n_flagged(self) -> int:
+        return sum(a is not None and a.flag.needs_review for a in self.analyses)
+
+    @property
+    def n_skipped(self) -> int:
+        return sum(a is None for a in self.analyses)
+
+
+# Tên bước báo tiến độ: `progress(bước, xong, tổng)`.
+ProgressCallback = Callable[[str, int, int], None]
 
 
 def _head_results(
@@ -207,6 +242,93 @@ class Analyzer:
     ) -> list[Analysis]:
         prepared = self.prepare_many(texts)
         return self.flag(self.infer(prepared, progress, batch_size), budget_pct)
+
+    def run_batch(
+        self,
+        texts: Sequence[str],
+        budget_pct: float = DEFAULT_BUDGET,
+        *,
+        seed: int,
+        explain_top: int = AUTO_XAI_TOP,
+        batch_size: int | None = None,
+        progress: ProgressCallback | None = None,
+        cancelled: Callable[[], bool] | None = None,
+    ) -> BatchOutcome:
+        """Đường của job nền: tiền xử lý → dự đoán → cờ theo ngân sách → mẫu kiểm tra → giải thích
+        tự động cho `explain_top` câu cờ có điểm thấp nhất (chỉ câu không dài quá giới hạn).
+
+        Câu không còn nội dung không có nhãn và không tính vào ngân sách. `seed` quyết định mẫu kiểm
+        tra, nên cùng batch luôn cho cùng kết quả. `cancelled()` được hỏi giữa các đợt xử lý; trả
+        True thì ném `BatchCancelled`. Ném `NoContent` nếu không câu nào còn nội dung.
+        """
+
+        def report(step: str, done: int, total: int) -> None:
+            if cancelled is not None and cancelled():
+                raise BatchCancelled
+            if progress is not None:
+                progress(step, done, total)
+
+        steps: dict[str, float] = {}
+        total = len(texts)
+
+        started = time.perf_counter()
+        prepared: list[Prepared] = []
+        report("prepare", 0, total)
+        for start in range(0, total, PREPARE_CHUNK):
+            prepared.extend(self.prepare_many(texts[start : start + PREPARE_CHUNK]))
+            report("prepare", len(prepared), total)
+        steps["prepare"] = time.perf_counter() - started
+
+        kept = [i for i, p in enumerate(prepared) if p.n_words > 0]
+        if not kept:
+            raise NoContent(range(total))
+
+        started = time.perf_counter()
+        analyses = self.infer(
+            [prepared[i] for i in kept],
+            progress=lambda done, count: report("predict", done, count),
+            batch_size=batch_size,
+        )
+        steps["predict"] = time.perf_counter() - started
+
+        started = time.perf_counter()
+        report("flag", 0, 1)
+        analyses = self.flag(analyses, budget_pct)
+        flagged = np.array([a.flag.needs_review for a in analyses])
+        audit = audit_sample(flagged, AUDIT_RATE, seed)
+        order = review_order([a.score for a in analyses], flagged | audit)
+        steps["flags"] = time.perf_counter() - started
+        report("flag", 1, 1)
+
+        started = time.perf_counter()
+        explainable = sorted(
+            (
+                pos
+                for pos in np.flatnonzero(flagged)
+                if analyses[pos].prepared.n_words <= self.xai_max_words
+            ),
+            key=lambda pos: (analyses[pos].score, pos),
+        )[:explain_top]
+        explanations: dict[int, Explanation] = {}
+        report("explain", 0, len(explainable))
+        for done, pos in enumerate(explainable, start=1):
+            explanations[kept[pos]] = self.explain_prepared(analyses[pos].prepared)
+            report("explain", done, len(explainable))
+        steps["explain"] = time.perf_counter() - started
+
+        full: list[Analysis | None] = [None] * total
+        audit_full = np.zeros(total, dtype=bool)
+        for pos, index in enumerate(kept):
+            full[index] = analyses[pos]
+            audit_full[index] = audit[pos]
+        return BatchOutcome(
+            prepared=prepared,
+            analyses=full,
+            audit=audit_full,
+            review_order=[kept[pos] for pos in order],
+            explanations=explanations,
+            steps_s=steps,
+        )
 
     def explain_prepared(self, prepared: Prepared) -> Explanation:
         if prepared.n_words == 0:
