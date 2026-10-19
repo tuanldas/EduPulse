@@ -45,7 +45,16 @@ from edupulse.config import MAX_ROWS
 from edupulse.demo_data import strip_diacritics
 
 DELIMITERS = (",", ";", "\t")
-SNIFF_ROWS = 100  # số dòng đầu dùng để chọn dấu phân cách
+SNIFF_ROWS = 100  # số dòng đầu (không trống) dùng để chọn dấu phân cách
+SNIFF_RAW_ROWS = (
+    2000  # trần số dòng thô được xem, kể cả dòng trống: file toàn dòng trống không quét hết
+)
+# File 10MB toàn dấu phân cách không phải góp ý (cả 2.000 dòng x 200 cột chỉ ~400.000): dừng sớm vì
+# csv.reader dựng nguyên một dòng 10 triệu ô (~155MB) trước khi ta được xem nó.
+MAX_DELIMITERS = 2_000_000
+# Dòng trống tối đa trước khi từ chối: bằng số dòng tối đa của một sheet XLSX (cùng một trần, vì
+# sheet đã tô định dạng tới hàng nghìn dòng vẫn là file hợp lệ), đủ nhỏ để quét CSV không tốn CPU.
+MAX_BLANK_ROWS = XLSX_MAX_SHEET_ROWS
 ZIP_MAGIC = b"PK\x03\x04"
 UTF16_BOMS = (b"\xff\xfe", b"\xfe\xff")
 _XLSX_CHUNK = 1 << 16
@@ -146,13 +155,19 @@ def choose_delimiter(text: str) -> str:
     một cột chứa dấu phẩy trong câu rơi vào `;` hoặc TAB, tức không bị tách câu.
     """
     best, best_score = DELIMITERS[0], None
+    skipped = False
     for delimiter in DELIMITERS:
+        if text.count(delimiter) > MAX_DELIMITERS:
+            skipped = True
+            continue
         widths: list[int] = []
+        seen = 0
         try:
             for row in _iter_csv(text, delimiter):
+                seen += 1
                 if any(cell.strip() for cell in row):
                     widths.append(len(row))
-                if len(widths) >= SNIFF_ROWS:
+                if len(widths) >= SNIFF_ROWS or seen >= SNIFF_RAW_ROWS:
                     break
         except ApiError:
             continue
@@ -168,6 +183,8 @@ def choose_delimiter(text: str) -> str:
         )
         if best_score is None or score > best_score:
             best, best_score = delimiter, score
+    if best_score is None and skipped:
+        raise _decode_failed("CSV có quá nhiều dấu phân cách")
     return best
 
 
@@ -470,12 +487,16 @@ def build_table(
     renamed = 0
     rows: list[list[str]] = []
     source_rows: list[int] = []
-    blank = 0
+    blank = 0  # dòng trống sau tiêu đề, để báo cho người dùng
+    empty = 0  # mọi dòng trống kể cả trước tiêu đề, để dừng khi file toàn dòng trống
     total = 0  # số dòng dữ liệu không trống, kể cả phần vượt giới hạn không được lưu
 
     for raw in iterator:
         cells = [_clean_cell(cell) for cell in raw]
         if not any(cells):
+            empty += 1
+            if empty > MAX_BLANK_ROWS:
+                raise _decode_failed(f"quá {MAX_BLANK_ROWS} dòng trống")
             if columns is not None:
                 blank += 1
             continue

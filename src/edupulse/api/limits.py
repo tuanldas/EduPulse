@@ -15,3 +15,7 @@ XLSX_MAX_MEMBERS = 2000  # số tệp con tối đa trong một file XLSX
 XLSX_MAX_SHEET_ROWS = 50_000
 XLSX_MAX_SHEET_CELLS = 3_000_000
 DEMO_BATCH_ID = "demo"  # batch chỉ đọc nạp sẵn từ dữ liệu demo
+# Mỗi upload đang đọc + parse giữ file thô và bảng trong RAM (~46MB cho file 9MB) và chiếm CPU
+# của GIL, nên chỉ vài cái cùng lúc; cái sau chờ tối đa PARSE_WAIT_S rồi nhận 429 `busy`.
+MAX_PARALLEL_PARSES = 2
+PARSE_WAIT_S = 20.0
