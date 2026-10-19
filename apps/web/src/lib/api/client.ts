@@ -16,7 +16,8 @@ import type { paths } from "./schema";
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/+$/, "");
 
-export const api = createClient<paths>({ baseUrl: API_BASE });
+// `fetch` được tra lúc gọi (không giữ tham chiếu lúc nạp module) để test thay `fetch` toàn cục bất kỳ lúc nào.
+export const api = createClient<paths>({ baseUrl: API_BASE, fetch: (request) => globalThis.fetch(request) });
 
 /** Địa chỉ đầy đủ của một đường dẫn API, cho `fetch` thường (upload multipart, sendBeacon, tải CSV). */
 export function apiUrl(path: string): string {

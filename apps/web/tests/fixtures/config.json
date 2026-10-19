@@ -1,0 +1,81 @@
+{
+  "model": {
+    "model_version": "edupulse-mtl-s42",
+    "bundle_version": "v0-smoke",
+    "stage": "smoke"
+  },
+  "ner_enabled": false,
+  "limits": {
+    "max_chars": 500,
+    "max_upload_mb": 10,
+    "max_rows": 2000,
+    "max_groups": 30,
+    "xai_max_words": 25,
+    "auto_xai_top": 20
+  },
+  "budgets": [
+    {
+      "budget": 5,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.05053695514845231,
+        "caught_sentiment_errors": 0.2682926829268293,
+        "caught_topic_errors": 0.22839506172839505,
+        "accept_accuracy_both": 0.8855622089155023,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 10,
+      "default": true,
+      "efficiency": {
+        "flagged_share": 0.10044219835754896,
+        "caught_sentiment_errors": 0.47560975609756095,
+        "caught_topic_errors": 0.3888888888888889,
+        "accept_accuracy_both": 0.9044943820224719,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 20,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.20025268477574226,
+        "caught_sentiment_errors": 0.6951219512195121,
+        "caught_topic_errors": 0.6111111111111112,
+        "accept_accuracy_both": 0.933649289099526,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 30,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.30006317119393555,
+        "caught_sentiment_errors": 0.7682926829268293,
+        "caught_topic_errors": 0.7283950617283951,
+        "accept_accuracy_both": 0.9458483754512635,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    }
+  ],
+  "default_budget": 10,
+  "heartbeat_s": 60,
+  "ui_samples": [
+    {
+      "text": "Thầy giảng bài rất dễ hiểu và luôn [đã gỡ câu UIT-VSFC].",
+      "no_diacritics": false
+    },
+    {
+      "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
+      "no_diacritics": false
+    },
+    {
+      "text": "thay day rat de hieu va nhiet tinh voi sinh vien",
+      "no_diacritics": true
+    }
+  ],
+  "demo_available": true,
+  "demo_reason": null,
+  "source_url": "https://github.com/your-user/edupulse"
+}

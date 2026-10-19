@@ -1,0 +1,50 @@
+{
+  "text": "Thư viện mới rất rộng rãi, có máy lạnh và ổ cắm điện ở mọi chỗ ngồi.",
+  "response": {
+    "display_text": "Thư viện mới rất rộng rãi, có máy lạnh và ổ cắm điện ở mọi chỗ ngồi.",
+    "pii_types": [],
+    "no_diacritics": false,
+    "n_words": 15,
+    "xai_available": true,
+    "sentiment": {
+      "label": "positive",
+      "confidence": 0.6946,
+      "probs": {
+        "negative": 0.1679,
+        "neutral": 0.1375,
+        "positive": 0.6946
+      }
+    },
+    "topic": {
+      "label": "facility",
+      "confidence": 0.8878,
+      "probs": {
+        "lecturer": 0.0165,
+        "training_program": 0.0453,
+        "facility": 0.8878,
+        "others": 0.0504
+      }
+    },
+    "flag": {
+      "needs_review": true,
+      "reasons": [
+        {
+          "code": "low_confidence",
+          "task": "sentiment",
+          "candidates": [
+            {
+              "label": "positive",
+              "probability": 0.6946
+            },
+            {
+              "label": "negative",
+              "probability": 0.1679
+            }
+          ],
+          "message": "Cảm xúc không chắc — phân vân giữa Tích cực 69% và Tiêu cực 17%"
+        }
+      ]
+    },
+    "baseline": null
+  }
+}

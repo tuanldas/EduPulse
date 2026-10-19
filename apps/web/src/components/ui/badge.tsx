@@ -12,7 +12,7 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary-soft text-primary",
+        default: "bg-primary-soft text-primary-text",
         gray: TONE_CLASS.neu.badge,
         secondary: "bg-secondary text-secondary-foreground",
         outline: "border-border text-foreground",

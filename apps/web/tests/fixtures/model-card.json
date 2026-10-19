@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "model_version": "edupulse-mtl-s42",
+  "bundle_version": "v0-smoke",
+  "stage": "smoke",
+  "metrics": {
+    "split": "val",
+    "n": 1583,
+    "sentiment": {
+      "accuracy": 0.9481996209728364,
+      "macro_f1": 0.8530971787520856,
+      "weighted_f1": 0.945455121285161,
+      "ece": 0.020567039503286443,
+      "nll": 0.19026794070652983,
+      "per_class": [
+        {
+          "label": "negative",
+          "precision": 0.9488243430152143,
+          "recall": 0.9730496453900709,
+          "f1": 0.9607843137254902,
+          "support": 705
+        },
+        {
+          "label": "neutral",
+          "precision": 0.8260869565217391,
+          "recall": 0.5205479452054794,
+          "f1": 0.6386554621848739,
+          "support": 73
+        },
+        {
+          "label": "positive",
+          "precision": 0.9545454545454546,
+          "recall": 0.9652173913043478,
+          "f1": 0.9598517603458925,
+          "support": 805
+        }
+      ],
+      "confusion": [
+        [
+          0.9730496453900709,
+          0.005673758865248227,
+          0.02127659574468085
+        ],
+        [
+          0.1780821917808219,
+          0.5205479452054794,
+          0.3013698630136986
+        ],
+        [
+          0.02981366459627329,
+          0.004968944099378882,
+          0.9652173913043478
+        ]
+      ],
+      "reliability": [
+        {
+          "lower": 0,
+          "upper": 0.06666666666666667,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.06666666666666667,
+          "upper": 0.13333333333333333,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.13333333333333333,
+          "upper": 0.2,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.26666666666666666,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.26666666666666666,
+          "upper": 0.3333333333333333,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.3333333333333333,
+          "upper": 0.4,
+          "n": 2,
+          "confidence": 0.3971366073414203,
+          "accuracy": 0
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.4666666666666667,
+          "n": 4,
+          "confidence": 0.4263847823730321,
+          "accuracy": 0
+        },
+        {
+          "lower": 0.4666666666666667,
+          "upper": 0.5333333333333333,
+          "n": 5,
+          "confidence": 0.4900520140670227,
+          "accuracy": 0.8
+        },
+        {
+          "lower": 0.5333333333333333,
+          "upper": 0.6,
+          "n": 14,
+          "confidence": 0.5526134795655314,
+          "accuracy": 0.5714285714285714
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.6666666666666666,
+          "n": 11,
+          "confidence": 0.6403315774961071,
+          "accuracy": 0.5454545454545454
+        },
+        {
+          "lower": 0.6666666666666666,
+          "upper": 0.7333333333333333,
+          "n": 12,
+          "confidence": 0.6949060811713069,
+          "accuracy": 0.8333333333333334
+        },
+        {
+          "lower": 0.7333333333333333,
+          "upper": 0.8,
+          "n": 18,
+          "confidence": 0.7722715395003666,
+          "accuracy": 0.6666666666666666
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.8666666666666667,
+          "n": 34,
+          "confidence": 0.8386609285212805,
+          "accuracy": 0.7352941176470589
+        },
+        {
+          "lower": 0.8666666666666667,
+          "upper": 0.9333333333333333,
+          "n": 112,
+          "confidence": 0.908838476790532,
+          "accuracy": 0.8571428571428571
+        },
+        {
+          "lower": 0.9333333333333333,
+          "upper": 1,
+          "n": 1371,
+          "confidence": 0.9669331751173532,
+          "accuracy": 0.9773887673231219
+        }
+      ]
+    },
+    "topic": {
+      "accuracy": 0.897662665824384,
+      "macro_f1": 0.8096407448645218,
+      "weighted_f1": 0.8950573738696538,
+      "ece": 0.03848172364760698,
+      "nll": 0.32546013149578706,
+      "per_class": [
+        {
+          "label": "lecturer",
+          "precision": 0.940068493150685,
+          "recall": 0.9539530842745438,
+          "f1": 0.9469598965071151,
+          "support": 1151
+        },
+        {
+          "label": "training_program",
+          "precision": 0.7581227436823105,
+          "recall": 0.7865168539325843,
+          "f1": 0.7720588235294118,
+          "support": 267
+        },
+        {
+          "label": "facility",
+          "precision": 0.9428571428571428,
+          "recall": 0.9428571428571428,
+          "f1": 0.9428571428571428,
+          "support": 70
+        },
+        {
+          "label": "others",
+          "precision": 0.6911764705882353,
+          "recall": 0.49473684210526314,
+          "f1": 0.5766871165644172,
+          "support": 95
+        }
+      ],
+      "confusion": [
+        [
+          0.9539530842745438,
+          0.036490008688097306,
+          0.0008688097306689834,
+          0.008688097306689836
+        ],
+        [
+          0.1647940074906367,
+          0.7865168539325843,
+          0.00749063670411985,
+          0.04119850187265917
+        ],
+        [
+          0.014285714285714285,
+          0.04285714285714286,
+          0.9428571428571428,
+          0
+        ],
+        [
+          0.2631578947368421,
+          0.23157894736842105,
+          0.010526315789473684,
+          0.49473684210526314
+        ]
+      ],
+      "reliability": [
+        {
+          "lower": 0,
+          "upper": 0.06666666666666667,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.06666666666666667,
+          "upper": 0.13333333333333333,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.13333333333333333,
+          "upper": 0.2,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.2,
+          "upper": 0.26666666666666666,
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
+        },
+        {
+          "lower": 0.26666666666666666,
+          "upper": 0.3333333333333333,
+          "n": 1,
+          "confidence": 0.3325858070573337,
+          "accuracy": 0
+        },
+        {
+          "lower": 0.3333333333333333,
+          "upper": 0.4,
+          "n": 3,
+          "confidence": 0.3865101644133588,
+          "accuracy": 0
+        },
+        {
+          "lower": 0.4,
+          "upper": 0.4666666666666667,
+          "n": 12,
+          "confidence": 0.43793260059331857,
+          "accuracy": 0.75
+        },
+        {
+          "lower": 0.4666666666666667,
+          "upper": 0.5333333333333333,
+          "n": 30,
+          "confidence": 0.49758609342817856,
+          "accuracy": 0.43333333333333335
+        },
+        {
+          "lower": 0.5333333333333333,
+          "upper": 0.6,
+          "n": 18,
+          "confidence": 0.5667548615359137,
+          "accuracy": 0.7777777777777778
+        },
+        {
+          "lower": 0.6,
+          "upper": 0.6666666666666666,
+          "n": 28,
+          "confidence": 0.6288813569925231,
+          "accuracy": 0.5
+        },
+        {
+          "lower": 0.6666666666666666,
+          "upper": 0.7333333333333333,
+          "n": 30,
+          "confidence": 0.7006308049566121,
+          "accuracy": 0.36666666666666664
+        },
+        {
+          "lower": 0.7333333333333333,
+          "upper": 0.8,
+          "n": 38,
+          "confidence": 0.769747896289603,
+          "accuracy": 0.6578947368421053
+        },
+        {
+          "lower": 0.8,
+          "upper": 0.8666666666666667,
+          "n": 66,
+          "confidence": 0.8379956683588992,
+          "accuracy": 0.696969696969697
+        },
+        {
+          "lower": 0.8666666666666667,
+          "upper": 0.9333333333333333,
+          "n": 184,
+          "confidence": 0.9070803709821662,
+          "accuracy": 0.8152173913043478
+        },
+        {
+          "lower": 0.9333333333333333,
+          "upper": 1,
+          "n": 1173,
+          "confidence": 0.9660143874084522,
+          "accuracy": 0.9710144927536232
+        }
+      ]
+    }
+  },
+  "baselines": [
+    {
+      "name": "TF-IDF + ComplementNB",
+      "deployed": false,
+      "sentiment_accuracy": 0.8730259001895135,
+      "sentiment_macro_f1": 0.6572054548605664,
+      "topic_accuracy": 0.8307012002526848,
+      "topic_macro_f1": 0.6702127596453255,
+      "sentiment_ece": 0.01776182731026004
+    },
+    {
+      "name": "TF-IDF + LogisticRegression",
+      "deployed": false,
+      "sentiment_accuracy": 0.8945041061276058,
+      "sentiment_macro_f1": 0.7680485489150319,
+      "topic_accuracy": 0.8717624763108023,
+      "topic_macro_f1": 0.7538960269024478,
+      "sentiment_ece": 0.01907589234993886
+    },
+    {
+      "name": "TF-IDF + LinearSVC",
+      "deployed": false,
+      "sentiment_accuracy": 0.9046114971572963,
+      "sentiment_macro_f1": 0.7805215668300903,
+      "topic_accuracy": 0.8768161718256475,
+      "topic_macro_f1": 0.7638285072281606,
+      "sentiment_ece": 0.012541112258931975
+    },
+    {
+      "name": "PhoBERT đa nhiệm · int8",
+      "deployed": true,
+      "sentiment_accuracy": 0.9481996209728364,
+      "sentiment_macro_f1": 0.8530971787520856,
+      "topic_accuracy": 0.897662665824384,
+      "topic_macro_f1": 0.8096407448645218,
+      "sentiment_ece": 0.020567039503286443
+    }
+  ],
+  "architectures": [],
+  "review_budget": [
+    {
+      "budget": 5,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.05053695514845231,
+        "caught_sentiment_errors": 0.2682926829268293,
+        "caught_topic_errors": 0.22839506172839505,
+        "accept_accuracy_both": 0.8855622089155023,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 10,
+      "default": true,
+      "efficiency": {
+        "flagged_share": 0.10044219835754896,
+        "caught_sentiment_errors": 0.47560975609756095,
+        "caught_topic_errors": 0.3888888888888889,
+        "accept_accuracy_both": 0.9044943820224719,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 20,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.20025268477574226,
+        "caught_sentiment_errors": 0.6951219512195121,
+        "caught_topic_errors": 0.6111111111111112,
+        "accept_accuracy_both": 0.933649289099526,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    },
+    {
+      "budget": 30,
+      "default": false,
+      "efficiency": {
+        "flagged_share": 0.30006317119393555,
+        "caught_sentiment_errors": 0.7682926829268293,
+        "caught_topic_errors": 0.7283950617283951,
+        "accept_accuracy_both": 0.9458483754512635,
+        "all_accuracy_both": 0.8591282375236892
+      }
+    }
+  ],
+  "checklist": [],
+  "intended_use": "Giúp cán bộ khoa và phòng đảm bảo chất lượng đọc nhanh góp ý của sinh viên: phân loại cảm xúc và chủ đề từng câu, gắn cờ câu cần người duyệt, tổng hợp xu hướng theo môn.",
+  "out_of_scope": "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra quyết định tự động khi không có người duyệt.",
+  "limitations": [
+    "Lớp Trung tính và chủ đề Khác yếu (recall khoảng 53%).",
+    "Câu gõ không dấu: độ chính xác giảm mạnh (khoảng 13 điểm), hệ thống cảnh báo và gắn cờ.",
+    "Mỉa mai, châm biếm dễ bị hiểu sai.",
+    "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
+    "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
+    "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
+    "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
+    "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt."
+  ],
+  "notes": {
+    "x86": "Chưa đo trên x86: số đo tốc độ và RAM lấy từ máy Apple M1 (arm64).",
+    "demo": "Dữ liệu demo tính lại lúc build image trên kiến trúc máy build, nên có thể lệch nhẹ so với số đo trên M1."
+  }
+}
