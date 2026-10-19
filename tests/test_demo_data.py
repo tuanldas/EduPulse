@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from edupulse import demo_data as demo
-from edupulse.bundle_schema import DemoManifest, DemoResults
+from edupulse.bundle_schema import DemoManifest
 from edupulse.config import load_settings
 from edupulse.labels import SENTIMENT, TOPIC
 
@@ -164,6 +164,9 @@ def test_ui_samples_prefer_clean_sentences():
 
 
 def write_demo(directory: Path, bundle: str = "b1", n_rows: int = 2, ok: bool = True) -> None:
+    if not ok:
+        demo.write_manifest(directory, DemoManifest(ok=False, reason="vì sao đó"))
+        return
     rows = [
         demo.DemoRowData(
             display_text=f"Câu {i}.",
@@ -176,16 +179,14 @@ def write_demo(directory: Path, bundle: str = "b1", n_rows: int = 2, ok: bool = 
         )
         for i in range(n_rows)
     ]
-    results = DemoResults(bundle_version=bundle, rows=[r.model_dump() for r in rows])
-    manifest = DemoManifest(
-        ok=ok, reason=None if ok else "vì sao đó", bundle_version=bundle, n_rows=n_rows
+    demo.write_demo_files(
+        directory,
+        sample=[],
+        ui_samples=[demo.UiSampleItem(text="Một câu.", no_diacritics=False)],
+        rows=rows,
+        bundle_version=bundle,
+        revision="rev",
     )
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / demo.SAMPLE_CSV).write_bytes(demo.sample_csv_bytes([]))
-    samples = demo.UiSamplesFile(samples=[demo.UiSampleItem(text="Một câu.", no_diacritics=False)])
-    (directory / demo.UI_SAMPLES).write_bytes(demo._json_bytes(samples))
-    (directory / demo.DEMO_RESULTS).write_bytes(demo._json_bytes(results))
-    demo.write_manifest(directory, manifest)
 
 
 def test_load_demo_round_trips_what_the_builder_writes(tmp_path: Path):

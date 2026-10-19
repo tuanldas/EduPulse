@@ -456,26 +456,20 @@ def write_manifest(out_dir: Path, manifest: DemoManifest) -> None:
     _write_atomic(out_dir / DEMO_MANIFEST, _json_bytes(manifest))
 
 
-def build_demo(
+def write_demo_files(
     out_dir: Path,
-    validation: Sequence[SourceRow],
-    test: Sequence[SourceRow],
-    analyzer: Analyzer,
     *,
+    sample: Sequence[SourceRow],
+    ui_samples: Sequence[UiSampleItem],
+    rows: Sequence[DemoRowData],
+    bundle_version: str,
     revision: str,
     seed: int = SEED,
-    sample_size: int = SAMPLE_SIZE,
 ) -> DemoManifest:
-    """Dựng cả bốn tệp. Manifest ghi cuối cùng nên thư mục chỉ "có demo" khi mọi tệp đã xong."""
-    sample = pick_sample(validation, sample_size, seed)
-    ui_samples = pick_ui_samples(validation, seed)
-    LOG.info("dự đoán %d câu test", len(test))
-    rows = predict_test(analyzer, test)
-
-    bundle_version = analyzer.bundle.manifest.bundle_version
+    """Ghi bốn tệp demo. Manifest ghi cuối cùng nên thư mục chỉ "có demo" khi mọi tệp đã xong."""
     results = DemoResults(bundle_version=bundle_version, rows=[r.model_dump() for r in rows])
     _write_atomic(out_dir / SAMPLE_CSV, sample_csv_bytes(sample, seed))
-    _write_atomic(out_dir / UI_SAMPLES, _json_bytes(UiSamplesFile(samples=ui_samples)))
+    _write_atomic(out_dir / UI_SAMPLES, _json_bytes(UiSamplesFile(samples=list(ui_samples))))
     _write_atomic(out_dir / DEMO_RESULTS, _json_bytes(results))
     manifest = DemoManifest(
         ok=True,
@@ -486,6 +480,32 @@ def build_demo(
     )
     write_manifest(out_dir, manifest)
     return manifest
+
+
+def build_demo(
+    out_dir: Path,
+    validation: Sequence[SourceRow],
+    test: Sequence[SourceRow],
+    analyzer: Analyzer,
+    *,
+    revision: str,
+    seed: int = SEED,
+    sample_size: int = SAMPLE_SIZE,
+) -> DemoManifest:
+    """Chọn câu mẫu từ val, dự đoán tập test bằng `analyzer` rồi ghi tệp demo."""
+    sample = pick_sample(validation, sample_size, seed)
+    ui_samples = pick_ui_samples(validation, seed)
+    LOG.info("dự đoán %d câu test", len(test))
+    rows = predict_test(analyzer, test)
+    return write_demo_files(
+        out_dir,
+        sample=sample,
+        ui_samples=ui_samples,
+        rows=rows,
+        bundle_version=analyzer.bundle.manifest.bundle_version,
+        revision=revision,
+        seed=seed,
+    )
 
 
 def _short(reason: str) -> str:
