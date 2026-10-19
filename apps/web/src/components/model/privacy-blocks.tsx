@@ -9,7 +9,7 @@ import { PII_TAG } from "@/lib/labels";
 function Block({ icon, title, children }: { icon: IconName; title: string; children: React.ReactNode }) {
   return (
     <Card className="gap-2">
-      <span className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
+      <span className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary-text">
         <Icon name={icon} />
       </span>
       <h3 className="text-base font-semibold">{title}</h3>

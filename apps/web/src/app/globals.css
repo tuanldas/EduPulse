@@ -31,6 +31,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -110,6 +111,7 @@
   --primary-foreground: #ffffff;
   --primary-hover: #2f3ebb;
   --primary-soft: #e8eafb;
+  --primary-text: #3a4bd0;
   --secondary: #f3f3ee;
   --secondary-foreground: #14171e;
   --muted: #f3f3ee;
@@ -178,6 +180,8 @@
   --primary-foreground: #ffffff;
   --primary-hover: #6d79f2;
   --primary-soft: #22284f;
+  /* Chữ màu primary trên nền tối phải sáng hơn nền nút (#5b68ee chỉ đạt 4,09:1 làm chữ). */
+  --primary-text: #8b96ff;
   --secondary: #1a1e25;
   --secondary-foreground: #e7e9ee;
   --muted: #1a1e25;
