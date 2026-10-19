@@ -34,7 +34,7 @@ endef
 # Biến nội bộ của Makefile không cần đưa sang lệnh con.
 unexport THIS_MAKEFILE PY IMAGE BUNDLE_DIR BUILD_DEMO_ARG web
 
-.PHONY: help env setup data eda baseline train export calibrate experiments evaluate report \
+.PHONY: help env setup data eda baseline train export calibrate experiments freeze evaluate hitl report \
 	artifacts demo-data api web gen-api test e2e lint docker-build smoke up fetch-artifacts
 
 help: ## Liệt kê các lệnh
@@ -61,7 +61,7 @@ baseline: ## Huấn luyện 3 baseline TF-IDF
 train: ## Huấn luyện PhoBERT đa nhiệm, một run (seed 42)
 	$(PY) -m ml.train_phobert --heads mtl --seed 42
 
-experiments: ## Chạy toàn bộ các run PhoBERT (đa nhiệm, đơn nhiệm, 3 seed)
+experiments: ## Chạy đủ 9 run PhoBERT (đa nhiệm, đơn nhiệm, 3 seed); ngoài phạm vi từ 2026-10-17
 	bash ml/run-experiments.sh
 
 export: ## Xuất run tốt nhất sang ONNX int8
@@ -70,9 +70,14 @@ export: ## Xuất run tốt nhất sang ONNX int8
 calibrate: ## Hiệu chỉnh xác suất (temperature scaling) và ngưỡng duyệt trên val
 	$(PY) -m ml.calibrate
 
-evaluate: ## Đóng băng cấu hình rồi chấm test đúng một lần
+freeze: ## Đóng băng cấu hình đánh giá cuối vào results/freeze.json (commit file này trước evaluate)
 	$(PY) -m ml.evaluate --freeze
+
+evaluate: ## Chấm test đúng một lần (cần results/freeze.json đã commit)
 	$(PY) -m ml.evaluate --split test --final
+
+hitl: ## Mô phỏng vòng người duyệt bằng LinearSVC, chỉ dùng train và validation
+	$(PY) -m ml.hitl_simulation
 
 report: ## Kiểm định, phân tích lỗi, CheckList, ECE trên test
 	$(PY) -m ml.significance
