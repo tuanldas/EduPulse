@@ -137,11 +137,24 @@ def output_path(run: Path) -> Path:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run", default="best", help="'best', tên run hoặc thư mục checkpoint")
+    parser.add_argument(
+        "--report",
+        choices=["test"],
+        help="thay vì fit trên val: báo cáo hiệu quả ngân sách duyệt trên test bằng calibration "
+        "đã đóng băng (ml.review_report); cần đã chấm test",
+    )
+    parser.add_argument(
+        "--rehearsal", action="store_true", help="với --report: chạy trên dự đoán diễn tập (val)"
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.report:
+        from ml.review_report import main as report_main
+
+        return report_main(rehearsal=args.rehearsal)
     run = resolve_run(args.run)
     logits_path = settings().outputs_dir / "onnx" / run.name / "val_logits_int8.npz"
     if not logits_path.is_file():
