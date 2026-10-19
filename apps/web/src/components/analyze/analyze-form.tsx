@@ -73,7 +73,7 @@ export function AnalyzeForm({
                 <button
                   type="button"
                   aria-label="Gợi ý khi nhập câu"
-                  className="rounded-full text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="rounded-full text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/70"
                 />
               }
             >
@@ -91,11 +91,15 @@ export function AnalyzeForm({
             value={text}
             maxLength={maxChars}
             rows={3}
+            aria-describedby="cau-gop-y-hint"
             placeholder="Nhập một câu góp ý của sinh viên…"
             onChange={(event) => onTextChange(event.target.value)}
             onKeyDown={handleKeyDown}
             className="pb-7"
           />
+          <span id="cau-gop-y-hint" className="sr-only">
+            {maxChars ? `Tối đa ${formatNumber(maxChars)} ký tự. ` : ""}Nhấn Ctrl hoặc Command cùng Enter để phân tích.
+          </span>
           <span
             aria-hidden="true"
             className="pointer-events-none absolute right-3 bottom-1.5 text-xs text-muted-foreground tabular-nums"

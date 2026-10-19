@@ -30,7 +30,7 @@ export function SampleChips({ samples, activeText, onPick }: SampleChipsProps) {
               aria-pressed={active}
               onClick={() => onPick(sample.text)}
               className={cn(
-                "inline-flex min-h-[34px] max-w-full items-center gap-1.5 rounded-full border border-border bg-background px-3 py-[5px] text-sm leading-[1.35] outline-none hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50",
+                "inline-flex min-h-[34px] max-w-full items-center gap-1.5 rounded-full border border-border bg-background px-3 py-[5px] text-sm leading-[1.35] outline-none hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/70",
                 active && "border-primary bg-primary-soft font-medium text-primary-text hover:bg-primary-soft",
               )}
             >

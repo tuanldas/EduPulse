@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { Callout } from "@/components/shared/callout";
 import { FailureNotice } from "@/components/shared/failure-notice";
 import { Icon, type IconName } from "@/components/shared/icon";
@@ -56,6 +58,15 @@ function CardUnavailable({ failure, onRetry }: { failure: ApiFailure; onRetry: (
 /** Trang 4: mô hình tốt đến đâu, dùng vào việc gì, giới hạn, quyền riêng tư, giấy phép. Số liệu lấy từ `/api/model-card`. */
 export function ModelPage() {
   const { state, retry } = useModelCard();
+
+  // Mở thẳng /model/#giay-phep: lúc trình duyệt cuộn tới neo thì model card chưa về nên trang còn thấp;
+  // cuộn lại khi dữ liệu đã nạp (thành công hay lỗi) và bố cục đã ổn định.
+  useEffect(() => {
+    if (state.status === "loading") return;
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, [state.status]);
+
   return (
     <>
       <PageHeader

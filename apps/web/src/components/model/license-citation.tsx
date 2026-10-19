@@ -105,7 +105,7 @@ export function LicenseCitation() {
             <pre
               tabIndex={0}
               aria-label="Trích dẫn BibTeX"
-              className="overflow-auto rounded-lg bg-muted p-3.5 pr-12 font-mono text-[13px] leading-[1.6] break-words whitespace-pre-wrap outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="overflow-auto rounded-lg bg-muted p-3.5 pr-12 font-mono text-[13px] leading-[1.6] break-words whitespace-pre-wrap outline-none focus-visible:ring-3 focus-visible:ring-ring/70"
             >
               {BIBTEX}
             </pre>

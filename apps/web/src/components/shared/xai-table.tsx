@@ -16,7 +16,7 @@ export function XaiTable({ head, labelVi, className }: XaiTableProps) {
   const rows = explainRows(head);
   const maxChange = Math.max(...rows.map((row) => Math.abs(row.changePoints)), 1);
   return (
-    <Table className={className} containerClassName="min-w-0">
+    <Table className={className} containerClassName="min-w-0" label={`Từ ảnh hưởng nhất đến nhãn “${labelVi}”`}>
       <caption className="sr-only">Từ ảnh hưởng nhất đến nhãn “{labelVi}” và xác suất khi bỏ từng từ</caption>
       <TableHeader>
         <TableRow>

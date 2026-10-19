@@ -88,7 +88,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[15px] text-foreground outline-none hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50",
+                "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[15px] text-foreground outline-none hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/70",
                 active && "bg-accent font-semibold hover:bg-accent",
               )}
             >

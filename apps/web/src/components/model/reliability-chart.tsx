@@ -108,7 +108,7 @@ function ReliabilitySvg({ bins, width, ece }: ChartProps) {
 /** Bảng số tương đương của biểu đồ (đủ thông tin cho người không xem được hình). */
 function ReliabilityTable({ bins }: { bins: DisplayBin[] }) {
   return (
-    <Table>
+    <Table label="Độ tin cậy báo so với tỉ lệ đúng thực tế theo từng khoảng">
       <caption className="sr-only">Độ tin cậy báo so với tỉ lệ đúng thực tế theo từng khoảng</caption>
       <TableHeader>
         <TableRow>
@@ -180,7 +180,7 @@ export function ReliabilityChart({ metrics }: { metrics: TaskMetrics }) {
         . Hiệu chỉnh bằng temperature scaling trên tập validation.
       </p>
       <Collapsible>
-        <CollapsibleTrigger className="inline-flex items-center gap-1 rounded-md text-sm text-link outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&[data-panel-open]_svg]:rotate-180">
+        <CollapsibleTrigger className="inline-flex items-center gap-1 rounded-md text-sm text-link outline-none focus-visible:ring-3 focus-visible:ring-ring/70 [&[data-panel-open]_svg]:rotate-180">
           <Icon name="keyboard_arrow_down" size="sm" className="transition-transform" />
           Xem bảng số
         </CollapsibleTrigger>
