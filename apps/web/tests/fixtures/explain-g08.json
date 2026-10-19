@@ -1,0 +1,180 @@
+{
+  "text": "Thư viện mới rất rộng rãi, có máy lạnh và ổ cắm điện ở mọi chỗ ngồi.",
+  "response": {
+    "n_forwards": 14,
+    "sentiment": {
+      "label": "positive",
+      "probability": 0.6946,
+      "tokens": [
+        {
+          "text": "thư viện",
+          "delta": 0.0283,
+          "p_without": 0.6663
+        },
+        {
+          "text": "mới",
+          "delta": -0.1313,
+          "p_without": 0.8259
+        },
+        {
+          "text": "rất",
+          "delta": 0.2642,
+          "p_without": 0.4303
+        },
+        {
+          "text": "rộng rãi",
+          "delta": 0.1392,
+          "p_without": 0.5554
+        },
+        {
+          "text": ",",
+          "delta": 0,
+          "p_without": 0.6946
+        },
+        {
+          "text": "có",
+          "delta": -0.0266,
+          "p_without": 0.7211
+        },
+        {
+          "text": "máy lạnh",
+          "delta": 0.0292,
+          "p_without": 0.6653
+        },
+        {
+          "text": "và",
+          "delta": -0.0069,
+          "p_without": 0.7015
+        },
+        {
+          "text": "ổ cắm",
+          "delta": 0.06,
+          "p_without": 0.6346
+        },
+        {
+          "text": "điện",
+          "delta": -0.0275,
+          "p_without": 0.722
+        },
+        {
+          "text": "ở",
+          "delta": 0.0759,
+          "p_without": 0.6187
+        },
+        {
+          "text": "mọi",
+          "delta": 0.0319,
+          "p_without": 0.6627
+        },
+        {
+          "text": "chỗ",
+          "delta": 0.052,
+          "p_without": 0.6425
+        },
+        {
+          "text": "ngồi",
+          "delta": -0.0313,
+          "p_without": 0.7258
+        },
+        {
+          "text": ".",
+          "delta": 0,
+          "p_without": 0.6946
+        }
+      ],
+      "support": [
+        2,
+        3,
+        10
+      ],
+      "oppose": [
+        1
+      ]
+    },
+    "topic": {
+      "label": "facility",
+      "probability": 0.8878,
+      "tokens": [
+        {
+          "text": "thư viện",
+          "delta": 0.0113,
+          "p_without": 0.8765
+        },
+        {
+          "text": "mới",
+          "delta": 0.1029,
+          "p_without": 0.7849
+        },
+        {
+          "text": "rất",
+          "delta": -0.041,
+          "p_without": 0.9288
+        },
+        {
+          "text": "rộng rãi",
+          "delta": -0.0222,
+          "p_without": 0.91
+        },
+        {
+          "text": ",",
+          "delta": 0,
+          "p_without": 0.8878
+        },
+        {
+          "text": "có",
+          "delta": 0.0085,
+          "p_without": 0.8793
+        },
+        {
+          "text": "máy lạnh",
+          "delta": -0.0117,
+          "p_without": 0.8994
+        },
+        {
+          "text": "và",
+          "delta": -0.0067,
+          "p_without": 0.8945
+        },
+        {
+          "text": "ổ cắm",
+          "delta": -0.0225,
+          "p_without": 0.9103
+        },
+        {
+          "text": "điện",
+          "delta": 0.0196,
+          "p_without": 0.8682
+        },
+        {
+          "text": "ở",
+          "delta": -0.0228,
+          "p_without": 0.9106
+        },
+        {
+          "text": "mọi",
+          "delta": -0.011,
+          "p_without": 0.8988
+        },
+        {
+          "text": "chỗ",
+          "delta": -0.0145,
+          "p_without": 0.9023
+        },
+        {
+          "text": "ngồi",
+          "delta": 0.001,
+          "p_without": 0.8868
+        },
+        {
+          "text": ".",
+          "delta": 0,
+          "p_without": 0.8878
+        }
+      ],
+      "support": [
+        1
+      ],
+      "oppose": []
+    }
+  }
+}

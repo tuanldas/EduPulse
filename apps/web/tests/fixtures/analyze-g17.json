@@ -1,0 +1,34 @@
+{
+  "text": "Em thấy môn học này có nhiều nội dung quan trọng nhưng thầy trình bày quá nhanh, tài liệu tham khảo không đầy đủ, bài tập về nhà nhiều hơn thời gian em có, các buổi thực hành lại diễn ra vào cuối tuần nên em không thể tham gia đầy đủ, mong khoa xem xét điều chỉnh lịch học và giảm bớt khối lượng bài tập cho hợp lý hơn.",
+  "response": {
+    "display_text": "Em thấy môn học này có nhiều nội dung quan trọng nhưng thầy trình bày quá nhanh, tài liệu tham khảo không đầy đủ, bài tập về nhà nhiều hơn thời gian em có, các buổi thực hành lại diễn ra vào cuối tuần nên em không thể tham gia đầy đủ, mong khoa xem xét điều chỉnh lịch học và giảm bớt khối lượng bài tập cho hợp lý hơn.",
+    "pii_types": [],
+    "no_diacritics": false,
+    "n_words": 58,
+    "xai_available": false,
+    "sentiment": {
+      "label": "negative",
+      "confidence": 0.978,
+      "probs": {
+        "negative": 0.978,
+        "neutral": 0.0101,
+        "positive": 0.0119
+      }
+    },
+    "topic": {
+      "label": "training_program",
+      "confidence": 0.8479,
+      "probs": {
+        "lecturer": 0.1129,
+        "training_program": 0.8479,
+        "facility": 0.0202,
+        "others": 0.0189
+      }
+    },
+    "flag": {
+      "needs_review": false,
+      "reasons": []
+    },
+    "baseline": null
+  }
+}
