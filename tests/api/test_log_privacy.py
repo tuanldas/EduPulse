@@ -33,6 +33,8 @@ def test_a_whole_session_leaves_no_user_data_in_the_logs(
     explainable = next(r for r in results["rows"] if r["explainable"] and not r["has_explanation"])
     explained = live_client.get(f"/api/batches/{batch_id}/rows/{explainable['index']}/explain")
     assert explained.status_code == 200
+    filtered = live_client.post(f"/api/batches/{batch_id}/insights", json={"groups": [f"{GROUP}0"]})
+    assert filtered.status_code == 200 and filtered.json()["selected_groups"] == [f"{GROUP}0"]
     live_client.post(f"/api/batches/{batch_id}/heartbeat")
     live_client.post(f"/api/batches/{batch_id}/close")
 
@@ -47,6 +49,7 @@ def test_a_whole_session_leaves_no_user_data_in_the_logs(
         assert secret not in logs, secret
     # Vẫn có nhật ký truy cập, ghi theo khuôn route.
     assert "POST /api/batches 201" in logs
+    assert "POST /api/batches/{batch_id}/insights 200" in logs
     assert "GET /api/batches/{batch_id}/results 200" in logs
     assert "POST /api/batches/{batch_id}/close 204" in logs
 
