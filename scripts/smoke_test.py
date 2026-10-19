@@ -62,6 +62,8 @@ GO = {
 MARKERS = ("SMOKE-NOI-DUNG-9f3a", "SMOKE-QUERY-7c1d", "SMOKE-ID-4b2e", "SMOKE-NHOM-1a6c")
 FILE_MARKER = "SMOKE-TEN-FILE-5d8e"  # nằm trong tên file của lần upload thử
 LABEL_SAMPLES = 100  # số câu mẫu của phép đo nhãn
+INFO = "tham khảo"  # ngưỡng của dòng chỉ để đọc, không chấm đạt/không đạt
+BASELINE_LOADED = re.compile(r"Đã nạp mô hình cơ sở trong ([\d.]+) s")
 UPLOAD_MB = 5  # PDR 5: file 5MB phải chạy xong
 UPLOAD_TIMEOUT_S = 900.0
 LONG_SHARE = 0.8  # câu dài từ ~80% giới hạn giải thích là ca xấu nhất của bỏ từng từ
@@ -423,6 +425,37 @@ def _upload_steps(
     return batch_id
 
 
+def measure_compare(base: str, text: str) -> dict:
+    """So sánh với mô hình cơ sở NGAY sau khi khởi động: thời gian nạp lạnh và RSS trước/sau.
+
+    Mô hình cơ sở (scikit-learn + skops) chỉ được nạp ở lần `compare` đầu tiên. Phép đo này chạy
+    trước mọi phép đo khác nên `memory.peak` cuối lượt đã gồm cả phần nạp đó: cổng RAM chấm khi đã
+    bật so sánh. RSS lấy từ /api/health, nên phải đo trong container chỉ có group `app` (trên máy
+    dev `import skops.io` còn kéo theo torch và pandas).
+    """
+    before = call(base, "GET", "/api/health").json().get("rss_mb")
+    cold = call(base, "POST", "/api/analyze", {"text": text, "compare": True}, timeout=180)
+    warm = call(base, "POST", "/api/analyze", {"text": text, "compare": True})
+    after = call(base, "GET", "/api/health").json().get("rss_mb")
+    baseline = cold.json().get("baseline") if cold.status == 200 else None
+    numbers = isinstance(before, int | float) and isinstance(after, int | float)
+    return {
+        "ok": isinstance(baseline, dict) and warm.status == 200,
+        "cold_s": round(cold.seconds, 3),
+        "warm_s": round(warm.seconds, 3),
+        "predict_ms": baseline.get("elapsed_ms") if isinstance(baseline, dict) else None,
+        "rss_before_mb": before,
+        "rss_after_mb": after,
+        "rss_delta_mb": round(after - before, 1) if numbers else None,
+    }
+
+
+def baseline_load_seconds(logs: str) -> float | None:
+    """Thời gian nạp mô hình cơ sở mà máy chủ tự ghi vào log lúc nạp lười."""
+    found = BASELINE_LOADED.search(logs)
+    return float(found.group(1)) if found else None
+
+
 def check_api(base: str) -> dict[str, bool]:
     """Hành vi HTTP cố định của khung API và bản web."""
     missing = call(base, "GET", "/api/khong-co")
@@ -562,8 +595,10 @@ def run_scenario(
         server.start()
         result["startup_s"] = round(wait_for_health(base, server), 2)
         result["health"] = call(base, "GET", "/api/health").json()
+        result["compare"] = measure_compare(base, texts[0])
         result.update(measure_service(base, texts, args.repeat))
         result["checks"] = check_api(base)
+        result["checks"]["compare_with_baseline_works"] = result["compare"]["ok"]
         result["upload"], batch_id = check_upload(base, texts)
         probe_logged_content(base, texts[0])
         bench_name = f"{server.name}-bench"
@@ -589,8 +624,10 @@ def run_scenario(
                 BATCHED_REFERENCE,
             )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
+        logs = "".join(server.logs())
         extra_markers = () if batch_id is None else (batch_id,)
-        result["checks"].update(check_logs("".join(server.logs()), extra_markers))
+        result["checks"].update(check_logs(logs, extra_markers))
+        result["compare"]["load_s"] = baseline_load_seconds(logs)
         result["server_memory_peak_mb"] = server.memory_peak_mb()
         result["server_state"] = server.state()
     finally:
@@ -602,8 +639,10 @@ def run_remote(args: argparse.Namespace, texts: list[str]) -> dict:
     base = args.url.rstrip("/")
     result: dict = {"label": "remote", "url": base, "startup_s": None}
     result["health"] = call(base, "GET", "/api/health").json()
+    result["compare"] = measure_compare(base, texts[0])
     result.update(measure_service(base, texts, args.repeat))
     result["checks"] = check_api(base)
+    result["checks"]["compare_with_baseline_works"] = result["compare"]["ok"]
     result["upload"], _ = check_upload(base, texts)
     return result
 
@@ -703,6 +742,8 @@ def verdict_rows(gate: dict) -> list[dict]:
     explain = p95_of(gate, "latency_idle", "explain")
     cap = gate.get("limits", {}).get("xai_max_words", "?")
     upload = gate.get("upload")
+    compare = gate.get("compare") or {}
+    rss_after = compare.get("rss_after_mb")
     checks = gate.get("checks", {})
 
     def within(value: float | None, limit: float) -> bool | None:
@@ -720,10 +761,22 @@ def verdict_rows(gate: dict) -> list[dict]:
             not any(ooms) if measured_ooms else None,
         ),
         row(
-            "memory.peak (MB)",
+            "memory.peak (MB), đã gồm so sánh với mô hình cơ sở",
             f"≤ {GO['memory_peak_mb']}",
             peak,
             within(peak, GO["memory_peak_mb"]),
+        ),
+        row(
+            "RSS tiến trình sau khi nạp mô hình cơ sở (MB)",
+            f"≤ {GO['memory_peak_mb']}",
+            rss_after,
+            within(rss_after, GO["memory_peak_mb"]),
+        ),
+        row(
+            "So sánh mô hình: nạp lạnh lần đầu (s)",
+            INFO,
+            compare.get("cold_s"),
+            None,
         ),
         row(
             "Nhãn 1 câu: p95 /api/analyze (s)",
@@ -817,6 +870,36 @@ def latency_summary(gate: dict) -> list[str]:
     ]
 
 
+def compare_section(gate: dict) -> list[str]:
+    """Nút "So sánh với mô hình cơ sở": nạp lạnh lần đầu và bộ nhớ sau khi nạp."""
+    compare = gate.get("compare")
+    if not compare:
+        return []
+    lines = ["", "## So sánh với mô hình cơ sở (nạp lười ở lần đầu)", ""]
+    loaded = compare.get("load_s")
+    lines.append(
+        f"- Lần `compare` đầu sau khi khởi động (nạp lạnh): {compare['cold_s']} s;"
+        f" lần sau {compare['warm_s']} s; mô hình cơ sở tự báo {compare.get('predict_ms', '-')} ms"
+        " cho phần dự đoán"
+    )
+    if loaded is not None:
+        lines.append(f"- Nạp scikit-learn và hai mô hình skops: {loaded} s theo log của máy chủ")
+    if compare.get("rss_delta_mb") is not None:
+        lines.append(
+            f"- RSS tiến trình: {compare['rss_before_mb']} MB → {compare['rss_after_mb']} MB"
+            f" (+{compare['rss_delta_mb']} MB)"
+        )
+    peak = gate.get("server_memory_peak_mb")
+    if peak is not None:
+        lines.append(
+            f"- memory.peak của container cuối lượt đo: {peak} MB, tính cả phần nạp mô hình cơ sở"
+            f" (ngưỡng ≤ {GO['memory_peak_mb']})"
+        )
+    if not compare["ok"]:
+        lines.append("- **Lỗi**: so sánh với mô hình cơ sở không chạy được")
+    return lines
+
+
 def render_markdown(report: dict) -> str:
     gate, host, image = report["runs"][0], report["host"], report.get("image")
     bundle_version = gate.get("health", {}).get("bundle_version", "-")
@@ -841,7 +924,13 @@ def render_markdown(report: dict) -> str:
     limits = f"--cpus={gate.get('cpus', '-')} --memory={gate.get('memory', '-')}"
     lines += [f"- Giới hạn đo chính: `{limits}`, không swap", "", "## Bảng go/no-go", ""]
     verdict = [
-        [r["metric"], r["threshold"], r["value"], OUTCOME[r["ok"]]] for r in report["verdict"]
+        [
+            r["metric"],
+            r["threshold"],
+            r["value"],
+            INFO if r["threshold"] == INFO else OUTCOME[r["ok"]],
+        ]
+        for r in report["verdict"]
     ]
     lines += table(["Chỉ số", "Ngưỡng", "Đo được", "Kết quả"], verdict)
     lines += latency_summary(gate)
@@ -902,6 +991,8 @@ def render_markdown(report: dict) -> str:
         ]
     elif batched:
         lines += ["", "## Tham khảo: bench theo lô 32", "", f"Lỗi: {batched['error']}"]
+
+    lines += compare_section(gate)
 
     upload = gate.get("upload")
     if upload:

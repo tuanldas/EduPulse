@@ -40,8 +40,9 @@ def gate(
     peak: float | None = 600.0,
     checks: dict | None = None,
     oom: bool = False,
+    compare: dict | None | str = "default",
 ) -> dict:
-    """Một lượt đo hợp lệ ở dạng mà `verdict_rows` đọc."""
+    """Một lượt đo hợp lệ ở dạng mà `verdict_rows` đọc (`compare=None`: chưa đo so sánh)."""
 
     def summary(p95):
         return {"n": 30, "p50_s": 0.1, "p95_s": p95, "max_s": 9.9}
@@ -63,10 +64,24 @@ def gate(
         result["limits"] = {"xai_max_words": cap, "source": "/api/config"}
     if upload is not None:
         result["upload"] = upload
+    if compare == "default":
+        compare = dict(GOOD_COMPARE)
+    if compare is not None:
+        result["compare"] = compare
     return result
 
 
 GOOD_UPLOAD = {"bytes": 5 * 1048576, "rows": 2000, "upload_s": 0.4, "run_s": 31.5, "ok": True}
+GOOD_COMPARE = {
+    "ok": True,
+    "cold_s": 1.4,
+    "warm_s": 0.06,
+    "predict_ms": 5.5,
+    "rss_before_mb": 540.0,
+    "rss_after_mb": 668.0,
+    "rss_delta_mb": 128.0,
+    "load_s": 1.2,
+}
 
 
 def rows_by_metric(verdict: list[dict]) -> dict[str, dict]:
@@ -170,13 +185,46 @@ def test_unmeasured_values_are_not_failures():
 def test_other_gates_are_kept_with_their_thresholds():
     verdict = smoke.verdict_rows(gate(peak=1201.0, batch=30.1, startup=20.5, oom=True))
     by_metric = rows_by_metric(verdict)
-    assert by_metric["memory.peak (MB)"]["ok"] is False
+    assert row_starting(verdict, "memory.peak")["ok"] is False
     assert by_metric["1.000 câu end-to-end (s)"]["ok"] is False
     assert by_metric["Khởi động tới health 200 (s)"]["ok"] is False
     assert by_metric["OOM-kill"]["ok"] is False
-    good = rows_by_metric(smoke.verdict_rows(gate(peak=1200.0, batch=30.0, startup=20.0)))
-    assert good["memory.peak (MB)"]["ok"] and good["1.000 câu end-to-end (s)"]["ok"]
-    assert good["Khởi động tới health 200 (s)"]["ok"] and good["OOM-kill"]["ok"]
+    good_rows = smoke.verdict_rows(gate(peak=1200.0, batch=30.0, startup=20.0))
+    good = rows_by_metric(good_rows)
+    assert row_starting(good_rows, "memory.peak")["ok"] is True
+    assert good["1.000 câu end-to-end (s)"]["ok"] and good["Khởi động tới health 200 (s)"]["ok"]
+    assert good["OOM-kill"]["ok"]
+
+
+def test_ram_gate_also_covers_the_process_after_the_baseline_is_loaded():
+    ok = row_starting(smoke.verdict_rows(gate()), "RSS tiến trình")
+    assert (ok["value"], ok["threshold"], ok["ok"]) == (668.0, "≤ 1200", True)
+    at_limit = dict(GOOD_COMPARE, rss_after_mb=1200.0)
+    assert row_starting(smoke.verdict_rows(gate(compare=at_limit)), "RSS tiến trình")["ok"] is True
+    over = dict(GOOD_COMPARE, rss_after_mb=1200.5)
+    verdict = smoke.verdict_rows(gate(compare=over))
+    assert row_starting(verdict, "RSS tiến trình")["ok"] is False and not smoke.is_go(verdict)
+
+
+def test_peak_memory_row_says_it_includes_the_comparison():
+    assert "đã gồm so sánh" in row_starting(smoke.verdict_rows(gate()), "memory.peak")["metric"]
+
+
+def test_cold_load_time_is_shown_for_reference_and_never_fails_the_run():
+    row = row_starting(smoke.verdict_rows(gate()), "So sánh mô hình")
+    assert (row["value"], row["threshold"], row["ok"]) == (1.4, smoke.INFO, None)
+    slow = dict(GOOD_COMPARE, cold_s=60.0)
+    assert smoke.is_go(smoke.verdict_rows(gate(compare=slow)))
+    lines = smoke.render_markdown(report_of(gate())).splitlines()
+    table_row = [line for line in lines if line.startswith("| So sánh mô hình")]
+    assert table_row and table_row[0].endswith("| tham khảo |")
+
+
+def test_missing_comparison_numbers_are_not_failures_but_a_broken_comparison_is():
+    verdict = smoke.verdict_rows(gate(compare=None))
+    assert row_starting(verdict, "RSS tiến trình")["ok"] is None and smoke.is_go(verdict)
+    broken = smoke.verdict_rows(gate(checks={"compare_with_baseline_works": False}))
+    assert row_starting(broken, "Hành vi")["ok"] is False and not smoke.is_go(broken)
 
 
 def test_behaviour_and_log_checks_must_all_pass():
@@ -261,6 +309,21 @@ def test_latency_table_names_the_commands_and_skips_the_counter():
     assert len(rows) == 6
 
 
+def test_report_has_a_comparison_section_with_cold_time_and_memory():
+    markdown = smoke.render_markdown(report_of(gate(peak=701.5)))
+    assert "## So sánh với mô hình cơ sở" in markdown
+    assert "(nạp lạnh): 1.4 s; lần sau 0.06 s; mô hình cơ sở tự báo 5.5 ms" in markdown
+    assert "Nạp scikit-learn và hai mô hình skops: 1.2 s theo log" in markdown
+    assert "RSS tiến trình: 540.0 MB → 668.0 MB (+128.0 MB)" in markdown
+    assert "memory.peak của container cuối lượt đo: 701.5 MB, tính cả phần nạp" in markdown
+    assert "không chạy được" not in markdown
+    broken = gate(compare=dict(GOOD_COMPARE, ok=False))
+    assert "so sánh với mô hình cơ sở không chạy được" in smoke.render_markdown(report_of(broken))
+    assert "## So sánh với mô hình cơ sở" not in smoke.render_markdown(
+        report_of(gate(compare=None))
+    )
+
+
 def test_report_has_an_upload_section_with_the_problems():
     upload = dict(GOOD_UPLOAD, ok=False, problems=["tiến độ bị giảm"], flagged=210)
     markdown = smoke.render_markdown(report_of(gate(upload=upload)))
@@ -339,8 +402,18 @@ def test_log_check_catches_every_marker_including_the_filename_and_the_batch_id(
 class StubService:
     """HTTP server nhỏ giả lập hợp đồng của API để thử logic đo (không phải để lấy số đo)."""
 
-    def __init__(self, cap: int | None = 25, config_status: int = 200, analyze_delay: float = 0.0):
+    def __init__(
+        self,
+        cap: int | None = 25,
+        config_status: int = 200,
+        analyze_delay: float = 0.0,
+        compare_status: int = 200,
+        baseline_mb: float = 130.0,
+    ):
         self.cap, self.config_status, self.analyze_delay = cap, config_status, analyze_delay
+        self.compare_status, self.baseline_mb = compare_status, baseline_mb
+        self.rss_mb = 520.0
+        self.baseline_loaded = False
         self.calls: list[tuple[str, str]] = []
         service = self
 
@@ -361,16 +434,30 @@ class StubService:
                 if self.path == "/api/config" and service.config_status == 200:
                     limits = {} if service.cap is None else {"xai_max_words": service.cap}
                     self._reply(200, {"limits": limits})
+                elif self.path == "/api/health":
+                    self._reply(200, {"status": "ok", "rss_mb": service.rss_mb})
                 else:
                     self._reply(404, {"detail": {"code": "not_found", "message": "-"}})
 
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0))
-                text = json.loads(self.rfile.read(length) or b"{}").get("text", "")
+                request = json.loads(self.rfile.read(length) or b"{}")
+                text = request.get("text", "")
                 service.calls.append(("POST", self.path))
                 words = len(text.split())
                 limit = service.cap if service.cap is not None else 25
-                if self.path == "/api/analyze":
+                if self.path == "/api/analyze" and request.get("compare"):
+                    if service.compare_status != 200:
+                        self._reply(service.compare_status, {"detail": {"code": "unavailable"}})
+                        return
+                    if not service.baseline_loaded:  # nạp lười ở lần đầu: chậm hơn và tốn RAM
+                        time.sleep(0.05)
+                        service.baseline_loaded = True
+                        service.rss_mb += service.baseline_mb
+                    self._reply(
+                        200, {"xai_available": words <= limit, "baseline": {"elapsed_ms": 4.2}}
+                    )
+                elif self.path == "/api/analyze":
                     time.sleep(service.analyze_delay)
                     self._reply(200, {"xai_available": words <= limit})
                 elif self.path == "/api/explain" and words <= limit:
@@ -399,6 +486,43 @@ class StubService:
 
 SHORT = "Thầy dạy rất hay"  # 4 từ
 LONG = " ".join(["từ"] * 30)  # 30 từ, quá giới hạn mặc định 25
+
+
+def test_first_comparison_reports_cold_and_warm_time_and_the_memory_it_added():
+    with StubService() as service:
+        result = smoke.measure_compare(service.base, SHORT)
+    assert result["ok"] is True
+    assert result["cold_s"] >= 0.05 > result["warm_s"]  # lần đầu nạp lười nên chậm hơn hẳn
+    assert result["predict_ms"] == 4.2
+    assert (result["rss_before_mb"], result["rss_after_mb"], result["rss_delta_mb"]) == (
+        520.0,
+        650.0,
+        130.0,
+    )
+
+
+def test_the_comparison_asks_twice_for_the_baseline_and_reads_memory_before_and_after():
+    with StubService() as service:
+        smoke.measure_compare(service.base, SHORT)
+    assert service.calls == [
+        ("GET", "/api/health"),
+        ("POST", "/api/analyze"),
+        ("POST", "/api/analyze"),
+        ("GET", "/api/health"),
+    ]
+
+
+def test_a_server_without_the_baseline_makes_the_comparison_check_fail_not_crash():
+    with StubService(compare_status=503) as service:
+        result = smoke.measure_compare(service.base, SHORT)
+    assert result["ok"] is False and result["predict_ms"] is None
+    assert result["rss_delta_mb"] == 0.0  # không nạp được nên bộ nhớ không đổi
+
+
+def test_baseline_load_time_is_read_from_the_server_log():
+    logs = "INFO edupulse.engine: Đã nạp mô hình cơ sở trong 1.7 s\nPOST /api/analyze 200 9ms"
+    assert smoke.baseline_load_seconds(logs) == 1.7
+    assert smoke.baseline_load_seconds("POST /api/analyze 200 9ms") is None
 
 
 def test_server_limits_come_from_the_config_of_the_service_being_measured():
@@ -549,6 +673,15 @@ def test_measuring_the_real_api_yields_a_verdict_with_both_latencies(live_base):
 
 
 @pytest.mark.model
+def test_the_real_baseline_answers_the_first_comparison_and_the_memory_is_reported(live_base):
+    result = smoke.measure_compare(live_base, REAL_TEXTS[0])
+    assert result["ok"] is True, result
+    assert result["cold_s"] > 0 and result["warm_s"] > 0 and result["predict_ms"] >= 0
+    assert result["rss_before_mb"] > 0 and result["rss_after_mb"] > 0
+    assert result["rss_delta_mb"] == round(result["rss_after_mb"] - result["rss_before_mb"], 1)
+
+
+@pytest.mark.model
 @pytest.mark.slow
 def test_the_five_megabyte_upload_check_runs_the_whole_batch_path(live_base):
     result, batch_id = smoke.check_upload(live_base, REAL_TEXTS, timeout=600)
@@ -574,8 +707,9 @@ def test_remote_mode_end_to_end_writes_a_coherent_report(live_base, tmp_path: Pa
     report = report_of(run)
     markdown = smoke.render_markdown(report)
     assert "**Nhãn**, p95 của /api/analyze" in markdown and "**Giải thích**, p95" in markdown
-    assert "## Upload 5MB" in markdown
+    assert "## Upload 5MB" in markdown and "## So sánh với mô hình cơ sở" in markdown
     assert run["upload"]["ok"] is True
+    assert run["compare"]["ok"] is True and run["checks"]["compare_with_baseline_works"] is True
     # Bản web chưa chắc đã build ở máy chạy test, nên chỉ kiểm các hành vi của API.
     assert run["checks"]["api_unknown_is_json_404"] and run["checks"]["wrong_method_is_405"]
     (tmp_path / "report.json").write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
