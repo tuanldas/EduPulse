@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import math
+import re
 import socket
 import sys
 import threading
@@ -48,6 +49,7 @@ def gate(
         return {"n": 30, "p50_s": 0.1, "p95_s": p95, "max_s": 9.9}
 
     result: dict = {
+        "label": "gate",
         "startup_s": startup,
         "latency_idle": {
             "analyze": summary(label),
@@ -343,6 +345,192 @@ def test_report_footnote_says_the_word_limit_is_settled_on_the_vps():
     assert "XAI_MAX_WORDS" in markdown and "--url" in markdown
 
 
+# --- Giờ từng pha và việc nặng của người khác -----------------------------------------------------
+
+
+def with_phases(run: dict, *phases: tuple[str, list[str] | None]) -> dict:
+    run["phases"] = [
+        {"name": name, "start": "14:40:00", "end": "14:40:30", "seconds": 30.0, "noisy_with": seen}
+        for name, seen in phases
+    ]
+    return run
+
+
+NOISE_WINDOW = {"start": "14:42:30", "end": "14:42:36", "kinds": ["node", "pnpm-native"]}
+
+
+def test_report_lists_every_phase_with_its_times_and_marks_the_noisy_ones():
+    main = with_phases(gate(), ("Khởi động", []), ("Bench 1000 câu", ["node", "pnpm-native"]))
+    report = report_of(main)
+    report["host"].update(
+        started="14:39:12",
+        ended="14:51:00",
+        heavy_watch={"samples": 100, "busy_samples": 3, "windows": [NOISE_WINDOW]},
+    )
+    markdown = smoke.render_markdown(report)
+    assert "## Giờ từng pha đo" in markdown and "Lượt `gate`:" in markdown
+    assert "| Khởi động | 14:40:00 | 14:40:30 | 30.0 | không |" in markdown
+    assert "| Bench 1000 câu | 14:40:00 | 14:40:30 | 30.0 | CÓ: node, pnpm-native |" in markdown
+    assert "Giờ đo 14:39:12 → 14:51:00" in markdown
+    assert "có việc nặng khác chạy cùng** lúc 14:42:30–14:42:36 (node, pnpm-native)" in markdown
+    assert "3/100 lần lấy mẫu" in markdown
+    warning = [line for line in markdown.splitlines() if "Cảnh báo nhiễu" in line]
+    assert len(warning) == 1 and "Bench 1000 câu" in warning[0] and "Khởi động" not in warning[0]
+    assert "Kết luận: **GO**" in markdown  # nhiễu chỉ cảnh báo, không đổi kết luận
+
+
+def test_report_names_each_run_in_its_own_phase_table():
+    main = with_phases(gate(), ("Khởi động", []))
+    main["label"] = "gate"
+    one_cpu = with_phases(gate(label=0.4, explain=3.3), ("Khởi động", ["pytest"]))
+    one_cpu.update(label="1cpu", cpus=1.0)
+    markdown = smoke.render_markdown(report_of(main, [one_cpu]))
+    assert "Lượt `gate`:" in markdown and "Lượt `1cpu`:" in markdown
+    assert "CÓ: pytest" in markdown
+    assert "Cảnh báo nhiễu" not in markdown  # chỉ lượt đo chính được cảnh báo
+
+
+def test_report_says_when_the_machine_was_clean_and_when_it_was_not_watched():
+    clean = report_of(with_phases(gate(), ("Khởi động", [])))
+    clean["host"]["heavy_watch"] = {"samples": 150, "busy_samples": 0, "windows": []}
+    markdown = smoke.render_markdown(clean)
+    assert "không thấy việc nặng khác chạy cùng (150 lần lấy mẫu)" in markdown
+    assert "Cảnh báo nhiễu" not in markdown
+    unwatched = smoke.render_markdown(report_of(with_phases(gate(), ("Khởi động", None))))
+    assert "chưa theo dõi việc nặng khác" in unwatched
+    assert "| Khởi động | 14:40:00 | 14:40:30 | 30.0 | - |" in unwatched
+    assert "## Giờ từng pha đo" not in smoke.render_markdown(report_of(gate()))  # chưa có pha nào
+
+
+def test_the_heavy_pattern_matches_the_four_tools_and_never_its_own_command_line():
+    for command in (
+        "node /x/vitest run",
+        "pnpm exec playwright test",
+        "pytest -q tests",
+        "node /x/next build",
+    ):
+        assert re.search(smoke.HEAVY_PATTERN, command), command
+    assert not re.search(smoke.HEAVY_PATTERN, f"pgrep -f {smoke.HEAVY_PATTERN}")
+    assert not re.search(smoke.HEAVY_PATTERN, "uv run python scripts/smoke_test.py --also-1cpu")
+
+
+def test_heavy_processes_names_the_executables_once_each(monkeypatch):
+    answers = iter(
+        [
+            SimpleNamespace(stdout="11\n12\n13\n"),
+            SimpleNamespace(stdout="/usr/bin/node\n  pytest \nnode\n"),
+        ]
+    )
+    monkeypatch.setattr(smoke.subprocess, "run", lambda *args, **kwargs: next(answers))
+    assert smoke.heavy_processes() == ["node", "pytest"]
+
+
+def test_heavy_processes_is_empty_when_nothing_matches_or_pgrep_is_missing(monkeypatch):
+    monkeypatch.setattr(smoke.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=""))
+    assert smoke.heavy_processes() == []
+
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("pgrep")
+
+    monkeypatch.setattr(smoke.subprocess, "run", missing)
+    assert smoke.heavy_processes() == []
+
+
+def watch_with(samples: list[tuple[float, list[str]]]) -> "smoke.BusyWatch":
+    watch = smoke.BusyWatch(period=2.0)
+    watch.samples = samples
+    return watch
+
+
+def test_a_phase_sees_the_tasks_running_inside_it_and_the_ones_already_running_at_its_start():
+    watch = watch_with([(100.0, []), (102.0, ["node"]), (104.0, ["node", "vitest"]), (106.0, [])])
+    assert watch.seen_between(103.0, 105.0) == ["node", "vitest"]
+    assert watch.seen_between(103.9, 103.95) == [
+        "node"
+    ]  # chạy từ trước và chưa xong lúc pha bắt đầu
+    assert watch.seen_between(100.0, 101.0) == []
+    assert watch.seen_between(106.5, 120.0) == []
+
+
+def test_busy_windows_merge_neighbouring_samples_and_split_on_a_real_gap():
+    watch = watch_with(
+        [
+            (100.0, []),
+            (102.0, ["node"]),
+            (104.0, ["vitest"]),
+            (106.0, []),
+            (108.0, []),
+            (110.0, ["node"]),
+            (118.0, ["node"]),
+        ]
+    )
+    assert watch.busy_windows() == [
+        {"start": smoke.clock(102.0), "end": smoke.clock(104.0), "kinds": ["node", "vitest"]},
+        {"start": smoke.clock(110.0), "end": smoke.clock(110.0), "kinds": ["node"]},
+        {"start": smoke.clock(118.0), "end": smoke.clock(118.0), "kinds": ["node"]},
+    ]
+    summary = watch.summary()
+    assert (summary["samples"], summary["busy_samples"]) == (7, 4)
+    assert watch_with([]).busy_windows() == [] and watch_with([(1.0, [])]).busy_windows() == []
+
+
+def test_a_running_watch_keeps_sampling_until_it_is_closed():
+    with smoke.BusyWatch(probe=lambda: ["node"], period=0.01) as watch:
+        time.sleep(0.15)
+    taken = len(watch.samples)
+    assert taken >= 3 and watch.summary()["busy_samples"] == taken
+    time.sleep(0.05)
+    assert len(watch.samples) == taken  # đã dừng
+
+
+class FakeWatch:
+    """Trả lần lượt các câu trả lời đã định cho từng pha; giờ bắt đầu không sau giờ kết thúc."""
+
+    def __init__(self, *answers: list[str]):
+        self.answers = list(answers)
+
+    def seen_between(self, start: float, end: float) -> list[str]:
+        assert start <= end
+        return self.answers.pop(0)
+
+
+def test_timeline_records_each_phase_in_order_with_clock_times_and_the_noise_seen():
+    timeline = smoke.Timeline(FakeWatch([], ["node"]))
+    with timeline.phase("một"):
+        pass
+    with timeline.phase("hai"):
+        time.sleep(0.15)
+    first, second = timeline.phases
+    assert [p["name"] for p in timeline.phases] == ["một", "hai"]
+    assert (first["noisy_with"], second["noisy_with"]) == ([], ["node"])
+    for phase in timeline.phases:
+        assert re.fullmatch(r"\d\d:\d\d:\d\d", phase["start"])
+        assert re.fullmatch(r"\d\d:\d\d:\d\d", phase["end"])
+    assert second["seconds"] >= 0.1 and first["end"] <= second["start"]
+
+
+def test_timeline_without_a_watch_leaves_the_noise_unknown_and_records_failed_phases():
+    timeline = smoke.Timeline()
+    with pytest.raises(RuntimeError), timeline.phase("lỗi"):
+        raise RuntimeError("máy chủ không lên")
+    (phase,) = timeline.phases
+    assert phase["name"] == "lỗi" and phase["noisy_with"] is None
+
+
+def test_service_measurement_records_idle_long_and_loaded_phases_in_order():
+    near = [" ".join(["từ"] * 22) + f" {i}" for i in range(8)]
+    timeline = smoke.Timeline()
+    with StubService() as service:
+        smoke.measure_service(service.base, [*near, SHORT], repeat=4, timeline=timeline)
+    phases = timeline.phases
+    assert len(phases) == 3 and "câu dài" in phases[1]["name"] and "tải" in phases[2]["name"]
+    assert all(a["end"] <= b["start"] for a, b in zip(phases, phases[1:], strict=False))
+    plain = smoke.Timeline()
+    with StubService() as service:
+        smoke.measure_service(service.base, [SHORT] * 4, repeat=4, timeline=plain)
+    assert len(plain.phases) == 2  # không có câu dài sát giới hạn thì bỏ pha đó
+
+
 # --- Tệp upload thử -------------------------------------------------------------------------------
 
 
@@ -394,6 +582,31 @@ def test_log_check_catches_every_marker_including_the_filename_and_the_batch_id(
     for leak in (*smoke.MARKERS, smoke.FILE_MARKER, "ID-THAT"):
         checks = smoke.check_logs(clean + f"lỗi với {leak}\n", ("ID-THAT",))
         assert checks["logs_have_no_request_content"] is False, leak
+
+
+def test_sentences_come_from_a_file_one_per_line_without_blank_lines(tmp_path: Path):
+    file = tmp_path / "sentences.txt"
+    file.write_text("Câu một.\n\n  Câu hai.  \n", encoding="utf-8")
+    assert smoke.load_sentences(str(file), SimpleNamespace(data_dir=tmp_path)) == [
+        "Câu một.",
+        "Câu hai.",
+    ]
+
+
+def test_missing_validation_set_is_a_clear_error_not_a_crash(tmp_path: Path):
+    with pytest.raises(smoke.SmokeError, match="validation.parquet"):
+        smoke.load_sentences(None, SimpleNamespace(data_dir=tmp_path))
+
+
+def test_container_asks_for_a_platform_only_when_emulating(monkeypatch):
+    commands: list[tuple] = []
+    monkeypatch.setattr(smoke, "docker", lambda *args, **kwargs: commands.append(args) or "")
+    smoke.Container("c", "img:1", 2.0, "1536m", 8000, platform="linux/amd64").start()
+    smoke.Container("c", "img:1", 2.0, "1536m", 8000).start()
+    emulated, native = [c for c in commands if c[0] == "run"]  # theo thứ tự đã gọi
+    assert "--platform" not in native
+    assert emulated[emulated.index("--platform") + 1] == "linux/amd64"
+    assert emulated[-1] == "img:1" and "--memory=1536m" in emulated
 
 
 # --- Phép đo với một máy chủ giả để thử công cụ đo ------------------------------------------------
@@ -710,6 +923,7 @@ def test_remote_mode_end_to_end_writes_a_coherent_report(live_base, tmp_path: Pa
     assert "## Upload 5MB" in markdown and "## So sánh với mô hình cơ sở" in markdown
     assert run["upload"]["ok"] is True
     assert run["compare"]["ok"] is True and run["checks"]["compare_with_baseline_works"] is True
+    assert len(run["phases"]) >= 4 and all(p["noisy_with"] is None for p in run["phases"])
     # Bản web chưa chắc đã build ở máy chạy test, nên chỉ kiểm các hành vi của API.
     assert run["checks"]["api_unknown_is_json_404"] and run["checks"]["wrong_method_is_405"]
     (tmp_path / "report.json").write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
