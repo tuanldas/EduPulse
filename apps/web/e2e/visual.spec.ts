@@ -42,6 +42,12 @@ async function settle(page: Page) {
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 }
 
+/** Thiết kế cho di động: không cuộn ngang cả trang (bảng rộng chỉ cuộn trong khung của nó). */
+async function expectNoHorizontalScroll(page: Page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow, "trang bị cuộn ngang").toBeLessThanOrEqual(1);
+}
+
 /** Đợi phần giải thích tính xong (có bảng, hoặc báo không có từ nào để tô, hoặc câu quá dài). */
 async function explainSettled(page: Page) {
   await expect(page.getByLabel("Đang tính giải thích")).toHaveCount(0, { timeout: 30_000 });
@@ -67,6 +73,7 @@ for (const viewport of VIEWPORTS) {
       await explainSettled(page);
       await settle(page);
       await page.screenshot({ path: path.join(OUTPUT, `01-phan-tich-cau-${tag}.png`), fullPage: true });
+      await expectNoHorizontalScroll(page);
       expect(problems).toEqual([]);
       await context.close();
     });
@@ -121,6 +128,7 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole("heading", { name: "Model card" })).toBeVisible({ timeout: 20_000 });
       await settle(page);
       await page.screenshot({ path: path.join(OUTPUT, `04-mo-hinh-dao-duc-${tag}.png`), fullPage: true });
+      await expectNoHorizontalScroll(page);
       expect(problems).toEqual([]);
       await context.close();
     });
