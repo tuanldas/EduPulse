@@ -1,9 +1,10 @@
 """Smoke test giới hạn tài nguyên cho image EduPulse: go/no-go cho VPS 2 vCPU / 2GB.
 
 Chế độ mặc định chạy container Docker với đúng giới hạn của VPS (`--cpus=2 --memory=1536m`, không
-swap) rồi đo: thời gian khởi động, độ trễ 1 câu + giải thích, 1.000 câu end-to-end (bench trong
-một container riêng cùng giới hạn), bộ nhớ đỉnh của cgroup, OOM-kill, và kiểm tra nhật ký không lộ
-nội dung. Chế độ `--url` chỉ đo độ trễ và hành vi HTTP của một dịch vụ đã chạy (ví dụ VPS thật).
+swap) rồi đo: thời gian khởi động, độ trễ của nhãn và của giải thích (hai chỉ số p95 tách biệt),
+1.000 câu end-to-end (bench trong một container riêng cùng giới hạn), upload file 5MB chạy xong,
+bộ nhớ đỉnh của cgroup, OOM-kill, và kiểm tra nhật ký không lộ nội dung. Chế độ `--url` đo độ
+trễ, upload 5MB và hành vi HTTP của một dịch vụ đã chạy (ví dụ VPS thật).
 
     uv run python scripts/smoke_test.py --bundle-version v0-smoke --image edupulse:smoke
     uv run python scripts/smoke_test.py --url http://vps.example:8000
@@ -11,18 +12,26 @@ nội dung. Chế độ `--url` chỉ đo độ trễ và hành vi HTTP của m�
 Ghi `results/perf/smoke-<ngày>-<kiến trúc>.{json,md}`; thoát mã 1 nếu có chỉ số không đạt.
 Từ chối chạy khi khoá MPS đang giữ (đang train): lúc ấy số đo không đáng tin và Docker làm swap.
 
+Tiêu chí độ trễ theo PDR 5 (phương án A ở mốc M1: nhãn hiện ngay, giải thích tải sau):
+    nhãn      p95 của /api/analyze <= 0,5 s, trên câu bất kỳ độ dài;
+    giải thích p95 của /api/explain <= 2 s, chỉ trên câu mà máy chủ giải thích được, tức không quá
+              `limits.xai_max_words` từ (đọc từ /api/config, mặc định 25).
+
 `python -m edupulse.engine.bench --json` in một dòng JSON; script đọc các khoá `total_s`,
 `steps_s`, `rss_mb` và `cgroup_memory_peak_mb`.
 """
 
 import argparse
+import csv
 import fcntl
+import io
 import json
 import math
 import os
 import platform
 import random
 import re
+import secrets
 import socket
 import statistics
 import subprocess
@@ -37,17 +46,24 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from edupulse.config import REPO_ROOT, Settings, load_settings
+from edupulse.config import MAX_ROWS, REPO_ROOT, Settings, load_settings
 
-# Ngưỡng go khi đo trên M1 với 2 CPU / 1,5GB. VPS x86 chia sẻ chậm hơn nên đọc số M1 với hệ số
-# an toàn ×3: 0,6 s → 1,8 s < 2 s; 30 s → 90 s < 2 phút.
+# Ngưỡng go. Độ trễ là con số PDR 5 (đổi ở mốc M1, phương án A): nhãn hiện ngay, giải thích tải
+# sau, nên hai p95 được chấm riêng. Giới hạn số từ của giải thích (`xai_max_words`) chốt lại sau khi
+# đo trên VPS thật bằng `--url`. Khi đo trên M1 với 2 CPU / 1,5GB, VPS x86 chia sẻ chậm hơn nên đọc
+# thời gian 1.000 câu với hệ số an toàn ×3: 30 s → 90 s < 2 phút.
 GO = {
     "memory_peak_mb": 1200,
-    "single_p95_s": 0.6,
+    "label_p95_s": 0.5,
+    "explain_p95_s": 2.0,
     "batch_total_s": 30.0,
     "startup_s": 20.0,
 }
 MARKERS = ("SMOKE-NOI-DUNG-9f3a", "SMOKE-QUERY-7c1d", "SMOKE-ID-4b2e", "SMOKE-NHOM-1a6c")
+FILE_MARKER = "SMOKE-TEN-FILE-5d8e"  # nằm trong tên file của lần upload thử
+LABEL_SAMPLES = 100  # số câu mẫu của phép đo nhãn
+UPLOAD_MB = 5  # PDR 5: file 5MB phải chạy xong
+UPLOAD_TIMEOUT_S = 900.0
 LONG_SHARE = 0.8  # câu dài từ ~80% giới hạn giải thích là ca xấu nhất của bỏ từng từ
 BATCHED_REFERENCE = 32  # lô của bench tham khảo (nhanh hơn, nhưng kết quả phụ thuộc bạn cùng lô)
 OUTCOME = {True: "ĐẠT", False: "KHÔNG ĐẠT", None: "không đo"}
@@ -99,10 +115,20 @@ class Reply:
 
 
 def call(
-    base: str, method: str, path: str, payload: dict | None = None, timeout: float = 60.0
+    base: str,
+    method: str,
+    path: str,
+    payload: dict | None = None,
+    timeout: float = 60.0,
+    raw: tuple[bytes, str] | None = None,
 ) -> Reply:
-    data = None if payload is None else json.dumps(payload).encode()
-    headers = {"Content-Type": "application/json"} if data is not None else {}
+    """Một yêu cầu HTTP. `payload` gửi JSON; `raw` = (thân, Content-Type) gửi nguyên văn."""
+    data, content_type = (None, None)
+    if raw is not None:
+        data, content_type = raw
+    elif payload is not None:
+        data, content_type = json.dumps(payload).encode(), "application/json"
+    headers = {} if content_type is None else {"Content-Type": content_type}
     request = urllib.request.Request(base + path, data=data, method=method, headers=headers)
     started = time.perf_counter()
     try:
@@ -162,7 +188,9 @@ class Container:
 
 
 def summarize(values: list[float]) -> dict:
-    """p95 theo hạng gần nhất; với 30 mẫu đó là giá trị lớn thứ hai."""
+    """p95 theo hạng gần nhất; với 30 mẫu đó là giá trị lớn thứ hai. Không có mẫu thì n = 0."""
+    if not values:
+        return {"n": 0, "p50_s": None, "p95_s": None, "max_s": None}
     ordered = sorted(values)
     p95 = ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)]
     return {
@@ -180,13 +208,34 @@ def post_text(base: str, path: str, text: str) -> float:
     return reply.seconds
 
 
+def analyze_once(base: str, text: str) -> tuple[float, bool]:
+    """Thời gian của /api/analyze và việc máy chủ có giải thích được câu này không."""
+    reply = call(base, "POST", "/api/analyze", {"text": text})
+    if reply.status != 200:
+        raise SmokeError(f"POST /api/analyze trả {reply.status}: {reply.body[:200]!r}")
+    return reply.seconds, reply.json().get("xai_available") is True
+
+
 def measure_latency(base: str, texts: list[str], repeat: int) -> dict:
-    """Độ trễ analyze, explain, và cặp gọi song song như giao diện (tính tới khi cả hai xong)."""
-    analyze, explain, pair = [], [], []
+    """Độ trễ nhãn và giải thích, đo riêng từng cái (lần lượt, không chồng nhau).
+
+    - `analyze`: /api/analyze trên `LABEL_SAMPLES` câu (rẻ, và đủ nhiều để có cả đuôi câu dài);
+    - `explain`: /api/explain trên tối đa `repeat` câu trong số đó mà máy chủ báo giải thích được
+      (`xai_available`); `not_explained` đếm các câu mẫu quá dài nên bị bỏ khỏi phép đo này;
+    - `analyze_explain`: hai lời gọi song song như giao diện, tính tới khi cả hai xong (tham khảo).
+    """
+    label_n = max(repeat, min(len(texts), LABEL_SAMPLES))
+    analyze: list[float] = []
+    explainable: list[str] = []
+    for i in range(label_n):
+        text = texts[i % len(texts)]
+        seconds, can_explain = analyze_once(base, text)
+        analyze.append(seconds)
+        if can_explain:
+            explainable.append(text)
+    explain, pair = [], []
     with ThreadPoolExecutor(max_workers=2) as pool:
-        for i in range(repeat):
-            text = texts[i % len(texts)]
-            analyze.append(post_text(base, "/api/analyze", text))
+        for text in explainable[:repeat]:
             explain.append(post_text(base, "/api/explain", text))
             started = time.perf_counter()
             both = [pool.submit(post_text, base, p, text) for p in ("/api/analyze", "/api/explain")]
@@ -197,6 +246,7 @@ def measure_latency(base: str, texts: list[str], repeat: int) -> dict:
         "analyze": summarize(analyze),
         "explain": summarize(explain),
         "analyze_explain": summarize(pair),
+        "not_explained": label_n - len(explainable),
     }
 
 
@@ -250,6 +300,129 @@ class Load:
         }
 
 
+def build_upload_csv(
+    sentences: list[str], target_bytes: int, rows: int, group_marker: str
+) -> bytes:
+    """CSV UTF-8 có BOM với đúng `rows` dòng và đúng `target_bytes` byte (nếu phần câu chưa vượt).
+
+    `Góp ý` là câu thật, `Nhóm` mang dấu hiệu nhận biết để soi nhật ký, `Ghi chú` là phần đệm cho đủ
+    dung lượng: file 5MB trong 2.000 dòng nghĩa là mỗi dòng mang nhiều dữ liệu ngoài câu góp ý.
+    """
+
+    def render(padding: list[str]) -> bytes:
+        out = io.StringIO()
+        writer = csv.writer(out, lineterminator="\r\n")
+        writer.writerow(["Góp ý", "Nhóm", "Ghi chú"])
+        for i in range(rows):
+            text = sentences[i % len(sentences)].replace("\n", " ")
+            writer.writerow([text, f"{group_marker} {i % 4}", padding[i]])
+        return b"\xef\xbb\xbf" + out.getvalue().encode("utf-8")
+
+    base = len(render([""] * rows))
+    per_row = max(0, (target_bytes - base) // rows)
+    filler = ("ghi chu dem " * (per_row // 12 + 1))[:per_row]
+    padding = [filler] * rows
+    padding[-1] += "x" * max(0, target_bytes - len(render(padding)))
+    return render(padding)
+
+
+def multipart_file(field: str, filename: str, data: bytes) -> tuple[bytes, str]:
+    """Thân `multipart/form-data` chứa một file; trả về (thân, giá trị Content-Type)."""
+    boundary = "----smoke" + secrets.token_hex(8)
+    head = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'
+        "Content-Type: text/csv\r\n\r\n"
+    ).encode()
+    return (
+        head + data + f"\r\n--{boundary}--\r\n".encode(),
+        f"multipart/form-data; boundary={boundary}",
+    )
+
+
+def poll_until_done(base: str, batch_id: str, timeout: float) -> tuple[dict, list[float]]:
+    """Hỏi trạng thái mỗi giây tới khi batch xong hoặc lỗi; trả về (trạng thái, các tiến độ)."""
+    deadline = time.monotonic() + timeout
+    progress: list[float] = []
+    status: dict = {}
+    while time.monotonic() < deadline:
+        reply = call(base, "GET", f"/api/batches/{batch_id}")
+        if reply.status != 200:
+            return {"state": f"http_{reply.status}"}, progress
+        status = reply.json()
+        progress.append(status.get("progress", 0.0))
+        if status.get("state") in ("done", "failed"):
+            return status, progress
+        time.sleep(1.0)
+    return {**status, "state": "timeout"}, progress
+
+
+def check_upload(
+    base: str, sentences: list[str], megabytes: int = UPLOAD_MB, timeout: float = UPLOAD_TIMEOUT_S
+) -> tuple[dict, str | None]:
+    """Đường batch như người dùng thật: tải lên file ~5MB (2.000 dòng), chạy, đọc kết quả, đóng.
+
+    Trả về (kết quả đo, id batch). `problems` liệt kê từng bước sai và `ok` chỉ đúng khi không có
+    bước nào sai. Id batch trả riêng để phép kiểm nhật ký chắc rằng nó không bị ghi ra. Mất kết nối
+    giữa chừng (vd. container bị OOM-kill) thành một `problem` chứ không làm hỏng cả lượt đo.
+    """
+    data = build_upload_csv(sentences, megabytes * 1024 * 1024, MAX_ROWS, MARKERS[3])
+    problems: list[str] = []
+    result: dict = {"bytes": len(data), "rows": MAX_ROWS, "problems": problems, "ok": False}
+    batch_id: str | None = None
+    try:
+        batch_id = _upload_steps(base, data, timeout, result, problems)
+    except OSError as error:
+        problems.append(f"mất kết nối giữa chừng ({type(error).__name__})")
+    result["ok"] = not problems
+    return result, batch_id
+
+
+def _upload_steps(
+    base: str, data: bytes, timeout: float, result: dict, problems: list[str]
+) -> str | None:
+    """Các bước của `check_upload`; trả về id batch (nếu đã tạo được) để dọn và soi nhật ký."""
+    rows = result["rows"]
+    body = multipart_file("file", f"{FILE_MARKER}.csv", data)
+    upload = call(base, "POST", "/api/batches", raw=body, timeout=120)
+    result["upload_s"] = round(upload.seconds, 2)
+    batch_id = upload.json().get("batch_id") if upload.status == 201 else None
+    if not isinstance(batch_id, str):
+        problems.append(f"tải lên trả {upload.status}")
+        return None
+    if upload.json().get("n_rows") != rows:
+        problems.append(f"n_rows = {upload.json().get('n_rows')}, cần {rows}")
+
+    started = time.perf_counter()
+    run_body = {"text_col": "Góp ý", "group_col": "Nhóm", "review_budget": 10}
+    run = call(base, "POST", f"/api/batches/{batch_id}/run", run_body)
+    if run.status != 202:
+        problems.append(f"chạy trả {run.status}")
+        return batch_id
+    status, progress = poll_until_done(base, batch_id, timeout)
+    result["run_s"] = round(time.perf_counter() - started, 1)
+    if status.get("state") != "done":
+        problems.append(f"batch kết thúc ở trạng thái {status.get('state')}")
+    if progress != sorted(progress):
+        problems.append("tiến độ bị giảm")
+
+    if status.get("state") == "done":
+        results = call(base, "GET", f"/api/batches/{batch_id}/results", timeout=120)
+        summary = results.json().get("summary", {}) if results.status == 200 else {}
+        if results.status != 200:
+            problems.append(f"kết quả trả {results.status}")
+        elif summary.get("n_rows") != rows or len(results.json().get("rows", [])) != rows:
+            problems.append("kết quả không đủ số dòng")
+        elif summary.get("n_flagged", 0) < math.ceil(0.10 * rows):
+            problems.append("số câu bị cờ ít hơn ngân sách 10%")
+        result["flagged"] = summary.get("n_flagged")
+    closed = call(base, "POST", f"/api/batches/{batch_id}/close")
+    gone = call(base, "GET", f"/api/batches/{batch_id}")
+    if closed.status != 204 or gone.status != 404:
+        problems.append(f"đóng batch: close {closed.status}, đọc lại {gone.status}")
+    return batch_id
+
+
 def check_api(base: str) -> dict[str, bool]:
     """Hành vi HTTP cố định của khung API và bản web."""
     missing = call(base, "GET", "/api/khong-co")
@@ -273,9 +446,11 @@ def probe_logged_content(base: str, text: str) -> None:
     call(base, "GET", f"/api/batches/{id_marker}/results?group={group_marker}")
 
 
-def check_logs(logs: str) -> dict[str, bool]:
+def check_logs(logs: str, extra_markers: tuple[str, ...] = ()) -> dict[str, bool]:
+    """`extra_markers` là những chuỗi chỉ biết sau khi chạy (vd. id batch của lần upload thử)."""
+    forbidden = (*MARKERS, FILE_MARKER, *extra_markers)
     return {
-        "logs_have_no_request_content": not any(marker in logs for marker in MARKERS),
+        "logs_have_no_request_content": not any(marker in logs for marker in forbidden),
         "logs_have_route_template": re.search(r"POST /api/analyze 200 \d+ms", logs) is not None,
     }
 
@@ -328,22 +503,49 @@ def wait_for_health(base: str, container: Container, timeout: float = 180.0) -> 
     raise SmokeError(f"/api/health chưa trả 200 sau {timeout:.0f} s")
 
 
+def server_limits(base: str) -> dict:
+    """Giới hạn máy chủ đang áp dụng, đọc từ /api/config để đo đúng thứ đang chạy (VPS có thể đặt
+    EDUPULSE_XAI_MAX_WORDS khác máy đo). Không đọc được thì dùng cấu hình của máy đo."""
+    try:
+        reply = call(base, "GET", "/api/config", timeout=10)
+    except OSError:
+        reply = None
+    limits = reply.json().get("limits") if reply is not None and reply.status == 200 else None
+    value = limits.get("xai_max_words") if isinstance(limits, dict) else None
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return {"xai_max_words": value, "source": "/api/config"}
+    return {"xai_max_words": load_settings().xai_max_words, "source": "cấu hình máy đo"}
+
+
 def measure_service(base: str, texts: list[str], repeat: int) -> dict:
-    """Phần đo HTTP dùng chung cho Docker và `--url`: độ trễ lúc rảnh, câu dài, và khi có tải."""
+    """Phần đo HTTP dùng chung cho Docker và `--url`: độ trễ lúc rảnh, câu dài, và khi có tải.
+
+    `texts` là câu thật với độ dài tự nhiên: nhãn đo trên tất cả, giải thích chỉ trên câu ≤ giới
+    hạn của máy chủ.
+    """
     if not texts:
-        raise SmokeError(f"Không có câu nào ≤ {load_settings().xai_max_words} từ để đo")
-    long_words = round(load_settings().xai_max_words * LONG_SHARE)
-    long = [t for t in texts if len(t.split()) >= long_words]
-    first = post_text(base, "/api/analyze", texts[0])  # gồm nạp JVM ở lần đầu
-    for text in texts[:3]:
+        raise SmokeError("Không có câu nào để đo")
+    limits = server_limits(base)
+    cap = limits["xai_max_words"]
+    sample = random.Random(0).sample(texts, min(len(texts), max(repeat, LABEL_SAMPLES)))
+    explainable = [t for t in sample if len(t.split()) <= cap]
+    if not explainable:
+        raise SmokeError(f"Không có câu nào ≤ {cap} từ để đo giải thích")
+    near_cap = [t for t in texts if round(cap * LONG_SHARE) <= len(t.split()) <= cap]
+    first = post_text(base, "/api/analyze", sample[0])  # gồm nạp JVM ở lần đầu
+    for text in explainable[:3]:
         post_text(base, "/api/explain", text)
-    result: dict = {"first_analyze_s": round(first, 3)}
-    result["latency_idle"] = measure_latency(base, texts, repeat)
-    if len(long) >= 5:
-        result["latency_idle_long"] = measure_latency(base, long, repeat)
-    with Load(base, texts) as load:
+    result: dict = {"limits": limits, "first_analyze_s": round(first, 3)}
+    result["latency_idle"] = measure_latency(base, sample, repeat)
+    if result["latency_idle"]["explain"]["n"] == 0:
+        raise SmokeError(
+            f"Máy chủ không giải thích câu nào trong {repeat} câu mẫu (giới hạn {cap})"
+        )
+    if len(near_cap) >= 5:
+        result["latency_idle_long"] = measure_latency(base, near_cap, repeat)
+    with Load(base, sample) as load:
         time.sleep(1.0)
-        result["latency_under_load"] = measure_latency(base, texts, repeat)
+        result["latency_under_load"] = measure_latency(base, sample, repeat)
     result["load"] = load.summary()
     return result
 
@@ -362,6 +564,7 @@ def run_scenario(
         result["health"] = call(base, "GET", "/api/health").json()
         result.update(measure_service(base, texts, args.repeat))
         result["checks"] = check_api(base)
+        result["upload"], batch_id = check_upload(base, texts)
         probe_logged_content(base, texts[0])
         bench_name = f"{server.name}-bench"
         result["bench"] = run_bench(
@@ -386,7 +589,8 @@ def run_scenario(
                 BATCHED_REFERENCE,
             )
         # Đọc sau bench để các dòng nhật ký của yêu cầu dò đã kịp ghi ra.
-        result["checks"].update(check_logs("".join(server.logs())))
+        extra_markers = () if batch_id is None else (batch_id,)
+        result["checks"].update(check_logs("".join(server.logs()), extra_markers))
         result["server_memory_peak_mb"] = server.memory_peak_mb()
         result["server_state"] = server.state()
     finally:
@@ -400,6 +604,7 @@ def run_remote(args: argparse.Namespace, texts: list[str]) -> dict:
     result["health"] = call(base, "GET", "/api/health").json()
     result.update(measure_service(base, texts, args.repeat))
     result["checks"] = check_api(base)
+    result["upload"], _ = check_upload(base, texts)
     return result
 
 
@@ -471,13 +676,33 @@ def build_image(args: argparse.Namespace) -> dict:
 # --- Kết luận và báo cáo ------------------------------------------------------------------------
 
 
+def p95_of(gate: dict, situation: str, command: str) -> float | None:
+    """p95 đã đo của `command` ở `situation` (vd. "latency_idle", "analyze"); None nếu chưa đo."""
+    summary = gate.get(situation, {}).get(command)
+    return summary.get("p95_s") if isinstance(summary, dict) else None
+
+
+def describe_upload(upload: dict | None) -> str | None:
+    if not upload:
+        return None
+    text = f"{upload['bytes'] / 1048576:.1f} MB, {upload['rows']} dòng"
+    return text if "run_s" not in upload else f"{text}, chạy {upload['run_s']:g} s"
+
+
 def verdict_rows(gate: dict) -> list[dict]:
-    """Bảng go/no-go; `ok` là None khi chỉ số không đo được ở chế độ này."""
+    """Bảng go/no-go; `ok` là None khi chỉ số không đo được ở chế độ này.
+
+    Nhãn và giải thích là hai dòng riêng với hai p95 riêng (PDR 5): nhãn đo trên mọi câu, giải
+    thích chỉ trên câu ≤ `limits.xai_max_words` của máy chủ.
+    """
     bench = gate.get("bench") or {}
     peaks = [gate.get("server_memory_peak_mb"), bench.get("cgroup_memory_peak_mb")]
     peak = max((p for p in peaks if p is not None), default=None)
     ooms = [gate.get("server_state", {}).get("oom_killed"), bench.get("oom_killed")]
-    pair = gate["latency_idle"]["analyze_explain"]["p95_s"]
+    label = p95_of(gate, "latency_idle", "analyze")
+    explain = p95_of(gate, "latency_idle", "explain")
+    cap = gate.get("limits", {}).get("xai_max_words", "?")
+    upload = gate.get("upload")
     checks = gate.get("checks", {})
 
     def within(value: float | None, limit: float) -> bool | None:
@@ -501,10 +726,16 @@ def verdict_rows(gate: dict) -> list[dict]:
             within(peak, GO["memory_peak_mb"]),
         ),
         row(
-            "1 câu + giải thích, p95 (s)",
-            f"≤ {GO['single_p95_s']}",
-            pair,
-            within(pair, GO["single_p95_s"]),
+            "Nhãn 1 câu: p95 /api/analyze (s)",
+            f"≤ {GO['label_p95_s']:g}",
+            label,
+            within(label, GO["label_p95_s"]),
+        ),
+        row(
+            f"Giải thích: p95 /api/explain, câu ≤ {cap} từ (s)",
+            f"≤ {GO['explain_p95_s']:g}",
+            explain,
+            within(explain, GO["explain_p95_s"]),
         ),
         row(
             "1.000 câu end-to-end (s)",
@@ -519,6 +750,12 @@ def verdict_rows(gate: dict) -> list[dict]:
             within(gate.get("startup_s"), GO["startup_s"]),
         ),
         row(
+            f"Upload {UPLOAD_MB}MB chạy xong",
+            "không lỗi",
+            describe_upload(upload),
+            None if not upload else bool(upload.get("ok")),
+        ),
+        row(
             "Hành vi API và nhật ký",
             "tất cả đạt",
             f"{sum(checks.values())}/{len(checks)}",
@@ -527,9 +764,21 @@ def verdict_rows(gate: dict) -> list[dict]:
     ]
 
 
+def is_go(verdict: list[dict]) -> bool:
+    """GO khi không dòng nào KHÔNG ĐẠT; chỉ số không đo được (ok = None) không làm hỏng kết luận."""
+    return all(row["ok"] is not False for row in verdict)
+
+
 def table(header: list[str], rows: list[list]) -> list[str]:
     cells = lambda row: "| " + " | ".join("-" if c is None else str(c) for c in row) + " |"  # noqa: E731
     return [cells(header), "|" + "---|" * len(header), *(cells(row) for row in rows)]
+
+
+COMMAND_TITLES = {
+    "analyze": "nhãn (/api/analyze)",
+    "explain": "giải thích (/api/explain)",
+    "analyze_explain": "cặp song song như giao diện (tham khảo)",
+}
 
 
 def latency_rows(gate: dict) -> list[list]:
@@ -539,9 +788,32 @@ def latency_rows(gate: dict) -> list[list]:
         "latency_under_load": "đang có tải",
     }
     return [
-        [title, name, s["n"], s["p50_s"], s["p95_s"], s["max_s"]]
+        [title, COMMAND_TITLES.get(name, name), s["n"], s["p50_s"], s["p95_s"], s["max_s"]]
         for key, title in titles.items()
         for name, s in gate.get(key, {}).items()
+        if isinstance(s, dict)  # bỏ `not_explained` (một số nguyên)
+    ]
+
+
+def latency_summary(gate: dict) -> list[str]:
+    """Hai p95 chấm riêng, nêu thẳng ngưỡng, số mẫu và vì sao số mẫu giải thích ít hơn."""
+    idle = gate.get("latency_idle")
+    if not idle:
+        return []
+    label, explain = idle["analyze"], idle["explain"]
+    limits = gate.get("limits", {})
+    cap, source = limits.get("xai_max_words", "?"), limits.get("source", "-")
+    return [
+        "",
+        "Hai chỉ số độ trễ chấm riêng (PDR 5: nhãn hiện ngay, giải thích tải sau), đo lúc máy rảnh,"
+        " từng lời gọi một:",
+        "",
+        f"- **Nhãn**, p95 của /api/analyze: **{label['p95_s']} s**"
+        f" (ngưỡng ≤ {GO['label_p95_s']:g}), trên {label['n']} câu thật, mọi độ dài.",
+        f"- **Giải thích**, p95 của /api/explain: **{explain['p95_s']} s**"
+        f" (ngưỡng ≤ {GO['explain_p95_s']:g}), trên {explain['n']} câu không quá {cap} từ"
+        f" (giới hạn đọc từ {source}); {idle.get('not_explained', 0)}/{label['n']} câu mẫu dài hơn"
+        " giới hạn nên không được giải thích và không tính vào số này.",
     ]
 
 
@@ -572,6 +844,7 @@ def render_markdown(report: dict) -> str:
         [r["metric"], r["threshold"], r["value"], OUTCOME[r["ok"]]] for r in report["verdict"]
     ]
     lines += table(["Chỉ số", "Ngưỡng", "Đo được", "Kết quả"], verdict)
+    lines += latency_summary(gate)
 
     lines += ["", "## Độ trễ từ máy chủ (giây)", ""]
     lines += table(["Tình huống", "Lệnh", "n", "p50", "p95", "max"], latency_rows(gate))
@@ -630,19 +903,35 @@ def render_markdown(report: dict) -> str:
     elif batched:
         lines += ["", "## Tham khảo: bench theo lô 32", "", f"Lỗi: {batched['error']}"]
 
+    upload = gate.get("upload")
+    if upload:
+        lines += ["", f"## Upload {UPLOAD_MB}MB (đường batch như người dùng thật)", ""]
+        lines.append(
+            f"- File {upload['bytes'] / 1048576:.1f} MB, {upload['rows']} dòng:"
+            f" tải lên {upload.get('upload_s', '-')} s, chạy {upload.get('run_s', '-')} s,"
+            f" {upload.get('flagged', '-')} câu bị cờ"
+        )
+        lines.append(f"- Kết quả: {'đạt' if upload['ok'] else 'KHÔNG ĐẠT'}")
+        lines += [f"- Lỗi: {problem}" for problem in upload.get("problems", [])]
+
     lines += ["", "## Kiểm tra hành vi", ""]
     lines += [
         f"- {name}: {'đạt' if ok else 'KHÔNG ĐẠT'}" for name, ok in gate.get("checks", {}).items()
     ]
     for extra in report["runs"][1:]:
-        pair = extra["latency_idle"]["analyze_explain"]["p95_s"]
+        idle = extra["latency_idle"]
         total = (extra.get("bench") or {}).get("total_s", "-")
         lines += ["", f"## Tham khảo: {extra['cpus']:g} CPU", ""]
         lines += [
-            f"- Khởi động {extra.get('startup_s')} s; 1 câu + giải thích p95 {pair} s;"
-            f" 1.000 câu {total} s"
+            f"- Khởi động {extra.get('startup_s')} s; nhãn p95 {idle['analyze']['p95_s']} s;"
+            f" giải thích p95 {idle['explain']['p95_s']} s; 1.000 câu {total} s"
         ]
-    lines += ["", "Số đo trên M1 đọc với hệ số an toàn ×3 cho VPS x86 chia sẻ; chưa đo x86."]
+    lines += [
+        "",
+        "Số đo trên M1 (Docker trong VM Mac); chưa đo x86. Thời gian 1.000 câu đọc với hệ số an"
+        " toàn ×3 cho VPS x86 chia sẻ. Giới hạn số từ của giải thích (XAI_MAX_WORDS) chốt lại"
+        " sau khi đo trên VPS thật bằng `--url`.",
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -694,9 +983,8 @@ def parse_args(settings: Settings) -> argparse.Namespace:
 
 def measure(args: argparse.Namespace, settings: Settings) -> tuple[list[dict], dict | None]:
     texts = read_sentences(args, settings)
-    short = [t for t in texts if len(t.split()) <= settings.xai_max_words]
     if args.url:
-        return [run_remote(args, short)], None
+        return [run_remote(args, texts)], None
     image = build_image(args)
     with tempfile.TemporaryDirectory() as workdir:
         os.chmod(workdir, 0o755)  # container chạy uid 1000 phải đọc được thư mục gắn vào
@@ -705,9 +993,9 @@ def measure(args: argparse.Namespace, settings: Settings) -> tuple[list[dict], d
             "\n".join(t.replace("\n", " ") for t in texts[: args.n]) + "\n", encoding="utf-8"
         )
         bench_file.chmod(0o644)
-        runs = [run_scenario(args, "gate", args.cpus, short, bench_file)]
+        runs = [run_scenario(args, "gate", args.cpus, texts, bench_file)]
         if args.also_1cpu:
-            runs.append(run_scenario(args, "1cpu", 1.0, short, bench_file))
+            runs.append(run_scenario(args, "1cpu", 1.0, texts, bench_file))
     return runs, image
 
 
@@ -737,7 +1025,7 @@ def main() -> int:
         "image": image,
         "runs": runs,
         "verdict": verdict,
-        "go": all(row["ok"] is not False for row in verdict),
+        "go": is_go(verdict),
         "thresholds": GO,
     }
     args.out_dir.mkdir(parents=True, exist_ok=True)
