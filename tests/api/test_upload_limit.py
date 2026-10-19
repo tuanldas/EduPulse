@@ -1,19 +1,35 @@
-"""Middleware giới hạn upload: chặn theo Content-Length, và đếm byte khi chunked."""
+"""Middleware giới hạn thân yêu cầu: chặn theo Content-Length, và đếm byte khi chunked.
+
+`UploadLimitMiddleware` lo `POST /api/batches` (file); `JsonBodyLimitMiddleware` lo thân JSON của
+mọi POST/DELETE còn lại. App thật xếp cả hai, nên các test route khác đều chạy qua cặp đó.
+"""
 
 import asyncio
 import json
 from collections.abc import Iterable
 
 import pytest
+from fastapi.testclient import TestClient
 
+from edupulse.api.main import create_app
+from edupulse.api.schemas import ExportRequest, LabelOverride
 from edupulse.api.upload_limit import (
+    MAX_JSON_BYTES,
     MAX_UPLOAD_BYTES,
     MULTIPART_OVERHEAD,
+    JsonBodyLimitMiddleware,
     UploadLimitMiddleware,
 )
+from edupulse.config import MAX_ROWS, Settings
 
 LIMIT = MAX_UPLOAD_BYTES + MULTIPART_OVERHEAD
+KB = 1 << 10
 MB = 1 << 20
+
+
+def app_stack(app):
+    """Hai lớp giới hạn xếp như trong `create_app`."""
+    return JsonBodyLimitMiddleware(UploadLimitMiddleware(app))
 
 
 async def echo_size_app(scope, receive, send):
@@ -39,6 +55,7 @@ def call(
     method: str = "POST",
     path: str = "/api/batches",
     scope_type: str = "http",
+    stack=UploadLimitMiddleware,
 ):
     """Chạy middleware một lần; trả (các message đã gửi, số lần receive được gọi)."""
     sent: list[dict] = []
@@ -62,7 +79,7 @@ def call(
         "path": path,
         "headers": [(k.lower().encode(), v.encode()) for k, v in headers],
     }
-    asyncio.run(UploadLimitMiddleware(echo_size_app)(scope, receive, send))
+    asyncio.run(stack(echo_size_app)(scope, receive, send))
     return sent, calls
 
 
@@ -137,21 +154,129 @@ def test_both_spellings_of_the_upload_path_are_guarded(path: str):
     assert status_of(sent) == 413
 
 
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/batches"),
-        ("POST", "/api/analyze"),
-        ("POST", "/api/batches/abc/run"),
-        ("POST", "/api/batches/sample"),
-        ("DELETE", "/api/batches"),
-    ],
-)
-def test_other_routes_are_not_limited(method: str, path: str):
+def test_the_upload_limiter_alone_leaves_every_other_route_to_the_json_limiter():
     sent, _ = call(
-        [b"x" * 100], headers=[("Content-Length", str(50 * MB))], method=method, path=path
+        [b"x" * 100], headers=[("Content-Length", str(50 * MB))], method="POST", path="/api/analyze"
+    )
+    assert status_of(sent) == 200  # UploadLimitMiddleware chỉ lo đường dẫn upload
+
+
+# --- Thân JSON: 512KB cho mọi POST/DELETE ngoài upload ------------------------------------------
+
+JSON_ROUTES = [
+    ("POST", "/api/analyze"),
+    ("POST", "/api/explain"),
+    ("POST", "/api/batches/abc/run"),
+    ("POST", "/api/batches/abc/insights"),
+    ("POST", "/api/batches/abc/export"),
+    ("POST", "/api/batches/abc/heartbeat"),
+    ("POST", "/api/batches/sample"),
+    ("DELETE", "/api/batches/abc"),
+]
+
+
+@pytest.mark.parametrize(("method", "path"), JSON_ROUTES)
+def test_a_json_body_declared_over_512kb_is_refused_without_reading_it(method: str, path: str):
+    sent, receive_calls = call(
+        [b"x" * 100],
+        headers=[("Content-Length", str(50 * MB))],
+        method=method,
+        path=path,
+        stack=app_stack,
+    )
+    assert status_of(sent) == 413 and receive_calls == 0
+    detail = json.loads(body_of(sent))["detail"]
+    assert detail == {
+        "code": "payload_too_large",
+        "message": "Dữ liệu gửi lên quá lớn.",
+        "params": {"max_kb": 512},
+    }
+    headers = dict(next(m for m in sent if m["type"] == "http.response.start")["headers"])
+    assert headers[b"content-type"] == b"application/json" and headers[b"connection"] == b"close"
+
+
+def test_the_json_limit_is_inclusive_and_is_512kb():
+    assert MAX_JSON_BYTES == 512 * KB
+    at_limit = [b"x" * KB] * 512
+    sent, _ = call(
+        at_limit,
+        headers=[("Content-Length", str(MAX_JSON_BYTES))],
+        path="/api/analyze",
+        stack=app_stack,
+    )
+    assert status_of(sent) == 200 and body_of(sent) == str(MAX_JSON_BYTES).encode()
+    sent, receive_calls = call(
+        [b"x"],
+        headers=[("Content-Length", str(MAX_JSON_BYTES + 1))],
+        path="/api/analyze",
+        stack=app_stack,
+    )
+    assert status_of(sent) == 413 and receive_calls == 0
+    sent, _ = call([*at_limit, b"x"], path="/api/analyze", stack=app_stack)  # chunked, hơn 1 byte
+    assert status_of(sent) == 413
+
+
+@pytest.mark.parametrize(("method", "path"), JSON_ROUTES)
+def test_a_chunked_json_body_is_cut_off_early_and_never_read_to_the_end(method: str, path: str):
+    # 250MB nếu đọc hết: đúng kịch bản đo được (thân ~250MB làm container chết).
+    sent, receive_calls = call([b"x" * MB] * 250, method=method, path=path, stack=app_stack)
+    assert status_of(sent) == 413
+    assert receive_calls <= 3  # dừng ở khúc đầu tiên vượt 512KB
+    assert [m["type"] for m in sent] == ["http.response.start", "http.response.body"]
+
+
+def test_a_lying_content_length_cannot_hide_a_large_json_body():
+    sent, receive_calls = call(
+        [b"x" * MB] * 50, headers=[("Content-Length", "100")], path="/api/analyze", stack=app_stack
+    )
+    assert status_of(sent) == 413 and receive_calls <= 3
+
+
+@pytest.mark.parametrize("path", ["/api/batches", "/api/batches/"])
+def test_the_upload_path_keeps_its_own_limit_and_error_under_the_json_limiter(path: str):
+    sent, _ = call(
+        [b"x" * 100], headers=[("Content-Length", str(5 * MB))], path=path, stack=app_stack
+    )
+    assert status_of(sent) == 200  # 5MB là file hợp lệ, không bị trần JSON
+    sent, receive_calls = call(
+        [b"x"], headers=[("Content-Length", str(50 * MB))], path=path, stack=app_stack
+    )
+    assert status_of(sent) == 413 and receive_calls == 0
+    assert json.loads(body_of(sent))["detail"]["code"] == "file_too_large"
+
+
+@pytest.mark.parametrize("path", ["/api/batches", "/api/batches/abc", "/api/health", "/api/config"])
+def test_reading_never_hits_a_body_limit(path: str):
+    sent, _ = call(
+        [b"x" * 100],
+        headers=[("Content-Length", str(50 * MB))],
+        method="GET",
+        path=path,
+        stack=app_stack,
     )
     assert status_of(sent) == 200
+
+
+def test_the_largest_legitimate_json_request_fits_with_plenty_of_room():
+    overrides = [
+        LabelOverride(index=MAX_ROWS - 1, sentiment="negative", topic="training_program")
+        for _ in range(MAX_ROWS)
+    ]
+    body = json.dumps(ExportRequest(kind="corrected", overrides=overrides).model_dump())
+    assert len(body) < MAX_JSON_BYTES // 3  # xuất file 2.000 dòng chỉnh nhãn ~140KB
+
+
+def test_the_real_app_refuses_oversized_json_before_routing(settings: Settings):
+    client = TestClient(create_app(settings))  # không chạy lifespan: 413 đến từ middleware
+    big = b"a" * (600 * KB)
+    for method, path in JSON_ROUTES:
+        response = client.request(
+            method, path, content=big, headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 413, (method, path)
+        assert response.json()["detail"]["code"] == "payload_too_large"
+        assert response.headers["x-content-type-options"] == "nosniff"  # qua middleware ngoài
+    assert client.get("/api/openapi.json").status_code == 200  # đọc thì không bị trần
 
 
 def test_non_http_scopes_pass_straight_through():
