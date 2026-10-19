@@ -73,10 +73,14 @@ export function ComparePanel({ analysis, explain, baseline }: ComparePanelProps)
           </div>
           <p className="text-sm leading-[1.55] text-muted-foreground">
             {explained ? (
-              <>
-                Từ quyết định: <Terms terms={supportWords(explained, "sentiment")} /> · chủ đề:{" "}
-                <Terms terms={supportWords(explained, "topic")} />.
-              </>
+              supportWords(explained, "sentiment").length + supportWords(explained, "topic").length === 0 ? (
+                "Không có từ nào ảnh hưởng đủ lớn để nêu là từ quyết định (xem phần giải thích)."
+              ) : (
+                <>
+                  Từ quyết định: <Terms terms={supportWords(explained, "sentiment")} /> · chủ đề:{" "}
+                  <Terms terms={supportWords(explained, "topic")} />.
+                </>
+              )
             ) : explain.status === "skipped" ? (
               "Câu dài nên không tính từ quyết định."
             ) : (
