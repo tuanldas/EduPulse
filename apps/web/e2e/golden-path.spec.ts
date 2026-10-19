@@ -263,6 +263,15 @@ test.describe("đường vàng · trang 4 · mô hình & đạo đức", () => {
     await expect(page.getByRole("heading", { name: "Mô hình & đạo đức", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Model card" })).toBeVisible({ timeout: 20_000 });
 
+    // Ở 1440 bảng so sánh vừa khung: mọi cột, kể cả cột cuối (ECE), hiện trọn mà không phải cuộn trong khung.
+    const comparison = page.getByRole("table", { name: "So sánh với mô hình cơ sở" });
+    await expect(comparison).toBeVisible();
+    const hiddenWidth = await comparison.evaluate((table) => {
+      const frame = table.parentElement;
+      return frame ? frame.scrollWidth - frame.clientWidth : 0;
+    });
+    expect(hiddenWidth, "bảng so sánh mô hình bị che một phần ở 1440").toBeLessThanOrEqual(1);
+
     // Bốn chỉ số của cảm xúc, rồi chủ đề.
     for (const label of ["Accuracy", "Macro-F1", "ECE (sau hiệu chỉnh)"]) {
       await expect(page.locator("dt", { hasText: label }).first()).toBeVisible();
@@ -297,6 +306,15 @@ test.describe("đường vàng · trang 4 · mô hình & đạo đức", () => {
     await page.goto("/model/#giay-phep");
     await expect(page.getByRole("heading", { name: "Model card" })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /Giấy phép, mã nguồn/ })).toBeInViewport();
+    expect(problems).toEqual([]);
+    await context.close();
+  });
+
+  test("neo hỏng trên địa chỉ (#%E0%A4%A) không làm hỏng trang", async ({ browser }) => {
+    const { context, page, problems } = await openPage(browser, DESKTOP, "light");
+    await page.goto("/model/#%E0%A4%A");
+    await expect(page.getByRole("heading", { name: "Model card" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: /Giấy phép, mã nguồn/ })).toBeVisible();
     expect(problems).toEqual([]);
     await context.close();
   });

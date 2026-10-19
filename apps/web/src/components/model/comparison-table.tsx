@@ -9,11 +9,15 @@ type Architecture = ModelCard["architectures"][number];
 
 const DASH = "—";
 
+// Tên mô hình do bundle đặt và có thể dài ("PhoBERT đa nhiệm · int8 (bản triển khai)", "Đơn nhiệm (STL), sơ bộ:
+// validation, 1 seed"), nên cột tên được xuống dòng thay vì đẩy các cột số ra ngoài khung bảng.
+const NAME_CELL = "min-w-48";
+
 function BaselineRowView({ row }: { row: Baseline }) {
   const strong = row.deployed ? "font-semibold" : undefined;
   return (
     <TableRow data-highlight={row.deployed}>
-      <TableCell className={cn("whitespace-nowrap", strong)}>
+      <TableCell className={cn(NAME_CELL, strong)}>
         {row.name} {row.deployed ? <Badge>đang dùng</Badge> : null}
       </TableCell>
       <TableCell className={cn("text-right tabular-nums", strong)}>{formatScore(row.sentiment_accuracy)}</TableCell>
@@ -30,10 +34,14 @@ function BaselineRowView({ row }: { row: Baseline }) {
 function ArchitectureRowView({ row }: { row: Architecture }) {
   const stat = (value: { mean: number; std: number; n: number }) =>
     `${formatScore(value.mean)} ± ${formatScore(value.std)}`;
+  // Số seed chỉ ghi thêm khi tên chưa nói (tránh "1 seed (1 seed)").
+  const seedNote = /seed/i.test(row.name) ? null : (
+    <span className="text-xs text-muted-foreground">({row.seeds.length} seed)</span>
+  );
   return (
     <TableRow>
-      <TableCell className="whitespace-nowrap">
-        {row.name} <span className="text-xs text-muted-foreground">({row.seeds.length} seed)</span>
+      <TableCell className={NAME_CELL}>
+        {row.name} {seedNote}
       </TableCell>
       <TableCell className="text-right text-muted-foreground">{DASH}</TableCell>
       <TableCell className="text-right whitespace-nowrap tabular-nums">{stat(row.sentiment_macro_f1)}</TableCell>

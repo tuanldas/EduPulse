@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { defaultBudgetRow } from "@/components/model/derive";
 import { ModelPage } from "@/components/model/model-page";
@@ -175,6 +175,45 @@ describe("trang Mô hình & đạo đức", () => {
     await screen.findByText(/Chưa có model card cho bản mô hình đang chạy/);
     expect(screen.getByRole("heading", { name: "Quyền riêng tư & vai trò của con người" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Giấy phép, mã nguồn/ })).toBeInTheDocument();
+  });
+
+  describe("neo trên địa chỉ trang", () => {
+    const scrolled: string[] = [];
+
+    beforeEach(() => {
+      scrolled.length = 0;
+      // jsdom không cài scrollIntoView; ghi lại phần tử được cuộn tới.
+      Object.defineProperty(Element.prototype, "scrollIntoView", {
+        configurable: true,
+        writable: true,
+        value(this: Element) {
+          scrolled.push(this.id);
+        },
+      });
+    });
+
+    afterEach(() => {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      window.history.replaceState(null, "", "/");
+    });
+
+    it("neo hợp lệ: cuộn tới đúng mục sau khi model card đã nạp", async () => {
+      serve();
+      window.history.replaceState(null, "", "/model/#giay-phep");
+      render(<ModelPage />);
+      await screen.findByRole("heading", { name: "Model card" });
+      await waitFor(() => expect(scrolled).toEqual(["giay-phep"]));
+    });
+
+    it("neo hỏng (vd. #%E0%A4%A): không ném lỗi, trang vẫn hiện đủ và không cuộn đi đâu", async () => {
+      serve();
+      window.history.replaceState(null, "", "/model/#%E0%A4%A");
+      expect(window.location.hash).toBe("#%E0%A4%A");
+      render(<ModelPage />);
+      await screen.findByRole("heading", { name: "Model card" });
+      expect(screen.getByRole("heading", { name: /Giấy phép, mã nguồn/ })).toBeInTheDocument();
+      expect(scrolled).toEqual([]);
+    });
   });
 
   it("lỗi máy chủ: báo bằng tiếng Việt và thử lại được", async () => {
