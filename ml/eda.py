@@ -31,7 +31,16 @@ from edupulse.text import NORMALIZER_VERSION, count_ngrams  # noqa: E402
 from edupulse.text.normalize import TONE_MAP  # noqa: E402
 from ml.common import SPLITS, load_processed, processed_manifest, write_json  # noqa: E402
 from ml.phobert_model import BASE_REVISION, load_tokenizer  # noqa: E402
-from ml.plotting import BACKGROUND, COLORS, GRID, INK, MUTED, setup_style, vn  # noqa: E402,F401
+from ml.plotting import (  # noqa: E402,F401
+    BACKGROUND,
+    COLORS,
+    GRID,
+    INK,
+    MUTED,
+    setup_style,
+    vietnamese_axes,
+    vn,
+)
 
 LOG = logging.getLogger("eda")
 RESULTS = REPO_ROOT / "results"
@@ -273,6 +282,7 @@ def length_report(data: pd.DataFrame) -> dict[str, Any]:
         ax.set_ylabel("Số câu" if unit == "syllables" else "")
         ax.grid(axis="y", color=GRID, linewidth=0.6)
         ax.set_axisbelow(True)
+        vietnamese_axes(ax)
     fig.suptitle("Phân bố độ dài câu (cả ba tập)", x=0.01, y=1.04, ha="left", fontweight="bold")
     save_figure(fig, "eda_length.png")
     return {
