@@ -88,7 +88,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table className="min-w-[1080px]">
+      <Table className="min-w-[1080px]" label={editable ? "Danh sách câu cần duyệt" : "Toàn bộ kết quả phân tích"}>
         <caption className="sr-only">
           {editable ? "Danh sách câu cần duyệt, có cột để sửa nhãn" : "Toàn bộ kết quả phân tích"}
         </caption>

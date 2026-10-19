@@ -144,7 +144,7 @@ function Preview({ columns, rows, nRows }: PreviewProps) {
         />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-2 border-t border-divider px-4 pt-2 pb-4">
-        <Table>
+        <Table label="Xem trước các dòng đầu của file">
           <TableHeader>
             <TableRow>
               {columns.map((column, index) => (
