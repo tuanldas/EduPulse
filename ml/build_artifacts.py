@@ -50,6 +50,7 @@ from ml import freeze as freeze_lib
 from ml.common import (
     SPLITS,
     assert_normalizer,
+    find_invariance_evidence,
     load_processed,
     normalizer_compatible,
     read_json,
@@ -62,6 +63,7 @@ from ml.common import (
 from ml.download_data import DATASET_REPO, load_raw_manifest
 from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, unk_alias_gap
 from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
+from ml.plotting import vn
 from ml.release_card import ReleaseError, build_release_card
 from ml.train_baseline import load_model
 
@@ -95,13 +97,30 @@ OUT_OF_SCOPE = (
     "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra "
     "quyết định tự động khi không có người duyệt."
 )
+# Ẩn thông tin cá nhân là luật (edupulse.text.pii), không phải mô hình. Hai câu dưới đây phải đúng
+# với luật: tests/ml/test_build_artifacts.py kiểm từng ví dụ bằng chính `mask`.
+PII_MASKED = (
+    "Ẩn thông tin cá nhân là best effort theo luật, không phải mô hình. Ẩn được: số điện thoại "
+    "(di động, bàn, kể cả có ngoặc quanh mã vùng), email, CCCD/CMND, mã sinh viên (số, hoặc chữ "
+    "HOA và số như B20DCCN123), liên kết (cả github.com/x/y, instagram.com/x không có http), @tên "
+    "tài khoản, và tên Viết Hoa đứng sau từ xưng hô hoặc chức danh (thầy, cô, thầy giáo, cô giáo, "
+    "giảng viên, hiệu trưởng, trưởng khoa, trợ giảng, cố vấn...)."
+)
+PII_MISSED = (
+    "Thông tin cá nhân còn sót: tên viết thường; tên không đứng sau từ xưng hô hay chức danh khi "
+    "EDUPULSE_NER=0 (mặc định, không dùng nhận diện tên); mã 7 chữ số hoặc mã không kèm từ gợi ý "
+    "(dễ nhầm mã môn, mã lớp); mã sinh viên chữ-số viết thường; liên kết không có http hay www và "
+    "không thuộc các mạng xã hội thông dụng."
+)
+PREVIOUS_BUNDLE = "v1.0"  # bản đã được chấm test, trước khi chuẩn hoá đổi
 # Giới hạn không gắn với một con số đo được; bản phát hành thêm các giới hạn kèm số đo trên test.
 STATIC_LIMITATIONS = [
     "Mỉa mai, châm biếm dễ bị hiểu sai.",
     "Câu viết hoa chữ đầu mọi từ dễ bị luật ẩn tên coi nhiều từ là tên người, làm đổi nhãn.",
     "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
-    "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
+    PII_MASKED,
+    PII_MISSED,
     "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
     "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt.",
 ]
@@ -152,6 +171,27 @@ def assert_same_normalizer(
             f"normalizer_version không đồng nhất: {versions}, run huấn luyện {trained_with!r} "
             "(khác bản của mã thì cần results/metrics/normalizer_v*_invariance.json còn hiệu lực)"
         )
+
+
+def evaluation_notes(trained_with: str | None) -> list[str]:
+    """Ghi chú nguồn gốc số test khi mô hình do bản chuẩn hoá cũ hơn huấn luyện và chấm.
+
+    Số test là của lần chấm duy nhất ở bản trước; chuẩn hoá mới cho model_text giống hệt trên mọi
+    câu của dữ liệu nên chúng áp dụng nguyên vẹn, không chấm lại. Cùng bản chuẩn hoá thì không cần.
+    """
+    evidence = find_invariance_evidence(trained_with)
+    if evidence is None:
+        return []
+    checks, old, new = evidence["checks"], evidence["from"], evidence["to"]
+    same_bytes = checks.get("parquet_files_byte_identical")
+    data = "tệp dữ liệu đã xử lý giống hệt từng byte" if same_bytes else "mọi cột dữ liệu giống hệt"
+    return [
+        f"Số liệu test là của lần chấm duy nhất trên bản {PREVIOUS_BUNDLE} (cùng mô hình, "
+        f"calibration và baseline; chuẩn hoá bản {old}). Chuẩn hoá bản {new} cho model_text giống "
+        f"hệt bản {old} trên cả {vn(checks['sentences'], 0)} câu UIT-VSFC ({data}), nên các số này "
+        "áp dụng nguyên vẹn cho bundle này và test không được chấm lại (bằng chứng: "
+        f"results/metrics/normalizer_v{new}_invariance.json)."
+    ]
 
 
 def guard_texts(directory: Path) -> dict[str, str]:
@@ -412,6 +452,7 @@ def build(
                 out_of_scope=OUT_OF_SCOPE,
                 static_limitations=STATIC_LIMITATIONS,
                 notes=ModelCardNotes(x86=NOTE_X86, demo=NOTE_DEMO),
+                evaluation_notes=evaluation_notes(history.get("normalizer_version")),
             )
         except ReleaseError as error:
             raise BundleError(str(error)) from error

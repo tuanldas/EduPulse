@@ -324,8 +324,9 @@ def ethics_block(manifest: Manifest) -> str:
             "dùng để chấm điểm, xếp loại hay kỷ luật giảng viên hoặc sinh viên.",
             "- **Con người quyết định.** Câu có độ tin cậy thấp được gắn cờ để người duyệt; hệ "
             "thống không tự ra quyết định.",
-            "- **Thông tin cá nhân.** Ứng dụng thay số điện thoại, email, mã số sinh viên và tên "
-            "người (cố gắng tối đa, tên viết thường có thể sót) trước khi phân tích.",
+            "- **Thông tin cá nhân.** Ứng dụng thay số điện thoại, email, CCCD/CMND, mã sinh viên, "
+            "liên kết, @tên tài khoản và tên người viết hoa sau từ xưng hô hoặc chức danh trước "
+            "khi phân tích (cố gắng tối đa: tên viết thường và tên đứng riêng có thể sót).",
         ]
     )
 

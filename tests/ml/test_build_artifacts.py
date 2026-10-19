@@ -10,6 +10,7 @@ from bundle_factory import BASE_ROWS, TOTAL_ROWS, UNK, background, tiny_onnx, wr
 
 from edupulse.bundle_schema import GoldenPredictions
 from edupulse.text import NORMALIZER_VERSION
+from edupulse.text.pii import mask
 from ml import build_artifacts as builder
 from ml.common import load_processed, sha256_file, write_json
 
@@ -124,6 +125,80 @@ def test_a_run_from_an_older_normalizer_needs_the_invariance_evidence(monkeypatc
         builder.assert_same_normalizer(history, background(), golden)
     monkeypatch.setattr(builder, "normalizer_compatible", lambda found: found == "0")
     builder.assert_same_normalizer(history, background(), golden)  # có bằng chứng thì qua
+
+
+def evidence(**checks):
+    return {
+        "from": "1",
+        "to": NORMALIZER_VERSION,
+        "checks": {"sentences": 16175, "parquet_files_byte_identical": True, **checks},
+    }
+
+
+def test_the_card_says_where_the_test_numbers_come_from_when_the_normalizer_changed(monkeypatch):
+    monkeypatch.setattr(builder, "find_invariance_evidence", lambda found: evidence())
+    (note,) = builder.evaluation_notes("1")
+    assert builder.PREVIOUS_BUNDLE in note and "chuẩn hoá bản 1" in note
+    assert "16.175 câu" in note and "giống hệt từng byte" in note
+    assert f"normalizer_v{NORMALIZER_VERSION}_invariance.json" in note
+    assert "không được chấm lại" in note
+    monkeypatch.setattr(
+        builder,
+        "find_invariance_evidence",
+        lambda found: evidence(parquet_files_byte_identical=False),
+    )
+    assert "giống hệt từng byte" not in builder.evaluation_notes("1")[0]
+
+
+def test_no_note_is_needed_when_the_normalizer_did_not_change_or_has_no_proof(monkeypatch):
+    monkeypatch.setattr(builder, "find_invariance_evidence", lambda found: None)
+    assert builder.evaluation_notes(NORMALIZER_VERSION) == []
+    assert builder.evaluation_notes("1") == []
+    assert builder.evaluation_notes(None) == []
+
+
+# Mỗi ví dụ trong hai câu giới hạn về thông tin cá nhân phải đúng với luật `mask`.
+MASKED_EXAMPLES = [
+    "(028) 3812 3456",
+    "(024)38686868",
+    "0912 345 678",
+    "abc.def@gmail.com",
+    "cccd 001095012345",
+    "mssv 18520001",
+    "B20DCCN123",
+    "github.com/x/y",
+    "instagram.com/x",
+    "@tenban",
+    "Thầy Nam",
+    "Cô giáo Lan",
+    "Thầy giáo Minh",
+    "giảng viên Trần Văn Bình",
+    "hiệu trưởng Hùng",
+    "trưởng khoa Lan",
+    "trợ giảng Minh",
+    "cố vấn Hà",
+]
+MISSED_EXAMPLES = ["thầy nam", "cô giáo lan", "Nguyễn Văn An", "mã 1712345", "b20dccn123"]
+
+
+@pytest.mark.parametrize("text", MASKED_EXAMPLES)
+def test_what_the_card_says_is_masked_really_is_masked(text):
+    assert mask(text).types, text
+
+
+@pytest.mark.parametrize("text", MISSED_EXAMPLES)
+def test_what_the_card_says_is_missed_really_is_missed(text):
+    assert mask(text).types == (), text
+
+
+def test_the_pii_limitations_are_in_the_release_list_and_name_the_known_gaps():
+    assert builder.PII_MASKED in builder.STATIC_LIMITATIONS
+    assert builder.PII_MISSED in builder.STATIC_LIMITATIONS
+    for fragment in ("B20DCCN123", "hiệu trưởng", "cô giáo", "(di động, bàn", "@tên tài khoản"):
+        assert fragment in builder.PII_MASKED
+    for fragment in ("tên viết thường", "EDUPULSE_NER=0", "7 chữ số", "mã môn"):
+        assert fragment in builder.PII_MISSED
+    assert not any("tên viết thường thì sót" in item for item in builder.STATIC_LIMITATIONS)
 
 
 def test_different_normalizer_versions_are_refused():

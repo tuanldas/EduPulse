@@ -126,28 +126,24 @@ def invariance_evidence_matches(
         return False
 
 
-def normalizer_compatible(
+def find_invariance_evidence(
     found: str | None, *, evidence_dir: Path | None = None, manifest: dict[str, Any] | None = None
-) -> bool:
-    """Sản phẩm dựng bằng bản chuẩn hoá `found` (run huấn luyện, cổng int8...) còn dùng với bản
-    chuẩn hoá của mã?
+) -> dict[str, Any] | None:
+    """Bằng chứng bất biến cho phép dùng sản phẩm dựng bằng bản chuẩn hoá `found` với bản của mã.
 
-    Cùng phiên bản thì được. Khác phiên bản chỉ khi một tệp `normalizer_v<N>_invariance.json` trong
-    results/metrics (do `python -m ml.normalizer_invariance` sinh) chứng minh hai bản cho model_text
-    giống hệt trên mọi câu của dữ liệu đã xử lý hiện tại: khi đó mô hình đã huấn luyện và số liệu
-    đã chấm vẫn đúng nguyên vẹn. Thiếu dữ liệu hoặc bằng chứng thì trả về False.
+    Là một tệp `normalizer_v<N>_invariance.json` trong results/metrics (do `python -m
+    ml.normalizer_invariance` sinh) chứng minh hai bản cho model_text giống hệt trên mọi câu của
+    dữ liệu đã xử lý hiện tại. Không có (hoặc hết hiệu lực vì dữ liệu đổi) thì trả về None.
     """
     from edupulse.text import NORMALIZER_VERSION
 
-    if found == NORMALIZER_VERSION:
-        return True
-    if not found:
-        return False
+    if not found or found == NORMALIZER_VERSION:
+        return None
     if manifest is None:
         try:
             manifest = processed_manifest()
         except FileNotFoundError:
-            return False
+            return None
     directory = evidence_dir or REPO_ROOT / "results" / "metrics"
     for path in sorted(directory.glob(INVARIANCE_GLOB)):
         try:
@@ -157,8 +153,25 @@ def normalizer_compatible(
         if invariance_evidence_matches(
             evidence, old=found, new=NORMALIZER_VERSION, manifest=manifest
         ):
-            return True
-    return False
+            return evidence
+    return None
+
+
+def normalizer_compatible(
+    found: str | None, *, evidence_dir: Path | None = None, manifest: dict[str, Any] | None = None
+) -> bool:
+    """Sản phẩm dựng bằng bản chuẩn hoá `found` (run huấn luyện, cổng int8...) còn dùng với bản
+    chuẩn hoá của mã?
+
+    Cùng phiên bản thì được. Khác phiên bản chỉ khi có bằng chứng bất biến còn hiệu lực
+    (`find_invariance_evidence`): khi đó mô hình đã huấn luyện và số liệu đã chấm vẫn đúng nguyên
+    vẹn. Thiếu dữ liệu hoặc bằng chứng thì trả về False.
+    """
+    from edupulse.text import NORMALIZER_VERSION
+
+    if found == NORMALIZER_VERSION:
+        return True
+    return find_invariance_evidence(found, evidence_dir=evidence_dir, manifest=manifest) is not None
 
 
 def load_processed(split: str, *, allow_test: bool = False) -> pd.DataFrame:

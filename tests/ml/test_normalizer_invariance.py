@@ -171,6 +171,18 @@ def test_an_older_version_is_compatible_only_with_valid_evidence(evidence_dir, t
     assert not compatible("", evidence_dir, pair)
 
 
+def test_the_matching_evidence_itself_is_returned_for_the_model_card(evidence_dir, tmp_path, pair):
+    found = common.find_invariance_evidence(
+        OLD, evidence_dir=evidence_dir, manifest=pair[1].manifest
+    )
+    assert found["from"] == OLD and found["to"] == NORMALIZER_VERSION
+    assert found["checks"]["sentences"] == 9
+    none = common.find_invariance_evidence
+    assert none(NORMALIZER_VERSION, evidence_dir=evidence_dir, manifest=pair[1].manifest) is None
+    assert none("7", evidence_dir=evidence_dir, manifest=pair[1].manifest) is None
+    assert none(OLD, evidence_dir=tmp_path / "none", manifest=pair[1].manifest) is None
+
+
 def evidence_file(directory: Path) -> Path:
     return directory / f"normalizer_v{NORMALIZER_VERSION}_invariance.json"
 
