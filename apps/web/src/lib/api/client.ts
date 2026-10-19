@@ -33,7 +33,21 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
  */
 export function requestSignal(signal?: AbortSignal, timeoutMs = DEFAULT_TIMEOUT_MS): AbortSignal {
   const timeout = AbortSignal.timeout(timeoutMs);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+  return signal ? anySignal([signal, timeout]) : timeout;
+}
+
+/** `AbortSignal.any` (Chrome 116, Safari 17.4, Firefox 124) hoặc bản thay thế cho trình duyệt cũ hơn. */
+function anySignal(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === "function") return AbortSignal.any(signals);
+  const controller = new AbortController();
+  for (const source of signals) {
+    if (source.aborted) {
+      controller.abort(source.reason);
+      break;
+    }
+    source.addEventListener("abort", () => controller.abort(source.reason), { once: true });
+  }
+  return controller.signal;
 }
 
 interface Settled<T> {
