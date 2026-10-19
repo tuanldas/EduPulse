@@ -49,7 +49,7 @@ Không dừng ở một classifier: hệ thống nhận góp ý → suy luận �
 ## Tiêu chí nghiệm thu
 
 1. Tái lập bằng vài lệnh, seed cố định: tải dữ liệu → EDA → train → đánh giá → export.
-2. Bảng kết quả trên test cho 2 task × (3 baseline + PhoBERT đa nhiệm + PhoBERT đơn nhiệm): accuracy, macro-F1, weighted-F1, F1 từng lớp, confusion matrix, ECE. PhoBERT chạy 3 seed (mean ± std); so sánh bằng McNemar + paired bootstrap.
+2. Bảng kết quả trên test cho 2 task × (3 baseline + PhoBERT đa nhiệm bản deploy, cả FP32 và int8): accuracy, macro-F1, weighted-F1, F1 từng lớp, confusion matrix, ECE, kèm khoảng tin cậy 95% bằng bootstrap; so sánh với baseline bằng McNemar + paired bootstrap. So sánh đa nhiệm với đơn nhiệm chỉ ở mức thí nghiệm sơ bộ (val, 1 seed, bước research). Không train thêm (đổi ngày 2026-10-17, xem plan).
 3. So sánh trung thực. Kỳ vọng PhoBERT vượt baseline tốt nhất về macro-F1; nếu không, phân tích nguyên nhân. Tham chiếu paper: cảm xúc ≈ 94 / 83, chủ đề ≈ 89 / 80 (accuracy / macro-F1).
 4. Model int8: macro-F1 trên val giảm không quá 1 điểm so với FP32.
 5. App trên host: nhãn của 1 câu p95 ≤ 0,5 giây; phần giải thích (tải sau nhãn) p95 ≤ 2 giây cho câu không quá `XAI_MAX_WORDS` từ (mặc định 25, chỉnh bằng biến môi trường, chốt sau khi đo trên VPS); 1.000 câu < 2 phút; upload file 5MB chạy được; RAM nằm trong giới hạn host. (Đổi ngày 2026-10-15 tại mốc M1, xem plan.)
