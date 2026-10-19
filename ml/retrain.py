@@ -21,6 +21,8 @@ không tác vụ nào tụt. Test không bao giờ dùng để chấm; chỗ duy
   bản gốc.
 - phobert: tiếp tục huấn luyện PhoBERT đa nhiệm đã triển khai `--max-steps` bước, CHỈ trên CPU; mỗi
   batch nửa là phản hồi (lấy có hoàn lại), nửa là mẫu phát lại từ train để mô hình không trôi.
+  Cổng chấm bản FP32 (torch) trên validation, không phải int8: mô hình mới muốn thành bundle phải
+  đi tiếp qua export ONNX int8 và cổng int8 (`make export calibrate artifacts`).
 
 Không bao giờ ghi vào models/ hay bundle: mô hình mới nằm ở --out (mặc định
 outputs/retrain/<loại>-<giờ>/). Mã thoát: 0 xong, 2 lỗi đầu vào, 3 mô hình mới bị từ chối, 4 khoá
