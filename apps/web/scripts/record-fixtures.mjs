@@ -4,18 +4,20 @@
 //   cd apps/web && FIXTURE_API_BASE=http://localhost:8000 pnpm record:fixtures
 //
 // Câu đầu vào là 20 câu tự viết của repo (tests/fixtures/golden_sentences.json ở thư mục gốc), không
-// phải câu UIT-VSFC. `ui_samples` của /api/config trên máy dev đến từ dữ liệu demo (có câu UIT-VSFC)
+// phải câu UIT-VSFC (riêng g01 được thay bằng câu cùng nhãn, xem fixture-sentences.mjs). `ui_samples` của /api/config trên máy dev đến từ dữ liệu demo (có câu UIT-VSFC)
 // nên được thay bằng câu tự viết trước khi ghi. model-card chỉ chứa số tổng hợp.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { fixtureSentences } from "./fixture-sentences.mjs";
 
 const base = (process.env.FIXTURE_API_BASE ?? "http://localhost:8000").replace(/\/+$/, "");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(here, "..", "tests", "fixtures");
 const goldenPath = path.join(here, "..", "..", "..", "tests", "fixtures", "golden_sentences.json");
 
-const golden = JSON.parse(await readFile(goldenPath, "utf-8")).items;
+const golden = fixtureSentences(JSON.parse(await readFile(goldenPath, "utf-8")).items);
 const sentence = (id) => {
   const item = golden.find((candidate) => candidate.id === id);
   if (!item) throw new Error(`không có câu ${id} trong golden_sentences.json`);

@@ -1,55 +1,55 @@
 {
   "schema_version": 1,
   "model_version": "edupulse-mtl-s42",
-  "bundle_version": "v0-smoke",
-  "stage": "smoke",
+  "bundle_version": "v1.0",
+  "stage": "release",
   "metrics": {
-    "split": "val",
-    "n": 1583,
+    "split": "test",
+    "n": 3166,
     "sentiment": {
-      "accuracy": 0.9481996209728364,
-      "macro_f1": 0.8530971787520856,
-      "weighted_f1": 0.945455121285161,
-      "ece": 0.020567039503286443,
-      "nll": 0.19026794070652983,
+      "accuracy": 0.9399873657612129,
+      "macro_f1": 0.8205307731879682,
+      "weighted_f1": 0.9353945290643422,
+      "ece": 0.013809405999135865,
+      "nll": 0.22032477527418434,
       "per_class": [
         {
           "label": "negative",
-          "precision": 0.9488243430152143,
-          "recall": 0.9730496453900709,
-          "f1": 0.9607843137254902,
-          "support": 705
+          "precision": 0.9441379310344827,
+          "recall": 0.971611071682044,
+          "f1": 0.9576775096187479,
+          "support": 1409
         },
         {
           "label": "neutral",
-          "precision": 0.8260869565217391,
-          "recall": 0.5205479452054794,
-          "f1": 0.6386554621848739,
-          "support": 73
+          "precision": 0.75,
+          "recall": 0.4311377245508982,
+          "f1": 0.5475285171102662,
+          "support": 167
         },
         {
           "label": "positive",
-          "precision": 0.9545454545454546,
-          "recall": 0.9652173913043478,
-          "f1": 0.9598517603458925,
-          "support": 805
+          "precision": 0.9475308641975309,
+          "recall": 0.9654088050314465,
+          "f1": 0.956386292834891,
+          "support": 1590
         }
       ],
       "confusion": [
         [
-          0.9730496453900709,
-          0.005673758865248227,
-          0.02127659574468085
+          0.971611071682044,
+          0.0106458481192335,
+          0.017743080198722498
         ],
         [
-          0.1780821917808219,
-          0.5205479452054794,
-          0.3013698630136986
+          0.20958083832335328,
+          0.4311377245508982,
+          0.3592814371257485
         ],
         [
-          0.02981366459627329,
-          0.004968944099378882,
-          0.9652173913043478
+          0.028930817610062894,
+          0.005660377358490566,
+          0.9654088050314465
         ]
       ],
       "reliability": [
@@ -91,135 +91,135 @@
         {
           "lower": 0.3333333333333333,
           "upper": 0.4,
-          "n": 2,
-          "confidence": 0.3971366073414203,
-          "accuracy": 0
+          "n": 5,
+          "confidence": 0.3664556879898491,
+          "accuracy": 0.4
         },
         {
           "lower": 0.4,
           "upper": 0.4666666666666667,
-          "n": 4,
-          "confidence": 0.4263847823730321,
-          "accuracy": 0
+          "n": 9,
+          "confidence": 0.43595489119255487,
+          "accuracy": 0.4444444444444444
         },
         {
           "lower": 0.4666666666666667,
           "upper": 0.5333333333333333,
-          "n": 5,
-          "confidence": 0.4900520140670227,
-          "accuracy": 0.8
+          "n": 20,
+          "confidence": 0.5075117144982317,
+          "accuracy": 0.7
         },
         {
           "lower": 0.5333333333333333,
           "upper": 0.6,
-          "n": 14,
-          "confidence": 0.5526134795655314,
-          "accuracy": 0.5714285714285714
+          "n": 25,
+          "confidence": 0.5708990414365084,
+          "accuracy": 0.56
         },
         {
           "lower": 0.6,
           "upper": 0.6666666666666666,
-          "n": 11,
-          "confidence": 0.6403315774961071,
-          "accuracy": 0.5454545454545454
+          "n": 26,
+          "confidence": 0.6359030067569388,
+          "accuracy": 0.4230769230769231
         },
         {
           "lower": 0.6666666666666666,
           "upper": 0.7333333333333333,
-          "n": 12,
-          "confidence": 0.6949060811713069,
-          "accuracy": 0.8333333333333334
+          "n": 31,
+          "confidence": 0.7032081728922831,
+          "accuracy": 0.5806451612903226
         },
         {
           "lower": 0.7333333333333333,
           "upper": 0.8,
-          "n": 18,
-          "confidence": 0.7722715395003666,
-          "accuracy": 0.6666666666666666
+          "n": 43,
+          "confidence": 0.7633188269447342,
+          "accuracy": 0.7674418604651163
         },
         {
           "lower": 0.8,
           "upper": 0.8666666666666667,
-          "n": 34,
-          "confidence": 0.8386609285212805,
-          "accuracy": 0.7352941176470589
+          "n": 71,
+          "confidence": 0.8369429531866227,
+          "accuracy": 0.704225352112676
         },
         {
           "lower": 0.8666666666666667,
           "upper": 0.9333333333333333,
-          "n": 112,
-          "confidence": 0.908838476790532,
-          "accuracy": 0.8571428571428571
+          "n": 247,
+          "confidence": 0.9117858242419236,
+          "accuracy": 0.8785425101214575
         },
         {
           "lower": 0.9333333333333333,
           "upper": 1,
-          "n": 1371,
-          "confidence": 0.9669331751173532,
-          "accuracy": 0.9773887673231219
+          "n": 2689,
+          "confidence": 0.9671960059995257,
+          "accuracy": 0.9717367050948308
         }
       ]
     },
     "topic": {
-      "accuracy": 0.897662665824384,
-      "macro_f1": 0.8096407448645218,
-      "weighted_f1": 0.8950573738696538,
-      "ece": 0.03848172364760698,
-      "nll": 0.32546013149578706,
+      "accuracy": 0.8998736576121289,
+      "macro_f1": 0.8125833091134675,
+      "weighted_f1": 0.8973360765125469,
+      "ece": 0.023180290993846105,
+      "nll": 0.3217887910930855,
       "per_class": [
         {
           "label": "lecturer",
-          "precision": 0.940068493150685,
-          "recall": 0.9539530842745438,
-          "f1": 0.9469598965071151,
-          "support": 1151
+          "precision": 0.9372043010752689,
+          "recall": 0.951528384279476,
+          "f1": 0.9443120260021668,
+          "support": 2290
         },
         {
           "label": "training_program",
-          "precision": 0.7581227436823105,
-          "recall": 0.7865168539325843,
-          "f1": 0.7720588235294118,
-          "support": 267
+          "precision": 0.7791095890410958,
+          "recall": 0.7954545454545454,
+          "f1": 0.78719723183391,
+          "support": 572
         },
         {
           "label": "facility",
-          "precision": 0.9428571428571428,
-          "recall": 0.9428571428571428,
-          "f1": 0.9428571428571428,
-          "support": 70
+          "precision": 0.9452054794520548,
+          "recall": 0.9517241379310345,
+          "f1": 0.9484536082474226,
+          "support": 145
         },
         {
           "label": "others",
-          "precision": 0.6911764705882353,
-          "recall": 0.49473684210526314,
-          "f1": 0.5766871165644172,
-          "support": 95
+          "precision": 0.6936936936936937,
+          "recall": 0.48427672955974843,
+          "f1": 0.5703703703703704,
+          "support": 159
         }
       ],
       "confusion": [
         [
-          0.9539530842745438,
-          0.036490008688097306,
-          0.0008688097306689834,
-          0.008688097306689836
+          0.951528384279476,
+          0.04017467248908297,
+          0.0013100436681222707,
+          0.0069868995633187774
         ],
         [
-          0.1647940074906367,
-          0.7865168539325843,
-          0.00749063670411985,
-          0.04119850187265917
+          0.16958041958041958,
+          0.7954545454545454,
+          0.0034965034965034965,
+          0.03146853146853147
         ],
         [
-          0.014285714285714285,
-          0.04285714285714286,
-          0.9428571428571428,
+          0.027586206896551724,
+          0.020689655172413793,
+          0.9517241379310345,
           0
         ],
         [
-          0.2631578947368421,
-          0.23157894736842105,
-          0.010526315789473684,
-          0.49473684210526314
+          0.2830188679245283,
+          0.2138364779874214,
+          0.018867924528301886,
+          0.48427672955974843
         ]
       ],
       "reliability": [
@@ -254,143 +254,185 @@
         {
           "lower": 0.26666666666666666,
           "upper": 0.3333333333333333,
-          "n": 1,
-          "confidence": 0.3325858070573337,
-          "accuracy": 0
+          "n": 0,
+          "confidence": null,
+          "accuracy": null
         },
         {
           "lower": 0.3333333333333333,
           "upper": 0.4,
-          "n": 3,
-          "confidence": 0.3865101644133588,
-          "accuracy": 0
+          "n": 4,
+          "confidence": 0.37099713810909707,
+          "accuracy": 0.5
         },
         {
           "lower": 0.4,
           "upper": 0.4666666666666667,
-          "n": 12,
-          "confidence": 0.43793260059331857,
-          "accuracy": 0.75
+          "n": 23,
+          "confidence": 0.4421063959269894,
+          "accuracy": 0.5217391304347826
         },
         {
           "lower": 0.4666666666666667,
           "upper": 0.5333333333333333,
-          "n": 30,
-          "confidence": 0.49758609342817856,
-          "accuracy": 0.43333333333333335
+          "n": 43,
+          "confidence": 0.5014969186372877,
+          "accuracy": 0.5348837209302325
         },
         {
           "lower": 0.5333333333333333,
           "upper": 0.6,
-          "n": 18,
-          "confidence": 0.5667548615359137,
-          "accuracy": 0.7777777777777778
+          "n": 41,
+          "confidence": 0.5620504930520868,
+          "accuracy": 0.5121951219512195
         },
         {
           "lower": 0.6,
           "upper": 0.6666666666666666,
-          "n": 28,
-          "confidence": 0.6288813569925231,
-          "accuracy": 0.5
+          "n": 61,
+          "confidence": 0.6317733708399431,
+          "accuracy": 0.45901639344262296
         },
         {
           "lower": 0.6666666666666666,
           "upper": 0.7333333333333333,
-          "n": 30,
-          "confidence": 0.7006308049566121,
-          "accuracy": 0.36666666666666664
+          "n": 55,
+          "confidence": 0.7017047498070706,
+          "accuracy": 0.6
         },
         {
           "lower": 0.7333333333333333,
           "upper": 0.8,
-          "n": 38,
-          "confidence": 0.769747896289603,
-          "accuracy": 0.6578947368421053
+          "n": 82,
+          "confidence": 0.7659718105346748,
+          "accuracy": 0.6219512195121951
         },
         {
           "lower": 0.8,
           "upper": 0.8666666666666667,
-          "n": 66,
-          "confidence": 0.8379956683588992,
-          "accuracy": 0.696969696969697
+          "n": 139,
+          "confidence": 0.8366177253855068,
+          "accuracy": 0.7697841726618705
         },
         {
           "lower": 0.8666666666666667,
           "upper": 0.9333333333333333,
-          "n": 184,
-          "confidence": 0.9070803709821662,
-          "accuracy": 0.8152173913043478
+          "n": 368,
+          "confidence": 0.9060327682095095,
+          "accuracy": 0.8260869565217391
         },
         {
           "lower": 0.9333333333333333,
           "upper": 1,
-          "n": 1173,
-          "confidence": 0.9660143874084522,
-          "accuracy": 0.9710144927536232
+          "n": 2350,
+          "confidence": 0.9654936112244205,
+          "accuracy": 0.9651063829787234
         }
       ]
     }
   },
   "baselines": [
     {
-      "name": "TF-IDF + ComplementNB",
+      "name": "TF-IDF + LinearSVC",
       "deployed": false,
-      "sentiment_accuracy": 0.8730259001895135,
-      "sentiment_macro_f1": 0.6572054548605664,
-      "topic_accuracy": 0.8307012002526848,
-      "topic_macro_f1": 0.6702127596453255,
-      "sentiment_ece": 0.01776182731026004
+      "sentiment_accuracy": 0.894188250157928,
+      "sentiment_macro_f1": 0.7344552521592238,
+      "topic_accuracy": 0.8632343651295009,
+      "topic_macro_f1": 0.7323562532794098,
+      "sentiment_ece": 0.010769059718596312
     },
     {
       "name": "TF-IDF + LogisticRegression",
       "deployed": false,
-      "sentiment_accuracy": 0.8945041061276058,
-      "sentiment_macro_f1": 0.7680485489150319,
-      "topic_accuracy": 0.8717624763108023,
-      "topic_macro_f1": 0.7538960269024478,
-      "sentiment_ece": 0.01907589234993886
+      "sentiment_accuracy": 0.8853442830069488,
+      "sentiment_macro_f1": 0.7456838473551141,
+      "topic_accuracy": 0.8610233733417562,
+      "topic_macro_f1": 0.736483416571127,
+      "sentiment_ece": 0.0153029461183996
     },
     {
-      "name": "TF-IDF + LinearSVC",
+      "name": "TF-IDF + ComplementNB",
       "deployed": false,
-      "sentiment_accuracy": 0.9046114971572963,
-      "sentiment_macro_f1": 0.7805215668300903,
-      "topic_accuracy": 0.8768161718256475,
-      "topic_macro_f1": 0.7638285072281606,
-      "sentiment_ece": 0.012541112258931975
+      "sentiment_accuracy": 0.8581806696146557,
+      "sentiment_macro_f1": 0.6513659884661859,
+      "topic_accuracy": 0.8180669614655717,
+      "topic_macro_f1": 0.6733043640513732,
+      "sentiment_ece": 0.016705455046832365
     },
     {
-      "name": "PhoBERT đa nhiệm · int8",
-      "deployed": true,
-      "sentiment_accuracy": 0.9481996209728364,
-      "sentiment_macro_f1": 0.8530971787520856,
+      "name": "PhoBERT đa nhiệm · FP32 (seed 42)",
+      "deployed": false,
+      "sentiment_accuracy": 0.9390397978521794,
+      "sentiment_macro_f1": 0.8181073990486213,
       "topic_accuracy": 0.897662665824384,
-      "topic_macro_f1": 0.8096407448645218,
-      "sentiment_ece": 0.020567039503286443
+      "topic_macro_f1": 0.80592268974844,
+      "sentiment_ece": 0.015309066608329053
+    },
+    {
+      "name": "PhoBERT đa nhiệm · int8 (bản triển khai)",
+      "deployed": true,
+      "sentiment_accuracy": 0.9399873657612129,
+      "sentiment_macro_f1": 0.8205307731879682,
+      "topic_accuracy": 0.8998736576121289,
+      "topic_macro_f1": 0.8125833091134675,
+      "sentiment_ece": 0.013809405999135865
     }
   ],
-  "architectures": [],
+  "architectures": [
+    {
+      "name": "Đơn nhiệm (STL), sơ bộ: validation, 1 seed",
+      "seeds": [
+        42
+      ],
+      "sentiment_macro_f1": {
+        "mean": 0.8701,
+        "std": 0,
+        "n": 1
+      },
+      "topic_macro_f1": {
+        "mean": 0.8154,
+        "std": 0,
+        "n": 1
+      }
+    },
+    {
+      "name": "Đa nhiệm (MTL), sơ bộ: validation, 1 seed",
+      "seeds": [
+        42
+      ],
+      "sentiment_macro_f1": {
+        "mean": 0.8555,
+        "std": 0,
+        "n": 1
+      },
+      "topic_macro_f1": {
+        "mean": 0.8272,
+        "std": 0,
+        "n": 1
+      }
+    }
+  ],
   "review_budget": [
     {
       "budget": 5,
       "default": false,
       "efficiency": {
-        "flagged_share": 0.05053695514845231,
-        "caught_sentiment_errors": 0.2682926829268293,
-        "caught_topic_errors": 0.22839506172839505,
-        "accept_accuracy_both": 0.8855622089155023,
-        "all_accuracy_both": 0.8591282375236892
+        "flagged_share": 0.05022109917877448,
+        "caught_sentiment_errors": 0.2789473684210526,
+        "caught_topic_errors": 0.167192429022082,
+        "accept_accuracy_both": 0.8762886597938144,
+        "all_accuracy_both": 0.8547062539481997
       }
     },
     {
       "budget": 10,
       "default": true,
       "efficiency": {
-        "flagged_share": 0.10044219835754896,
-        "caught_sentiment_errors": 0.47560975609756095,
-        "caught_topic_errors": 0.3888888888888889,
-        "accept_accuracy_both": 0.9044943820224719,
-        "all_accuracy_both": 0.8591282375236892
+        "flagged_share": 0.10012634238787113,
+        "caught_sentiment_errors": 0.45263157894736844,
+        "caught_topic_errors": 0.3438485804416404,
+        "accept_accuracy_both": 0.8975078975078975,
+        "all_accuracy_both": 0.8547062539481997
       }
     },
     {
@@ -398,10 +440,10 @@
       "default": false,
       "efficiency": {
         "flagged_share": 0.20025268477574226,
-        "caught_sentiment_errors": 0.6951219512195121,
-        "caught_topic_errors": 0.6111111111111112,
-        "accept_accuracy_both": 0.933649289099526,
-        "all_accuracy_both": 0.8591282375236892
+        "caught_sentiment_errors": 0.6421052631578947,
+        "caught_topic_errors": 0.5772870662460567,
+        "accept_accuracy_both": 0.924565560821485,
+        "all_accuracy_both": 0.8547062539481997
       }
     },
     {
@@ -409,20 +451,89 @@
       "default": false,
       "efficiency": {
         "flagged_share": 0.30006317119393555,
-        "caught_sentiment_errors": 0.7682926829268293,
-        "caught_topic_errors": 0.7283950617283951,
-        "accept_accuracy_both": 0.9458483754512635,
-        "all_accuracy_both": 0.8591282375236892
+        "caught_sentiment_errors": 0.7263157894736842,
+        "caught_topic_errors": 0.7003154574132492,
+        "accept_accuracy_both": 0.9368231046931408,
+        "all_accuracy_both": 0.8547062539481997
       }
     }
   ],
-  "checklist": [],
+  "checklist": [
+    {
+      "name": "Viết HOA toàn câu",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 1,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/1.583 câu."
+    },
+    {
+      "name": "Viết Hoa Chữ Đầu Mỗi Từ",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 0.8660770688566014,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 212/1.583 câu."
+    },
+    {
+      "name": "Dấu câu và khoảng trắng thừa",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 0.9639924194567278,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 57/1.583 câu (thêm ' .' 43, thêm ' !!' 46, gấp đôi dấu cách 0, đệm dấu cách đầu/cuối 0)."
+    },
+    {
+      "name": "Đổi thầy ↔ cô",
+      "kind": "invariance",
+      "n": 520,
+      "pass_rate": 0.9942307692307693,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 3/520 câu (thầy→cô 3/371, cô→thầy 0/149)."
+    },
+    {
+      "name": "Đổi chỉ số tên ẩn (wzjwz + số)",
+      "kind": "invariance",
+      "n": 18,
+      "pass_rate": 1,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/18 câu."
+    },
+    {
+      "name": "Chèn thông tin cá nhân",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 1,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/1.583 câu (SĐT 0, email 0, MSSV 0)."
+    },
+    {
+      "name": "Thêm \"không\" phủ định",
+      "kind": "directional",
+      "n": 809,
+      "pass_rate": 0.8318912237330037,
+      "note": "Xét câu gốc dự đoán tích cực (P ≥ 0,5). Đạt khi P(tích cực) giảm; hỏng 136/809 câu."
+    },
+    {
+      "name": "Thêm \":(\" cuối câu",
+      "kind": "directional",
+      "n": 1583,
+      "pass_rate": 0.9633607075173721,
+      "note": "Đạt khi P(tiêu cực) không giảm quá 0,01; hỏng 58/1.583 câu."
+    },
+    {
+      "name": "Bỏ dấu toàn câu",
+      "kind": "robustness",
+      "n": 1579,
+      "pass_rate": 0.9841671944268524,
+      "note": "Đạt khi hệ thống gắn cờ không dấu (lọt cờ 25/1.579 câu). Accuracy: cảm xúc giảm 13,6 điểm (94,8% → 81,2%), chủ đề giảm 13,0 điểm (89,9% → 76,9%)."
+    }
+  ],
   "intended_use": "Giúp cán bộ khoa và phòng đảm bảo chất lượng đọc nhanh góp ý của sinh viên: phân loại cảm xúc và chủ đề từng câu, gắn cờ câu cần người duyệt, tổng hợp xu hướng theo môn.",
   "out_of_scope": "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra quyết định tự động khi không có người duyệt.",
   "limitations": [
-    "Lớp Trung tính và chủ đề Khác yếu (recall khoảng 53%).",
-    "Câu gõ không dấu: độ chính xác giảm mạnh (khoảng 13 điểm), hệ thống cảnh báo và gắn cờ.",
+    "Lớp Trung tính và chủ đề Khác yếu: trên test, recall Trung tính 43,1% (F1 54,8), recall Khác 48,4% (F1 57,0).",
+    "Câu gõ không dấu: độ chính xác giảm (cảm xúc giảm 13,6 điểm (94,8% → 81,2%), chủ đề giảm 13,0 điểm (89,9% → 76,9%)); hệ thống cảnh báo và gắn cờ (98,4% số câu thử bị gắn cờ).",
+    "Khoảng tin cậy 95% của macro-F1 trên test (bootstrap 2.000 vòng): cảm xúc 82,1 [79,3–84,6]; chủ đề 81,3 [79,0–83,4]. Chênh nhỏ hơn bề rộng khoảng này giữa các mô hình là không đáng tin.",
+    "Macro-F1 của bản int8 trên test và trên validation (validation đã dùng để chọn epoch nên có phần lạc quan): cảm xúc 82,1 trên test so với 85,3 trên validation (chênh -3,3 điểm); chủ đề 81,3 trên test so với 81,0 trên validation (chênh 0,3 điểm).",
+    "CheckList trên validation, kiểm thử đạt dưới 90%: Thêm \"không\" phủ định 83,2% (n = 809); Viết Hoa Chữ Đầu Mỗi Từ 86,6% (n = 1.583).",
+    "Chỉ có một run huấn luyện (seed 42): chưa đo độ lệch giữa các seed. So sánh đa nhiệm với đơn nhiệm chỉ là thí nghiệm sơ bộ của nghiên cứu (validation, 1 seed, bản huấn luyện khác bản triển khai): McNemar p = 0,31 (cảm xúc), 0,46 (chủ đề), chưa thấy khác biệt có ý nghĩa.",
     "Mỉa mai, châm biếm dễ bị hiểu sai.",
+    "Câu viết hoa chữ đầu mọi từ dễ bị luật ẩn tên coi nhiều từ là tên người, làm đổi nhãn.",
     "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
     "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
