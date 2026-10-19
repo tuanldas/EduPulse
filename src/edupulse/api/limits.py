@@ -19,3 +19,6 @@ DEMO_BATCH_ID = "demo"  # batch chỉ đọc nạp sẵn từ dữ liệu demo
 # của GIL, nên chỉ vài cái cùng lúc; cái sau chờ tối đa PARSE_WAIT_S rồi nhận 429 `busy`.
 MAX_PARALLEL_PARSES = 2
 PARSE_WAIT_S = 20.0
+# Lúc vắng yêu cầu vẫn phải xoá batch hết hạn, không thì bảng thô của batch bị bỏ quên nằm trong
+# RAM quá TTL (tối đa 8 batch x ~46MB): worker tỉnh dậy dọn kho sau chừng này giây rảnh.
+PURGE_EVERY_S = 60.0

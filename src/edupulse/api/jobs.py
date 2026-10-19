@@ -31,6 +31,7 @@ from edupulse.api.limits import (
     MAX_GROUPS,
     MAX_PARALLEL_PARSES,
     PARSE_WAIT_S,
+    PURGE_EVERY_S,
 )
 from edupulse.api.parsing import ParsedTable, is_illustrative
 from edupulse.api.schemas import BatchState, BatchStep
@@ -149,6 +150,7 @@ class JobStore:
         max_queue: int = MAX_QUEUE,
         parse_slots: int = MAX_PARALLEL_PARSES,
         parse_wait_s: float = PARSE_WAIT_S,
+        purge_every_s: float = PURGE_EVERY_S,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.analyzer = analyzer
@@ -156,6 +158,7 @@ class JobStore:
         self.max_batches = max_batches
         self.max_queue = max_queue
         self.parse_wait_s = parse_wait_s
+        self.purge_every_s = purge_every_s
         self._parse_slots = threading.BoundedSemaphore(parse_slots)
         self._clock = clock
         self._lock = threading.RLock()
@@ -394,7 +397,12 @@ class JobStore:
 
     def _work(self) -> None:
         while True:
-            batch_id = self._queue.get()
+            try:
+                batch_id = self._queue.get(timeout=self.purge_every_s)
+            except queue.Empty:  # rảnh: dọn batch hết hạn dù không có yêu cầu nào chạm vào kho
+                with self._lock:
+                    self._purge_locked()
+                continue
             if batch_id is None:
                 return
             with self._lock:
