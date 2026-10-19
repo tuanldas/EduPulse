@@ -4,6 +4,7 @@ import csv
 import datetime
 import io
 import struct
+import time
 import unicodedata
 import zipfile
 
@@ -12,7 +13,7 @@ import pytest
 
 from edupulse.api import parsing
 from edupulse.api.errors import ApiError
-from edupulse.api.limits import MAX_CELL_CHARS, XLSX_MAX_UNCOMPRESSED_MB
+from edupulse.api.limits import MAX_CELL_CHARS, XLSX_MAX_SHEET_ROWS, XLSX_MAX_UNCOMPRESSED_MB
 from edupulse.config import MAX_ROWS, load_settings
 
 HAND_WRITTEN = [
@@ -362,6 +363,171 @@ def test_size_check_counts_actual_bytes_for_deflate_streams():
         archive.writestr("a.xml", payload)
     members = zipfile.ZipFile(io.BytesIO(out.getvalue())).infolist()
     assert parsing._inflated_size(out.getvalue(), members[0], 10 << 20) == len(payload)
+
+
+def test_uncompressed_budget_is_thirty_megabytes():
+    assert XLSX_MAX_UNCOMPRESSED_MB == 30
+
+
+# --- XLSX: ô ở rất xa ---------------------------------------------------------------------------
+# calamine cấp phát ma trận đặc từ ô đầu tới ô xa nhất (~31 byte mỗi ô): vài KB file có một ô ở
+# dòng 1.048.576 cột 50 đủ ăn ~1,6GB. Các file dưới đây phải bị chặn TRƯỚC khi calamine được gọi.
+
+MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def far_cell_xlsx(row: int = 1_048_576, column: int = 50) -> bytes:
+    book = openpyxl.Workbook()
+    sheet = book.active
+    sheet.append(["Góp ý"])
+    sheet.append(["hay"])
+    sheet.cell(row=row, column=column, value="x")
+    out = io.BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+def sheet_xml(rows: str, dimension: str = "A1:B2") -> bytes:
+    xml = (
+        f'<worksheet xmlns="{MAIN_NS}"><dimension ref="{dimension}"/><sheetData>{rows}</sheetData>'
+    )
+    return f"{xml}</worksheet>".encode()
+
+
+def swap_sheet(data: bytes, xml: bytes, new_name: str | None = None) -> bytes:
+    """XLSX hợp lệ của openpyxl nhưng tệp sheet1 được thay bằng XML tự dựng (tuỳ chọn đổi tên)."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as source:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as target:
+            for item in source.infolist():
+                content, name = source.read(item.filename), item.filename
+                if name == "xl/worksheets/sheet1.xml":
+                    content, name = xml, new_name or name
+                elif name == "xl/_rels/workbook.xml.rels" and new_name:
+                    content = content.replace(b"/xl/worksheets/sheet1.xml", f"/{new_name}".encode())
+                target.writestr(name, content)
+    return out.getvalue()
+
+
+@pytest.fixture
+def no_calamine(monkeypatch):
+    """Chạm tới calamine là test hỏng: file bị chặn phải bị chặn trước khi nó cấp phát gì."""
+    import python_calamine
+
+    class Forbidden:
+        @classmethod
+        def from_object(cls, *_):
+            raise AssertionError("calamine không được chạm tới file này")
+
+    monkeypatch.setattr(python_calamine, "CalamineWorkbook", Forbidden)
+
+
+def refused(data: bytes) -> ApiError:
+    error = error_of(lambda: parsing.parse_upload("a.xlsx", data))
+    assert (error.status_code, error.detail["code"]) == (422, "decode_failed")
+    return error
+
+
+def test_a_tiny_xlsx_with_a_cell_at_the_far_corner_is_refused_before_calamine(no_calamine):
+    data = far_cell_xlsx()
+    assert len(data) < 10_000  # vài KB, đúng kịch bản tấn công
+    assert "vùng ô" in refused(data).detail["message"]
+
+
+@pytest.mark.parametrize(
+    ("row", "column"),
+    [
+        (1_048_576, 50),  # kịch bản của báo cáo: ~52 triệu ô
+        (50_001, 1),  # chỉ vượt số dòng
+        (2, 201),  # chỉ vượt số cột
+        (2, 16_384),  # cột XFD
+        (40_000, 100),  # từng chiều trong giới hạn, tích 4 triệu ô
+    ],
+)
+def test_cells_beyond_the_row_column_or_area_limit_are_refused(no_calamine, row, column):
+    refused(far_cell_xlsx(row, column))
+
+
+def test_a_sparse_but_modest_sheet_is_still_read():
+    table = parsing.parse_upload("a.xlsx", far_cell_xlsx(row=20_000, column=3))
+    assert table.columns == ["Góp ý", "Cột 2", "Cột 3"]  # calamine đệm cả hình chữ nhật
+    assert [r[0] for r in table.rows] == ["hay", ""] and table.rows[-1][2] == "x"
+
+
+@pytest.mark.parametrize(
+    ("last_row", "last_column", "allowed"),
+    [(50_000, "BH", True), (50_000, "BI", False), (50_001, "A", False)],  # BH = cột 60
+)
+def test_the_area_limit_is_three_million_cells_and_fifty_thousand_rows(
+    no_calamine, last_row, last_column, allowed
+):
+    rows = f'<row r="1"><c r="A1"/></row><row r="{last_row}"><c r="{last_column}{last_row}"/></row>'
+    data = swap_sheet(far_cell_xlsx(2, 1), sheet_xml(rows))
+    if allowed:
+        parsing.check_xlsx_extent(
+            data
+        )  # kiểm hàm riêng: file hợp lệ này không cần mở bằng calamine
+    else:
+        refused(data)
+
+
+def test_a_lying_dimension_tag_does_not_hide_the_far_cell(no_calamine):
+    rows = '<row r="1"><c r="A1"/></row><row r="1048576"><c r="AX1048576"/></row>'
+    refused(swap_sheet(far_cell_xlsx(2, 1), sheet_xml(rows, dimension="A1:B2")))
+
+
+def test_rows_and_cells_without_references_are_counted_too(no_calamine):
+    many_rows = sheet_xml("<row><c><v>1</v></c></row>" * (XLSX_MAX_SHEET_ROWS + 1))
+    refused(swap_sheet(far_cell_xlsx(2, 1), many_rows))
+    wide_row = sheet_xml("<row>" + "<c/>" * 201 + "</row>")
+    refused(swap_sheet(far_cell_xlsx(2, 1), wide_row))
+
+
+def test_row_reference_alone_is_enough_to_refuse(no_calamine):
+    refused(swap_sheet(far_cell_xlsx(2, 1), sheet_xml('<row r="1048576"><c><v>1</v></c></row>')))
+
+
+def test_namespace_prefixes_quotes_and_spacing_do_not_hide_cells(no_calamine):
+    xml = (
+        f"<x:worksheet xmlns:x=\"{MAIN_NS}\"><x:sheetData><x:row r = '1048576'>"
+        "<x:c note='>' r\n=\n\"AX1048576\"/></x:row></x:sheetData></x:worksheet>"
+    ).encode()
+    refused(swap_sheet(far_cell_xlsx(2, 1), xml))
+
+
+def test_a_sheet_part_renamed_through_the_workbook_relationships_is_still_scanned(no_calamine):
+    xml = sheet_xml('<row r="1048576"><c r="AX1048576"/></row>')
+    refused(swap_sheet(far_cell_xlsx(2, 1), xml, new_name="xl/anything/data.bin"))
+
+
+def test_a_doctype_or_malformed_sheet_is_refused_instead_of_skipped(no_calamine):
+    base = far_cell_xlsx(2, 1)
+    doctype = (
+        b'<?xml version="1.0"?><!DOCTYPE w [<!ENTITY e "x">]><worksheet><sheetData/></worksheet>'
+    )
+    assert "DTD" in refused(swap_sheet(base, doctype)).detail["message"]
+    refused(swap_sheet(base, b'<worksheet><sheetData><row r="1"><c r="A1">'))  # cụt
+
+
+def test_binary_parts_are_not_sheets_and_are_skipped():
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as archive:
+        archive.writestr("xl/worksheets/picture.bin", b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        archive.writestr("xl/worksheets/empty.xml", b"")
+    for member in zipfile.ZipFile(io.BytesIO(out.getvalue())).infolist():
+        parsing._scan_part(out.getvalue(), member, 1 << 20)  # bỏ qua, không ném lỗi
+
+
+def test_an_archive_that_is_not_an_xlsx_workbook_is_refused(no_calamine):
+    # Có thể là ODS/XLSB đội lốt .xlsx: calamine đọc cả hai và chúng có kiểu ô lặp riêng.
+    assert "xl/workbook.xml" in refused(zip_with(1 << 20)).detail["message"]
+
+
+def test_the_far_cell_check_is_fast_even_for_a_large_hostile_sheet(no_calamine):
+    started = time.monotonic()
+    rows = "".join(f'<row r="{i}"><c r="A{i}"/></row>' for i in range(1, 200_000))
+    refused(swap_sheet(far_cell_xlsx(2, 1), sheet_xml(rows)))
+    assert time.monotonic() - started < 5  # dừng ở dòng thứ 50.001, không quét hết
 
 
 # --- Đoán cột -----------------------------------------------------------------------------------
