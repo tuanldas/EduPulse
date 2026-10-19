@@ -14,6 +14,9 @@ import { NO_QUOTE_FILTER } from "@/lib/dashboard/insight-view";
 
 import { makeInsights, makeKpis, makeQuote, makeRecommendation, makeTopicStat } from "./helpers/insights";
 
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
+
 describe("KpiRow", () => {
   it("file vừa tải: bốn ô Số câu, Tiêu cực, Tích cực, Cần duyệt kèm chênh lệch so với nền", () => {
     render(<KpiRow kpis={makeKpis()} />);

@@ -8,6 +8,9 @@ import type { ResultRow } from "@/lib/batch/types";
 
 import { lowConfidence, makeRow } from "./helpers/batch-rows";
 
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
+
 /** `count` dòng có chỉ số KHÔNG bắt đầu từ 0 và không trùng số dòng trong file, như API thật sau khi bỏ dòng trống. */
 function rows(count: number): ResultRow[] {
   return Array.from({ length: count }, (_, position) =>
@@ -41,12 +44,9 @@ function setup(overrides: Partial<ReviewTableProps> = {}) {
   return { ...view, props };
 }
 
-/** Cột "#" (số dòng trong file) theo thứ tự đang hiển thị. */
+/** Cột "#" (số dòng trong file) theo thứ tự đang hiển thị. Duyệt DOM trực tiếp: truy vấn theo role trên bảng 50 dòng rất chậm. */
 function shownRowNumbers(): string[] {
-  const body = screen.getAllByRole("rowgroup")[1];
-  return within(body)
-    .getAllByRole("row")
-    .map((row) => within(row).getAllByRole("cell")[0].textContent ?? "");
+  return [...document.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent ?? "");
 }
 
 describe("ReviewTable", () => {

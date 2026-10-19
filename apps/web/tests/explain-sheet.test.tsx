@@ -8,6 +8,9 @@ import { rowsForTab } from "@/lib/batch/review-rows";
 
 import { batchExplain, batchResults } from "./helpers/batch-fixtures";
 
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
+
 const reviewRows = rowsForTab(batchResults, "review");
 const allRows = rowsForTab(batchResults, "all");
 const { withHighlights, noHighlights } = batchExplain;

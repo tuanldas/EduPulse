@@ -11,6 +11,9 @@ import { clearStoredBatch, saveStoredBatch, storedBatchFromUpload } from "@/lib/
 import { callsTo, fixture, json, stubApi, type Handler } from "./helpers/api-stub";
 import { batchInsights, batchInsightsFiltered, batchUpload } from "./helpers/batch-fixtures";
 
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
+
 // Hook điều hướng của Next cần ngữ cảnh router của ứng dụng; test thay bằng bản đọc ?batch= từ biến cục bộ.
 const navigation = vi.hoisted(() => ({ search: "", replace: vi.fn() }));
 vi.mock("next/navigation", () => ({

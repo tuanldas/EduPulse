@@ -16,6 +16,9 @@ import {
   batchUpload,
 } from "./helpers/batch-fixtures";
 
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
+
 // Test dựa trên fixture ghi từ API thật (scripts/record-batch-fixtures.mjs): 20 câu tự viết, nhóm minh hoạ A–E.
 
 describe("hợp đồng của dữ liệu thật", () => {
@@ -62,10 +65,7 @@ describe("ResultsSection (dữ liệu thật)", () => {
   }
 
   function shownRowNumbers(): string[] {
-    const body = screen.getAllByRole("rowgroup")[1];
-    return within(body)
-      .getAllByRole("row")
-      .map((row) => within(row).getAllByRole("cell")[0].textContent ?? "");
+    return [...document.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent ?? "");
   }
 
   it("bốn số liệu lấy từ summary của máy chủ", () => {

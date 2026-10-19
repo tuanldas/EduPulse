@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BatchWorkspace } from "@/components/batch/batch-workspace";
 import type { AppConfig } from "@/lib/api/types";
@@ -11,6 +11,9 @@ import type { BatchStatus } from "@/lib/batch/types";
 
 import { callsTo, fixture, json, stubApi, type Handler } from "./helpers/api-stub";
 import { batchResults, batchStatusDone, batchUpload } from "./helpers/batch-fixtures";
+
+// Dựng cả bảng/trang trong jsdom: khi máy bận chạy nhiều tệp song song, 5 giây mặc định không đủ.
+vi.setConfig({ testTimeout: 30_000 });
 
 // Chạy cả trang 2 (useBatchFlow + các bước) với phản hồi API đã ghi từ API thật: tải file mẫu, chạy, theo dõi,
 // kết quả, khoá thiết lập, phiên kết thúc, khôi phục sau khi chuyển trang.
@@ -141,7 +144,8 @@ describe("BatchWorkspace", () => {
     // Thiết lập đã dùng được nhớ lại và khoá.
     expect(screen.getByLabelText("Cột văn bản")).toHaveValue("Góp ý");
     expect(screen.getByLabelText("Cột văn bản")).toBeDisabled();
-    expect(within(screen.getByRole("table")).getAllByRole("row").length).toBeGreaterThan(1);
+    // Tiêu đề hiện ngay khi batch xong; bảng chỉ có sau khi tải kết quả.
+    expect(within(await screen.findByRole("table")).getAllByRole("row").length).toBeGreaterThan(1);
   });
 
   it("batch đã lưu mà máy chủ không còn (F5 sau khi tab cũ đóng) thì báo phiên đã kết thúc và cho tải lại", async () => {
