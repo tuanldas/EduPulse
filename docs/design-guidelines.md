@@ -134,7 +134,8 @@ Quy tắc:
 - Mỗi biểu đồ có caption nêu ý chính (thay alt text) và bảng số tương đương (reliability diagram có bảng số; confusion matrix và bảng từng lớp vốn là bảng).
 - Điều hướng bàn phím do Base UI; vòng tiêu điểm là `focus-visible:ring-ring/70` (độ đậm 70% mới đạt ≥ 3:1 trên nền trang cả hai theme, 50% chỉ 2,3–2,5:1) và phần tử không tự vẽ vòng dùng viền mặc định màu `--ring` đặc; điều khiển phân đoạn đổi mục bằng phím mũi tên. Có liên kết “Bỏ qua điều hướng” đưa tiêu điểm vào nội dung chính. Kết quả phân tích báo cho trình đọc màn hình bằng một câu ngắn ở vùng `role="status"`, không đọc lại cả trang.
 - Không tự thêm animation; `prefers-reduced-motion: reduce` tắt mọi chuyển động (`globals.css`).
-- Mobile 390px: cột xếp dọc, không cuộn ngang trang (có kiểm bằng Playwright); nút cao 40px (desktop-first, chấp nhận dưới 44px).
+- Mobile 390px: cột xếp dọc, không cuộn ngang trang (bảng rộng chỉ cuộn trong khung của nó); nút cao 40px (desktop-first, chấp nhận dưới 44px). Có kiểm bằng Playwright: trang 1 và 4 ở 390 (`e2e/visual.spec.ts`) và 320 / 720 / 1024 (`e2e/golden-path.spec.ts`); trang 2–3 ở 320 / 390 / 900 / 1100 (`e2e/reflow-batch-dashboard.spec.ts`).
+- Nhãn dài (vd. “Dữ liệu minh hoạ — nhóm gán ngẫu nhiên”, `IllustrativeBadge`) co theo khung chứa và xuống dòng, không dùng `whitespace-nowrap` / `shrink-0`; tên mô hình ở bảng so sánh của trang 4 cũng xuống dòng để bảng vừa khung ở 1440.
 
 ## 8. Giọng văn
 - Tiếng Việt có dấu đầy đủ, câu ngắn, chủ ngữ là dữ liệu: “Góp ý về giảng dạy ở môn X có tỉ lệ tiêu cực cao hơn mức nền”, không “Giảng viên môn X kém”.
@@ -153,11 +154,14 @@ Quy tắc:
 1. **Chữ trên nút primary (dark):** nút giữ `#5B68EE` với chữ trắng (4,5:1). Chữ màu primary trên nền tối dùng `--primary-text` `#8B96FF` (chữ chọn của chip/tab/phân đoạn đạt 5,3:1; dùng `#5B68EE` chỉ 3,1–4,1:1 và test tương phản đã bắt lỗi này).
 2. **Tương phản:** đã tự động hoá trong `tests/contrast.test.ts` (mọi cặp mục 2, hai theme). Không còn việc đo tay.
 3. **Font:** Be Vietnam Pro hiển thị đúng dấu chồng tầng ở cả sáng/tối, 1440 và 390 (ảnh `apps/web/test-results/visual/`); font tự host nhờ `next/font`.
-4. **Không cuộn ngang trang** ở 390 cho trang 1 và 4 (kiểm trong `e2e/visual.spec.ts`).
-5. **BibTeX** đã đối chiếu với trang gốc: UIT-VSFC (KSE 2018, tr. 19–24, DOI 10.1109/KSE.2018.8573337) và PhoBERT (Findings of EMNLP 2020, tr. 1037–1042, DOI 10.18653/v1/2020.findings-emnlp.92).
+4. **Không cuộn ngang trang** cả bốn trang ở các cỡ nêu ở mục 7 (kiểm bằng e2e).
+5. **Axe** (`@axe-core/playwright`, WCAG A/AA + best-practice): 0 vi phạm ở bốn trang × 1440 / 390 × sáng / tối, gồm các trạng thái rỗng, lỗi và kết quả (`e2e/a11y.spec.ts`, `e2e/a11y-batch-dashboard.spec.ts`).
+6. **Bảng so sánh mô hình (trang 4)** vừa khung ở 1440 với tên của bản phát hành (cột tên xuống dòng; không ghi lặp “1 seed (1 seed)” vì tên do bundle đặt đã nói số seed); ở 390 bảng cuộn trong khung.
+7. **BibTeX** đã đối chiếu với trang gốc: UIT-VSFC (KSE 2018, tr. 19–24, DOI 10.1109/KSE.2018.8573337) và PhoBERT (Findings of EMNLP 2020, tr. 1037–1042, DOI 10.18653/v1/2020.findings-emnlp.92).
+8. **Câu trong repo là câu tự viết:** wireframe và ảnh của chúng, fixture và test của web không chứa câu UIT-VSFC (đã quét 8-gram từ với tập này, không còn trùng). Câu của tập này chỉ xuất hiện lúc chạy, từ dữ liệu demo dựng lúc build (chip câu mẫu, danh sách “Câu tiêu biểu”). Ghi lại fixture bằng `pnpm record:fixtures` / `pnpm record:batch-fixtures` vẫn giữ được điều này vì câu golden g01 được thay trong `apps/web/scripts/fixture-sentences.mjs`.
 
 **Còn lại:**
-1. Số liệu trên wireframe là minh hoạ (số val của r1/r3, file 1.000 câu tự dựng) — trừ khung “Trạng thái mặc định” trang 3 (số thật tập test, nhãn gốc). UI lấy mọi số từ API; số test thật sẽ hiện khi bundle `release` thay bundle `smoke`.
+1. Số liệu trên wireframe là minh hoạ (số val của r1/r3, file 1.000 câu tự dựng) — trừ khung “Trạng thái mặc định” trang 3 (số thật tập test, nhãn gốc). UI lấy mọi số từ API. Bộ ảnh `apps/web/test-results/visual/` chụp trên bản export do FastAPI phục vụ với bundle `release` v1.0 (trang 4 hiện số thật trên tập test; bundle `smoke` hiện số validation kèm thông báo). Ảnh dashboard của dữ liệu demo phủ khối xám lên danh sách “Câu tiêu biểu” vì đó là câu của UIT-VSFC; chip câu mẫu ở trang 1 là 6 câu validation ngắn của tập đó (kèm một bản bỏ dấu) và không bị phủ.
 2. Liên kết mã nguồn lấy từ `EDUPULSE_SOURCE_URL` và liên kết mô hình Hugging Face từ `EDUPULSE_MODEL_URL` lúc chạy (`source_url`, `model_url` của `/api/config`); trường nào rỗng thì ẩn nút tương ứng (không có liên kết giả).
-3. Viền trái thẻ cảnh báo của dashboard (`acard`) và các trạng thái trang 2–3: kiểm khi dựng trang đó.
-4. Chưa kiểm Safari/Firefox, trình đọc màn hình thật và axe (hạng Could); nút chỉ báo của `next dev` (chữ N, góc trái dưới) chỉ có khi dev và được ẩn trong ảnh chụp.
+3. Viền trái thẻ cảnh báo của dashboard (`acard`) và các trạng thái trang 2–3 đã có trong bộ ảnh (`02-*`, `03-*`).
+4. Chưa kiểm Safari/Firefox và trình đọc màn hình thật (axe đã chạy, xem mục trên); nút chỉ báo của `next dev` (chữ N, góc trái dưới) chỉ có khi dev và được ẩn trong ảnh chụp.
