@@ -1,0 +1,71 @@
+{
+  "split": "validation",
+  "run": "mtl-s42",
+  "n_sentences": 1583,
+  "seed": 0,
+  "rows": [
+    {
+      "name": "Viết HOA toàn câu",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 1.0,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/1.583 câu."
+    },
+    {
+      "name": "Viết Hoa Chữ Đầu Mỗi Từ",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 0.8660770688566014,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 212/1.583 câu."
+    },
+    {
+      "name": "Dấu câu và khoảng trắng thừa",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 0.9639924194567278,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 57/1.583 câu (thêm ' .' 43, thêm ' !!' 46, gấp đôi dấu cách 0, đệm dấu cách đầu/cuối 0)."
+    },
+    {
+      "name": "Đổi thầy ↔ cô",
+      "kind": "invariance",
+      "n": 520,
+      "pass_rate": 0.9942307692307693,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 3/520 câu (thầy→cô 3/371, cô→thầy 0/149)."
+    },
+    {
+      "name": "Đổi chỉ số tên ẩn (wzjwz + số)",
+      "kind": "invariance",
+      "n": 18,
+      "pass_rate": 1.0,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/18 câu."
+    },
+    {
+      "name": "Chèn thông tin cá nhân",
+      "kind": "invariance",
+      "n": 1583,
+      "pass_rate": 1.0,
+      "note": "Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/1.583 câu (SĐT 0, email 0, MSSV 0)."
+    },
+    {
+      "name": "Thêm \"không\" phủ định",
+      "kind": "directional",
+      "n": 809,
+      "pass_rate": 0.8318912237330037,
+      "note": "Xét câu gốc dự đoán tích cực (P ≥ 0,5). Đạt khi P(tích cực) giảm; hỏng 136/809 câu."
+    },
+    {
+      "name": "Thêm \":(\" cuối câu",
+      "kind": "directional",
+      "n": 1583,
+      "pass_rate": 0.9633607075173721,
+      "note": "Đạt khi P(tiêu cực) không giảm quá 0,01; hỏng 58/1.583 câu."
+    },
+    {
+      "name": "Bỏ dấu toàn câu",
+      "kind": "robustness",
+      "n": 1579,
+      "pass_rate": 0.9841671944268524,
+      "note": "Đạt khi hệ thống gắn cờ không dấu (lọt cờ 25/1.579 câu). Accuracy: cảm xúc giảm 13,6 điểm (94,8% → 81,2%), chủ đề giảm 13,0 điểm (89,9% → 76,9%)."
+    }
+  ]
+}

@@ -16,6 +16,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -38,6 +39,8 @@ from edupulse.engine.bundle import (
 from edupulse.engine.service import Analyzer
 
 logger = logging.getLogger("edupulse.api")
+
+GZIP_MIN_BYTES = 1024
 
 
 def _configure_logging() -> None:
@@ -150,6 +153,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Giới hạn upload nằm trong cùng: phản hồi 413 của nó vẫn qua header an toàn và nhật ký.
     app.add_middleware(UploadLimitMiddleware)
+    # Kết quả 2.000 dòng ~0,8MB JSON nén còn ~0,1MB; phản hồi nhỏ (health...) để nguyên.
+    app.add_middleware(GZipMiddleware, minimum_size=GZIP_MIN_BYTES, compresslevel=5)
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.
     if settings.cors_origins:
         app.add_middleware(

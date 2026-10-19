@@ -1,0 +1,157 @@
+{
+  "run": "mtl-s42",
+  "normalizer_version": "1",
+  "base_model": "vinai/phobert-base-v2",
+  "base_revision": "86cd7fd4c148980922ac11a2cf5e257f2ba639e1",
+  "n_val": 1583,
+  "parity": {
+    "n": 64,
+    "max_abs_logit_diff": 1.800060272216797e-05,
+    "tolerance": 0.001,
+    "ok": true
+  },
+  "embedding": {
+    "base_vocab_size": 64001,
+    "unk_id": 3,
+    "embedding_rows": 66119,
+    "extra_rows": 2118,
+    "unk_alias_max_diff": {
+      "fp32": 0.0,
+      "int8": 0.0
+    },
+    "rare_piece_parity": {
+      "n": 4,
+      "n_out_of_range": 4,
+      "max_abs_logit_diff": 2.6226043701171875e-06,
+      "tolerance": 0.001,
+      "ok": true
+    }
+  },
+  "quantization": "int8 động, MatMul có trọng số trừ phép chiếu ra của FFN ở nửa đầu các lớp encoder (giữ FP32), hai đầu phân loại giữ FP32, từng kênh, reduce_range (ORT)",
+  "fp32": {
+    "sentiment": {
+      "accuracy": 0.9500947567909034,
+      "macro_f1": 0.8579571418680328,
+      "weighted_f1": 0.9475317254501094,
+      "ece": 0.01866790943798597,
+      "per_class_f1": [
+        0.9622377622377623,
+        0.65,
+        0.9616336633663366
+      ]
+    },
+    "topic": {
+      "accuracy": 0.901452937460518,
+      "macro_f1": 0.8117840126525019,
+      "weighted_f1": 0.8981947124776941,
+      "ece": 0.030173106165163787,
+      "per_class_f1": [
+        0.9476869865974924,
+        0.7899461400359067,
+        0.9305555555555556,
+        0.5789473684210527
+      ]
+    }
+  },
+  "int8": {
+    "sentiment": {
+      "accuracy": 0.9481996209728364,
+      "macro_f1": 0.8530971787520856,
+      "weighted_f1": 0.945455121285161,
+      "ece": 0.020567039503286443,
+      "per_class_f1": [
+        0.9607843137254902,
+        0.6386554621848739,
+        0.9598517603458925
+      ]
+    },
+    "topic": {
+      "accuracy": 0.897662665824384,
+      "macro_f1": 0.8096407448645218,
+      "weighted_f1": 0.8950573738696538,
+      "ece": 0.03848172364760698,
+      "per_class_f1": [
+        0.9469598965071151,
+        0.7720588235294118,
+        0.9428571428571428,
+        0.5766871165644172
+      ]
+    }
+  },
+  "int8_batched": {
+    "sentiment": {
+      "accuracy": 0.9469361970941251,
+      "macro_f1": 0.8403810508215409,
+      "weighted_f1": 0.9439763939148692,
+      "ece": 0.02130906051328036,
+      "per_class_f1": [
+        0.9600560616678346,
+        0.6,
+        0.9610870907967881
+      ]
+    },
+    "topic": {
+      "accuracy": 0.899557801642451,
+      "macro_f1": 0.8050824110291692,
+      "weighted_f1": 0.8956216927024728,
+      "ece": 0.02920503157316632,
+      "per_class_f1": [
+        0.9480463718334049,
+        0.7777777777777778,
+        0.9230769230769231,
+        0.5714285714285714
+      ]
+    }
+  },
+  "delta_macro_f1_points": {
+    "sentiment": -0.486,
+    "topic": -0.214
+  },
+  "delta_macro_f1_points_batched": {
+    "sentiment": -1.758,
+    "topic": -0.67
+  },
+  "label_flips": {
+    "sentiment": 9,
+    "topic": 27
+  },
+  "batch_dependence": {
+    "sentiment": {
+      "median_abs_logit_diff": 0.056583113968372345,
+      "p95_abs_logit_diff": 0.23442430496215755,
+      "max_abs_logit_diff": 0.8889341354370117,
+      "label_flips": 16
+    },
+    "topic": {
+      "median_abs_logit_diff": 0.0523226261138916,
+      "p95_abs_logit_diff": 0.2677699118852615,
+      "max_abs_logit_diff": 1.2808213233947754,
+      "label_flips": 30
+    }
+  },
+  "gate": {
+    "max_drop_points": 1.0,
+    "passed": true,
+    "mode": "batch=1",
+    "batched_is_informational": "batch=32"
+  },
+  "quant_config": "ffn_out_early6_fp32+heads_fp32",
+  "heads_fp32": true,
+  "n_matmul_kept_fp32": 8,
+  "files": {
+    "fp32_bytes": 545549057,
+    "int8_bytes": 333361320
+  },
+  "versions": {
+    "onnxruntime": "1.31.0",
+    "torch": "2.14.1"
+  },
+  "threads": 2,
+  "timing": {
+    "export_fp32_s": 5.3,
+    "quantize_s": 10.9,
+    "val_fp32_s": 23.9,
+    "val_int8_single_s": 13.8,
+    "val_int8_batched_s": 10.3
+  }
+}

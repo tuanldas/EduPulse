@@ -8,10 +8,13 @@ from fastapi import APIRouter
 
 from edupulse.api import schemas
 from edupulse.api.deps import AnalyzerDep
-from edupulse.api.errors import ApiError, not_implemented
+from edupulse.api.errors import ApiError
 from edupulse.engine import explain as xai
 from edupulse.engine import flags
-from edupulse.engine.service import Analysis, HeadResult, NoContent
+from edupulse.engine.baseline import NAME as BASELINE_NAME
+from edupulse.engine.baseline import BaselineUnavailable
+from edupulse.engine.explain import display_token
+from edupulse.engine.service import Analysis, Analyzer, HeadResult, NoContent
 from edupulse.labels import LABELS
 
 router = APIRouter(
@@ -90,6 +93,30 @@ def to_explain_response(explanation: xai.Explanation) -> schemas.ExplainResponse
     )
 
 
+def compare_with_baseline(analyzer: Analyzer, analysis: Analysis) -> schemas.BaselineComparison:
+    """Kết quả của mô hình cơ sở trên cùng câu, kèm việc hai mô hình có đồng ý không."""
+    try:
+        result = analyzer.baseline.predict(analysis.prepared.model_text)
+    except BaselineUnavailable as exc:
+        raise ApiError(503, exc.code, "Bundle không có mô hình cơ sở để so sánh.") from exc
+    return schemas.BaselineComparison(
+        name=BASELINE_NAME,
+        sentiment=schemas.BaselineSentiment(
+            label=result.sentiment.label,
+            confidence=prob(result.sentiment.confidence),
+            top_terms=[display_token(t) for t in result.sentiment.top_terms],
+        ),
+        topic=schemas.BaselineTopic(
+            label=result.topic.label,
+            confidence=prob(result.topic.confidence),
+            top_terms=[display_token(t) for t in result.topic.top_terms],
+        ),
+        agree_sentiment=result.sentiment.label == analysis.sentiment.label,
+        agree_topic=result.topic.label == analysis.topic.label,
+        elapsed_ms=round(result.elapsed_ms, 2),
+    )
+
+
 NO_CONTENT_MESSAGE = (
     "Câu chỉ gồm thông tin cá nhân hoặc ký hiệu nên không có nội dung để phân tích."
 )
@@ -97,13 +124,14 @@ NO_CONTENT_MESSAGE = (
 
 @router.post("/analyze")
 def analyze(body: schemas.AnalyzeRequest, analyzer: AnalyzerDep) -> schemas.AnalyzeResponse:
-    if body.compare:
-        raise not_implemented()
     try:
         analysis = analyzer.analyze(body.text)
     except NoContent as exc:
         raise ApiError(422, exc.code, NO_CONTENT_MESSAGE) from exc
-    return to_analyze_response(analysis, analyzer.xai_max_words)
+    response = to_analyze_response(analysis, analyzer.xai_max_words)
+    if body.compare:
+        response.baseline = compare_with_baseline(analyzer, analysis)
+    return response
 
 
 @router.post("/explain")

@@ -236,3 +236,72 @@ def test_concurrent_requests_all_succeed(live_client: TestClient):
     with ThreadPoolExecutor(max_workers=6) as pool:
         statuses = list(pool.map(call, enumerate(texts)))
     assert statuses == [200] * len(texts)
+
+
+# --- So sánh với mô hình cơ sở --------------------------------------------------------------------
+
+
+def compare(client: TestClient, text: str):
+    return client.post("/api/analyze", json={"text": text, "compare": True})
+
+
+@pytest.mark.model
+def test_without_compare_there_is_no_baseline_block(live_client: TestClient):
+    assert post(live_client, "/api/analyze", SENTENCE).json()["baseline"] is None
+    plain = live_client.post("/api/analyze", json={"text": SENTENCE, "compare": False})
+    assert plain.json()["baseline"] is None
+
+
+@pytest.mark.model
+def test_compare_adds_the_baseline_prediction_with_decisive_terms(live_client: TestClient):
+    response = compare(live_client, SENTENCE)
+    assert response.status_code == 200
+    body = schemas.AnalyzeResponse.model_validate(response.json())
+    baseline = body.baseline
+    assert baseline is not None and baseline.name == "TF-IDF + LinearSVC"
+    assert baseline.sentiment.label in LABELS["sentiment"]
+    assert baseline.topic.label in LABELS["topic"]
+    assert 0 < baseline.sentiment.confidence <= 1 and 0 < baseline.topic.confidence <= 1
+    assert baseline.sentiment.top_terms and baseline.topic.top_terms
+    assert all("_" not in term for term in baseline.sentiment.top_terms + baseline.topic.top_terms)
+    assert baseline.elapsed_ms < 500
+    assert baseline.agree_sentiment == (baseline.sentiment.label == body.sentiment.label)
+    assert baseline.agree_topic == (baseline.topic.label == body.topic.label)
+
+
+@pytest.mark.model
+def test_compare_leaves_the_main_prediction_untouched(live_client: TestClient):
+    plain = post(live_client, "/api/analyze", SENTENCE).json()
+    compared = compare(live_client, SENTENCE).json()
+    compared.pop("baseline")
+    plain.pop("baseline")
+    assert compared == plain
+
+
+@pytest.mark.model
+def test_compare_works_on_a_sentence_the_baseline_cannot_read(live_client: TestClient):
+    # Câu gõ không dấu: luôn bị cờ, mô hình cơ sở không hiểu nên có thể bất đồng.
+    body = compare(live_client, "thay giang day nhiet tinh de hieu").json()
+    assert body["flag"]["needs_review"] is True and body["baseline"] is not None
+    assert isinstance(body["baseline"]["agree_sentiment"], bool)
+
+
+@pytest.mark.model
+def test_compare_still_rejects_text_with_nothing_to_analyze(live_client: TestClient):
+    response = compare(live_client, "0912345678")
+    assert response.status_code == 422 and response.json()["detail"]["code"] == "no_content"
+
+
+@pytest.mark.model
+def test_compare_reports_a_bundle_without_the_baseline(
+    live_client: TestClient, monkeypatch, tmp_path
+):
+    from edupulse.engine.baseline import Baseline
+
+    monkeypatch.setattr(live_client.app.state.analyzer, "baseline", Baseline(tmp_path))
+    response = compare(live_client, SENTENCE)
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "baseline_unavailable"
+    assert (
+        post(live_client, "/api/analyze", SENTENCE).status_code == 200
+    )  # không so sánh: bình thường

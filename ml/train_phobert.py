@@ -17,10 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
-import platform
-import shutil
-import subprocess
 import sys
 import time
 from contextlib import nullcontext
@@ -37,8 +33,11 @@ from edupulse.text import NORMALIZER_VERSION
 from ml.common import (
     MpsBusyError,
     docker_running,
+    keep_awake,
     load_processed,
     mps_lock,
+    mps_lock_is_held,
+    phobert_run_name,
     pick_device,
     set_seed,
     settings,
@@ -57,26 +56,15 @@ from ml.phobert_model import (
     load_tokenizer,
 )
 
+run_name = phobert_run_name  # tên cũ, giữ cho mã và test đang gọi
 PAD_MULTIPLE = 8  # đệm về bội số của 8 để MPS tái dùng đồ thị tính toán
 EVAL_BATCH = 128
 LOG_EVERY = 50
 CACHE_FLUSH_EVERY = 100  # MPS không tự dọn bộ nhớ đệm đồ thị: dọn định kỳ để RAM phẳng
 
 
-def run_name(heads: str, seed: int, dry: bool) -> str:
-    base = "mtl" if heads == "mtl" else f"stl-{heads}"
-    return f"{'dry-' if dry else ''}{base}-s{seed}"
-
-
 def log(message: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
-
-
-def keep_awake() -> subprocess.Popen[bytes] | None:
-    """Giữ máy macOS không ngủ trong suốt tiến trình này (ngủ giữa chừng từng làm mất một run)."""
-    if platform.system() != "Darwin" or shutil.which("caffeinate") is None:
-        return None
-    return subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
 
 
 def pad_batch(
@@ -279,6 +267,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-docker", action="store_true", help="vẫn train MPS khi Docker Desktop đang chạy"
     )
+    parser.add_argument(
+        "--lock-held",
+        action="store_true",
+        help="khoá MPS đã do hàng đợi (tiến trình cha) giữ suốt cả hàng: không tự khoá lại",
+    )
     return parser
 
 
@@ -309,10 +302,18 @@ def main(argv: list[str] | None = None) -> int:
     # Khoá toàn máy cho mọi lần train thật: MPS chiếm GPU và hàng GB bộ nhớ, còn train CPU chiếm
     # hết lõi nên phép đo hiệu năng cùng lúc sẽ sai. Lần chạy thử (--limit) không cần khoá.
     exclusive = device_name == "mps" or (device_name == "cpu" and not args.limit)
+    if exclusive and args.lock_held and not mps_lock_is_held():
+        print(
+            "--lock-held nhưng không có tiến trình nào đang giữ khoá MPS: chạy qua "
+            "`bash ml/run-experiments.sh` hoặc bỏ cờ này để tự khoá",
+            file=sys.stderr,
+        )
+        return 4
     run_dir.mkdir(parents=True, exist_ok=True)
     awake = keep_awake()
     try:
-        with mps_lock(note=f"train_phobert {run_dir.name}") if exclusive else nullcontext():
+        own_lock = exclusive and not args.lock_held
+        with mps_lock(note=f"train_phobert {run_dir.name}") if own_lock else nullcontext():
             history = train(args, run_dir, device_name)
     except MpsBusyError as error:
         print(error, file=sys.stderr)

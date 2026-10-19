@@ -4,17 +4,44 @@ import * as React from "react"
 import { cn } from "cn"
 
 // Bảng theo wireframe (.df): khung viền, tiêu đề nền bg2 chữ 13px muted, ô đệm 7×10px, lưới mảnh
-// màu `grid`. Cuộn ngang trong khung khi hẹp (không cuộn cả trang).
+// màu `grid`. Cuộn ngang trong khung khi hẹp (không cuộn cả trang). Khung chỉ nhận tiêu điểm bàn phím
+// khi thật sự cuộn được, để người dùng bàn phím cuộn xem phần bị che mà không thêm điểm dừng thừa.
 function Table({
   className,
   containerClassName,
+  label,
   ...props
-}: React.ComponentProps<"table"> & { containerClassName?: string }) {
+}: React.ComponentProps<"table"> & {
+  containerClassName?: string
+  /** Tên của khung cuộn cho trình đọc màn hình (thường trùng tiêu đề bảng). */
+  label?: string
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [scrollable, setScrollable] = React.useState(false)
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => {
+      setScrollable(
+        container.scrollWidth > container.clientWidth + 1 ||
+          container.scrollHeight > container.clientHeight + 1
+      )
+    })
+    observer.observe(container)
+    if (container.firstElementChild) observer.observe(container.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div
+      ref={containerRef}
       data-slot="table-container"
+      tabIndex={scrollable ? 0 : undefined}
+      role={scrollable && label ? "region" : undefined}
+      aria-label={scrollable && label ? label : undefined}
       className={cn(
-        "relative w-full max-w-full overflow-auto rounded-lg border border-border",
+        "relative w-full max-w-full overflow-auto rounded-lg border border-border outline-none focus-visible:ring-3 focus-visible:ring-ring/70",
         containerClassName
       )}
     >

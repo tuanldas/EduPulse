@@ -1,0 +1,1074 @@
+{
+  "split": "test",
+  "n": 3166,
+  "models": {
+    "main": "mtl-int8",
+    "reference": "linearsvc"
+  },
+  "params": {
+    "samples_per_task": 15,
+    "long_words": 40,
+    "small_sample": 10,
+    "confidence_temperature": 1.0
+  },
+  "overall": {
+    "mtl-int8": {
+      "sentiment": {
+        "n": 3166,
+        "errors": 190,
+        "accuracy": 0.9399873657612129,
+        "macro_f1": 0.8205307731879682
+      },
+      "topic": {
+        "n": 3166,
+        "errors": 317,
+        "accuracy": 0.8998736576121289,
+        "macro_f1": 0.8125833091134675
+      }
+    },
+    "linearsvc": {
+      "sentiment": {
+        "n": 3166,
+        "errors": 335,
+        "accuracy": 0.894188250157928,
+        "macro_f1": 0.7344552521592238
+      },
+      "topic": {
+        "n": 3166,
+        "errors": 433,
+        "accuracy": 0.8632343651295009,
+        "macro_f1": 0.7323562532794098
+      }
+    }
+  },
+  "confusion_pairs": {
+    "mtl-int8": {
+      "sentiment": [
+        {
+          "true": "neutral",
+          "pred": "positive",
+          "count": 60,
+          "share_of_errors": 0.3157894736842105,
+          "true_support": 167,
+          "true_recall": 0.4311377245508982
+        },
+        {
+          "true": "positive",
+          "pred": "negative",
+          "count": 46,
+          "share_of_errors": 0.24210526315789474,
+          "true_support": 1590,
+          "true_recall": 0.9654088050314465
+        },
+        {
+          "true": "neutral",
+          "pred": "negative",
+          "count": 35,
+          "share_of_errors": 0.18421052631578946,
+          "true_support": 167,
+          "true_recall": 0.4311377245508982
+        },
+        {
+          "true": "negative",
+          "pred": "positive",
+          "count": 25,
+          "share_of_errors": 0.13157894736842105,
+          "true_support": 1409,
+          "true_recall": 0.971611071682044
+        },
+        {
+          "true": "negative",
+          "pred": "neutral",
+          "count": 15,
+          "share_of_errors": 0.07894736842105263,
+          "true_support": 1409,
+          "true_recall": 0.971611071682044
+        },
+        {
+          "true": "positive",
+          "pred": "neutral",
+          "count": 9,
+          "share_of_errors": 0.04736842105263158,
+          "true_support": 1590,
+          "true_recall": 0.9654088050314465
+        }
+      ],
+      "topic": [
+        {
+          "true": "training_program",
+          "pred": "lecturer",
+          "count": 97,
+          "share_of_errors": 0.305993690851735,
+          "true_support": 572,
+          "true_recall": 0.7954545454545454
+        },
+        {
+          "true": "lecturer",
+          "pred": "training_program",
+          "count": 92,
+          "share_of_errors": 0.2902208201892745,
+          "true_support": 2290,
+          "true_recall": 0.951528384279476
+        },
+        {
+          "true": "others",
+          "pred": "lecturer",
+          "count": 45,
+          "share_of_errors": 0.14195583596214512,
+          "true_support": 159,
+          "true_recall": 0.48427672955974843
+        },
+        {
+          "true": "others",
+          "pred": "training_program",
+          "count": 34,
+          "share_of_errors": 0.10725552050473186,
+          "true_support": 159,
+          "true_recall": 0.48427672955974843
+        },
+        {
+          "true": "training_program",
+          "pred": "others",
+          "count": 18,
+          "share_of_errors": 0.056782334384858045,
+          "true_support": 572,
+          "true_recall": 0.7954545454545454
+        },
+        {
+          "true": "lecturer",
+          "pred": "others",
+          "count": 16,
+          "share_of_errors": 0.050473186119873815,
+          "true_support": 2290,
+          "true_recall": 0.951528384279476
+        },
+        {
+          "true": "facility",
+          "pred": "lecturer",
+          "count": 4,
+          "share_of_errors": 0.012618296529968454,
+          "true_support": 145,
+          "true_recall": 0.9517241379310345
+        },
+        {
+          "true": "lecturer",
+          "pred": "facility",
+          "count": 3,
+          "share_of_errors": 0.00946372239747634,
+          "true_support": 2290,
+          "true_recall": 0.951528384279476
+        },
+        {
+          "true": "facility",
+          "pred": "training_program",
+          "count": 3,
+          "share_of_errors": 0.00946372239747634,
+          "true_support": 145,
+          "true_recall": 0.9517241379310345
+        },
+        {
+          "true": "others",
+          "pred": "facility",
+          "count": 3,
+          "share_of_errors": 0.00946372239747634,
+          "true_support": 159,
+          "true_recall": 0.48427672955974843
+        },
+        {
+          "true": "training_program",
+          "pred": "facility",
+          "count": 2,
+          "share_of_errors": 0.006309148264984227,
+          "true_support": 572,
+          "true_recall": 0.7954545454545454
+        }
+      ]
+    },
+    "linearsvc": {
+      "sentiment": [
+        {
+          "true": "positive",
+          "pred": "negative",
+          "count": 106,
+          "share_of_errors": 0.3164179104477612,
+          "true_support": 1590,
+          "true_recall": 0.919496855345912
+        },
+        {
+          "true": "negative",
+          "pred": "positive",
+          "count": 66,
+          "share_of_errors": 0.19701492537313434,
+          "true_support": 1409,
+          "true_recall": 0.9375443577004968
+        },
+        {
+          "true": "neutral",
+          "pred": "positive",
+          "count": 61,
+          "share_of_errors": 0.18208955223880596,
+          "true_support": 167,
+          "true_recall": 0.2874251497005988
+        },
+        {
+          "true": "neutral",
+          "pred": "negative",
+          "count": 58,
+          "share_of_errors": 0.17313432835820897,
+          "true_support": 167,
+          "true_recall": 0.2874251497005988
+        },
+        {
+          "true": "negative",
+          "pred": "neutral",
+          "count": 22,
+          "share_of_errors": 0.06567164179104477,
+          "true_support": 1409,
+          "true_recall": 0.9375443577004968
+        },
+        {
+          "true": "positive",
+          "pred": "neutral",
+          "count": 22,
+          "share_of_errors": 0.06567164179104477,
+          "true_support": 1590,
+          "true_recall": 0.919496855345912
+        }
+      ],
+      "topic": [
+        {
+          "true": "training_program",
+          "pred": "lecturer",
+          "count": 146,
+          "share_of_errors": 0.3371824480369515,
+          "true_support": 572,
+          "true_recall": 0.715034965034965
+        },
+        {
+          "true": "lecturer",
+          "pred": "training_program",
+          "count": 121,
+          "share_of_errors": 0.279445727482679,
+          "true_support": 2290,
+          "true_recall": 0.9379912663755459
+        },
+        {
+          "true": "others",
+          "pred": "lecturer",
+          "count": 62,
+          "share_of_errors": 0.14318706697459585,
+          "true_support": 159,
+          "true_recall": 0.2893081761006289
+        },
+        {
+          "true": "others",
+          "pred": "training_program",
+          "count": 49,
+          "share_of_errors": 0.11316397228637413,
+          "true_support": 159,
+          "true_recall": 0.2893081761006289
+        },
+        {
+          "true": "lecturer",
+          "pred": "others",
+          "count": 15,
+          "share_of_errors": 0.03464203233256351,
+          "true_support": 2290,
+          "true_recall": 0.9379912663755459
+        },
+        {
+          "true": "training_program",
+          "pred": "others",
+          "count": 14,
+          "share_of_errors": 0.03233256351039261,
+          "true_support": 572,
+          "true_recall": 0.715034965034965
+        },
+        {
+          "true": "facility",
+          "pred": "training_program",
+          "count": 9,
+          "share_of_errors": 0.020785219399538105,
+          "true_support": 145,
+          "true_recall": 0.896551724137931
+        },
+        {
+          "true": "lecturer",
+          "pred": "facility",
+          "count": 6,
+          "share_of_errors": 0.013856812933025405,
+          "true_support": 2290,
+          "true_recall": 0.9379912663755459
+        },
+        {
+          "true": "facility",
+          "pred": "lecturer",
+          "count": 5,
+          "share_of_errors": 0.011547344110854504,
+          "true_support": 145,
+          "true_recall": 0.896551724137931
+        },
+        {
+          "true": "training_program",
+          "pred": "facility",
+          "count": 3,
+          "share_of_errors": 0.006928406466512702,
+          "true_support": 572,
+          "true_recall": 0.715034965034965
+        },
+        {
+          "true": "others",
+          "pred": "facility",
+          "count": 2,
+          "share_of_errors": 0.004618937644341801,
+          "true_support": 159,
+          "true_recall": 0.2893081761006289
+        },
+        {
+          "true": "facility",
+          "pred": "others",
+          "count": 1,
+          "share_of_errors": 0.0023094688221709007,
+          "true_support": 145,
+          "true_recall": 0.896551724137931
+        }
+      ]
+    }
+  },
+  "error_samples": {
+    "file": "error_samples.csv",
+    "limit_per_task": 15,
+    "max_rows": 30,
+    "n_rows": 30,
+    "per_task": {
+      "sentiment": {
+        "n": 15,
+        "max_confidence": 0.983051,
+        "min_confidence": 0.974143
+      },
+      "topic": {
+        "n": 15,
+        "max_confidence": 0.985904,
+        "min_confidence": 0.969952
+      }
+    },
+    "rows": [
+      {
+        "split": "test",
+        "row": 1085,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.983051
+      },
+      {
+        "split": "test",
+        "row": 121,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.982574
+      },
+      {
+        "split": "test",
+        "row": 585,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "negative",
+        "confidence": 0.981624
+      },
+      {
+        "split": "test",
+        "row": 3105,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "negative",
+        "confidence": 0.98119
+      },
+      {
+        "split": "test",
+        "row": 1121,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.980545
+      },
+      {
+        "split": "test",
+        "row": 2621,
+        "task": "sentiment",
+        "true": "positive",
+        "pred": "negative",
+        "confidence": 0.980255
+      },
+      {
+        "split": "test",
+        "row": 3124,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "negative",
+        "confidence": 0.978799
+      },
+      {
+        "split": "test",
+        "row": 2290,
+        "task": "sentiment",
+        "true": "negative",
+        "pred": "positive",
+        "confidence": 0.977502
+      },
+      {
+        "split": "test",
+        "row": 2470,
+        "task": "sentiment",
+        "true": "negative",
+        "pred": "positive",
+        "confidence": 0.976713
+      },
+      {
+        "split": "test",
+        "row": 1624,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.97644
+      },
+      {
+        "split": "test",
+        "row": 2044,
+        "task": "sentiment",
+        "true": "negative",
+        "pred": "positive",
+        "confidence": 0.976324
+      },
+      {
+        "split": "test",
+        "row": 362,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.975856
+      },
+      {
+        "split": "test",
+        "row": 931,
+        "task": "sentiment",
+        "true": "neutral",
+        "pred": "positive",
+        "confidence": 0.975522
+      },
+      {
+        "split": "test",
+        "row": 1910,
+        "task": "sentiment",
+        "true": "positive",
+        "pred": "negative",
+        "confidence": 0.974515
+      },
+      {
+        "split": "test",
+        "row": 1527,
+        "task": "sentiment",
+        "true": "negative",
+        "pred": "positive",
+        "confidence": 0.974143
+      },
+      {
+        "split": "test",
+        "row": 845,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.985904
+      },
+      {
+        "split": "test",
+        "row": 3015,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.98172
+      },
+      {
+        "split": "test",
+        "row": 2646,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.980861
+      },
+      {
+        "split": "test",
+        "row": 2875,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.980477
+      },
+      {
+        "split": "test",
+        "row": 429,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.979702
+      },
+      {
+        "split": "test",
+        "row": 1693,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.977801
+      },
+      {
+        "split": "test",
+        "row": 2272,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.972531
+      },
+      {
+        "split": "test",
+        "row": 964,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.972125
+      },
+      {
+        "split": "test",
+        "row": 3073,
+        "task": "topic",
+        "true": "others",
+        "pred": "lecturer",
+        "confidence": 0.972032
+      },
+      {
+        "split": "test",
+        "row": 3046,
+        "task": "topic",
+        "true": "others",
+        "pred": "lecturer",
+        "confidence": 0.971985
+      },
+      {
+        "split": "test",
+        "row": 3096,
+        "task": "topic",
+        "true": "others",
+        "pred": "lecturer",
+        "confidence": 0.971531
+      },
+      {
+        "split": "test",
+        "row": 1552,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.971524
+      },
+      {
+        "split": "test",
+        "row": 43,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.970143
+      },
+      {
+        "split": "test",
+        "row": 2921,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.97006
+      },
+      {
+        "split": "test",
+        "row": 1378,
+        "task": "topic",
+        "true": "training_program",
+        "pred": "lecturer",
+        "confidence": 0.969952
+      }
+    ]
+  },
+  "slices": {
+    "overall": {
+      "n": 3166,
+      "mtl-int8": {
+        "sentiment": {
+          "errors": 190,
+          "error_rate": 0.06001263423878711
+        },
+        "topic": {
+          "errors": 317,
+          "error_rate": 0.10012634238787113
+        }
+      },
+      "linearsvc": {
+        "sentiment": {
+          "errors": 335,
+          "error_rate": 0.10581174984207202
+        },
+        "topic": {
+          "errors": 433,
+          "error_rate": 0.13676563487049906
+        }
+      }
+    },
+    "by_true_topic": {
+      "lecturer": {
+        "n": 2290,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 101,
+            "error_rate": 0.04410480349344978
+          },
+          "topic": {
+            "errors": 111,
+            "error_rate": 0.04847161572052402
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 196,
+            "error_rate": 0.08558951965065502
+          },
+          "topic": {
+            "errors": 142,
+            "error_rate": 0.06200873362445415
+          }
+        }
+      },
+      "training_program": {
+        "n": 572,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 53,
+            "error_rate": 0.09265734265734266
+          },
+          "topic": {
+            "errors": 117,
+            "error_rate": 0.20454545454545456
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 85,
+            "error_rate": 0.1486013986013986
+          },
+          "topic": {
+            "errors": 163,
+            "error_rate": 0.28496503496503495
+          }
+        }
+      },
+      "facility": {
+        "n": 145,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 2,
+            "error_rate": 0.013793103448275862
+          },
+          "topic": {
+            "errors": 7,
+            "error_rate": 0.04827586206896552
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 6,
+            "error_rate": 0.041379310344827586
+          },
+          "topic": {
+            "errors": 15,
+            "error_rate": 0.10344827586206896
+          }
+        }
+      },
+      "others": {
+        "n": 159,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 34,
+            "error_rate": 0.2138364779874214
+          },
+          "topic": {
+            "errors": 82,
+            "error_rate": 0.5157232704402516
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 48,
+            "error_rate": 0.3018867924528302
+          },
+          "topic": {
+            "errors": 113,
+            "error_rate": 0.710691823899371
+          }
+        }
+      }
+    },
+    "by_length": {
+      "short": {
+        "n": 3128,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 188,
+            "error_rate": 0.06010230179028133
+          },
+          "topic": {
+            "errors": 313,
+            "error_rate": 0.10006393861892583
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 333,
+            "error_rate": 0.10645780051150895
+          },
+          "topic": {
+            "errors": 429,
+            "error_rate": 0.13714833759590792
+          }
+        }
+      },
+      "long": {
+        "n": 38,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 2,
+            "error_rate": 0.05263157894736842
+          },
+          "topic": {
+            "errors": 4,
+            "error_rate": 0.10526315789473684
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 2,
+            "error_rate": 0.05263157894736842
+          },
+          "topic": {
+            "errors": 4,
+            "error_rate": 0.10526315789473684
+          }
+        }
+      }
+    },
+    "by_special_token": {
+      "without": {
+        "n": 3028,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 179,
+            "error_rate": 0.059114927344782034
+          },
+          "topic": {
+            "errors": 307,
+            "error_rate": 0.10138705416116249
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 318,
+            "error_rate": 0.10501981505944517
+          },
+          "topic": {
+            "errors": 416,
+            "error_rate": 0.13738441215323646
+          }
+        }
+      },
+      "with": {
+        "n": 138,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 11,
+            "error_rate": 0.07971014492753623
+          },
+          "topic": {
+            "errors": 10,
+            "error_rate": 0.07246376811594203
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 17,
+            "error_rate": 0.12318840579710146
+          },
+          "topic": {
+            "errors": 17,
+            "error_rate": 0.12318840579710146
+          }
+        }
+      }
+    },
+    "by_diacritics": {
+      "with_diacritics": {
+        "n": 3164,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 189,
+            "error_rate": 0.059734513274336286
+          },
+          "topic": {
+            "errors": 317,
+            "error_rate": 0.10018963337547408
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 334,
+            "error_rate": 0.10556257901390645
+          },
+          "topic": {
+            "errors": 433,
+            "error_rate": 0.13685208596713022
+          }
+        }
+      },
+      "no_diacritics": {
+        "n": 2,
+        "mtl-int8": {
+          "sentiment": {
+            "errors": 1,
+            "error_rate": 0.5
+          },
+          "topic": {
+            "errors": 0,
+            "error_rate": 0.0
+          }
+        },
+        "linearsvc": {
+          "sentiment": {
+            "errors": 1,
+            "error_rate": 0.5
+          },
+          "topic": {
+            "errors": 0,
+            "error_rate": 0.0
+          }
+        }
+      }
+    }
+  },
+  "overlap": {
+    "sentiment": {
+      "n": 3166,
+      "both_wrong": 148,
+      "only_main_wrong": 42,
+      "only_reference_wrong": 187,
+      "both_right": 2789,
+      "main_errors": 190,
+      "reference_errors": 335,
+      "main_errors_also_reference_wrong": 0.7789473684210526
+    },
+    "topic": {
+      "n": 3166,
+      "both_wrong": 234,
+      "only_main_wrong": 83,
+      "only_reference_wrong": 199,
+      "both_right": 2650,
+      "main_errors": 317,
+      "reference_errors": 433,
+      "main_errors_also_reference_wrong": 0.7381703470031545
+    }
+  },
+  "bias": {
+    "topic_sentiment_cells": [
+      {
+        "task": "sentiment",
+        "topic": "lecturer",
+        "sentiment": "negative",
+        "n": 791,
+        "recall": 0.9747155499367889,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "lecturer",
+        "sentiment": "neutral",
+        "n": 74,
+        "recall": 0.35135135135135137,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "lecturer",
+        "sentiment": "positive",
+        "n": 1425,
+        "recall": 0.9768421052631578,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "training_program",
+        "sentiment": "negative",
+        "n": 416,
+        "recall": 0.9735576923076923,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "training_program",
+        "sentiment": "neutral",
+        "n": 47,
+        "recall": 0.3617021276595745,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "training_program",
+        "sentiment": "positive",
+        "n": 109,
+        "recall": 0.8899082568807339,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "facility",
+        "sentiment": "negative",
+        "n": 138,
+        "recall": 1.0,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "facility",
+        "sentiment": "neutral",
+        "n": 2,
+        "recall": 0.5,
+        "small_sample": true
+      },
+      {
+        "task": "sentiment",
+        "topic": "facility",
+        "sentiment": "positive",
+        "n": 5,
+        "recall": 0.8,
+        "small_sample": true
+      },
+      {
+        "task": "sentiment",
+        "topic": "others",
+        "sentiment": "negative",
+        "n": 64,
+        "recall": 0.859375,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "others",
+        "sentiment": "neutral",
+        "n": 44,
+        "recall": 0.6363636363636364,
+        "small_sample": false
+      },
+      {
+        "task": "sentiment",
+        "topic": "others",
+        "sentiment": "positive",
+        "n": 51,
+        "recall": 0.8235294117647058,
+        "small_sample": false
+      }
+    ],
+    "topic_only_baseline": {
+      "rule": "chủ đề thật là giảng viên → tích cực, còn lại → tiêu cực",
+      "topic_only": {
+        "n": 3166,
+        "errors": 1123,
+        "accuracy": 0.6452937460518003,
+        "macro_f1": 0.4251517065577839
+      },
+      "cells": {
+        "on_prior": 2043,
+        "against_prior": 1123
+      },
+      "models": {
+        "mtl-int8": {
+          "overall": {
+            "n": 3166,
+            "errors": 190,
+            "accuracy": 0.9399873657612129,
+            "macro_f1": 0.8205307731879682
+          },
+          "on_prior": {
+            "n": 2043,
+            "errors": 53,
+            "accuracy": 0.9740577581987273
+          },
+          "against_prior": {
+            "n": 1123,
+            "errors": 137,
+            "accuracy": 0.8780053428317008
+          },
+          "gap": 0.09605241536702647
+        },
+        "linearsvc": {
+          "overall": {
+            "n": 3166,
+            "errors": 335,
+            "accuracy": 0.894188250157928,
+            "macro_f1": 0.7344552521592238
+          },
+          "on_prior": {
+            "n": 2043,
+            "errors": 137,
+            "accuracy": 0.9329417523250122
+          },
+          "against_prior": {
+            "n": 1123,
+            "errors": 198,
+            "accuracy": 0.8236865538735529
+          },
+          "gap": 0.10925519845145926
+        }
+      }
+    },
+    "teacher_slices": {
+      "n_both": 15,
+      "thay": {
+        "n": 759,
+        "negative_rate_true": 0.35046113306982873,
+        "negative_rate_pred": 0.3675889328063241,
+        "accuracy": 0.9472990777338604,
+        "macro_f1": 0.7514591540224783,
+        "small_sample": false
+      },
+      "co": {
+        "n": 284,
+        "negative_rate_true": 0.19718309859154928,
+        "negative_rate_pred": 0.2112676056338028,
+        "accuracy": 0.9401408450704225,
+        "macro_f1": 0.7248770918553339,
+        "small_sample": false
+      },
+      "difference": {
+        "negative_rate_true": 0.15327803447827945,
+        "negative_rate_pred": 0.15632132717252128,
+        "accuracy": 0.007158232663437847,
+        "macro_f1": 0.026582062167144427
+      }
+    }
+  },
+  "notes": {
+    "confidence": "Độ tin cậy là xác suất softmax lớn nhất của logits bản triển khai ở T = 1 (chưa áp nhiệt độ hiệu chuẩn); chỉ dùng để xếp hạng lỗi.",
+    "macro_f1": "macro-F1 của một lát tính trên các lớp có mặt trong nhãn thật hoặc dự đoán của lát; toàn tập có đủ các lớp nên trùng macro-F1 của bảng chính.",
+    "prior_cells": "Ô theo prior: chủ đề giảng viên + cảm xúc tích cực, hoặc chủ đề khác + cảm xúc tiêu cực (chỗ quy tắc chỉ-dùng-chủ-đề đoán đúng). Ô ngược prior: mọi câu còn lại, gồm cả trung tính.",
+    "teacher_proxy": "Lát thầy / cô chỉ là proxy vì dữ liệu không có thuộc tính nhân khẩu nào; chênh lệch chưa qua kiểm định thống kê.",
+    "small_sample": "Ô hoặc lát có n < 10 gắn cờ \"mẫu quá ít để kết luận\"."
+  },
+  "source": {
+    "rehearsal": false,
+    "deploy_run": "mtl-s42",
+    "evaluated_at": "2026-10-19T09:00:00+0700",
+    "git_commit": "bac46b8bf8e836956a3dff919a66d2574b19d6d8"
+  }
+}

@@ -1,0 +1,31 @@
+split,row,task,true,pred,confidence,sentence
+test,1085,sentiment,neutral,positive,0.983051,sự tận tình .
+test,121,sentiment,neutral,positive,0.982574,"[đã gỡ câu UIT-VSFC] ."
+test,585,sentiment,neutral,negative,0.981624,[đã gỡ câu UIT-VSFC] .
+test,3105,sentiment,neutral,negative,0.98119,[đã gỡ câu UIT-VSFC] .
+test,1121,sentiment,neutral,positive,0.980545,tiếp thu bài cũng ổn .
+test,2621,sentiment,positive,negative,0.980255,đi sâu vào vấn đề khó hơn .
+test,3124,sentiment,neutral,negative,0.978799,[đã gỡ câu UIT-VSFC] .
+test,2290,sentiment,negative,positive,0.977502,"[đã gỡ câu UIT-VSFC] ."
+test,2470,sentiment,negative,positive,0.976713,"[đã gỡ câu UIT-VSFC] ."
+test,1624,sentiment,neutral,positive,0.97644,[đã gỡ câu UIT-VSFC] .
+test,2044,sentiment,negative,positive,0.976324,[đã gỡ câu UIT-VSFC] .
+test,362,sentiment,neutral,positive,0.975856,[đã gỡ câu UIT-VSFC] .
+test,931,sentiment,neutral,positive,0.975522,nói dễ nghe .
+test,1910,sentiment,positive,negative,0.974515,[đã gỡ câu UIT-VSFC] .
+test,1527,sentiment,negative,positive,0.974143,"[đã gỡ câu UIT-VSFC] ."
+test,845,topic,training_program,lecturer,0.985904,[đã gỡ câu UIT-VSFC] .
+test,3015,topic,training_program,lecturer,0.98172,[đã gỡ câu UIT-VSFC] .
+test,2646,topic,training_program,lecturer,0.980861,[đã gỡ câu UIT-VSFC] .
+test,2875,topic,training_program,lecturer,0.980477,dạy kỹ các phần quan trọng .
+test,429,topic,training_program,lecturer,0.979702,thuyết trình thường xuyên .
+test,1693,topic,training_program,lecturer,0.977801,"[đã gỡ câu UIT-VSFC] ."
+test,2272,topic,training_program,lecturer,0.972531,"[đã gỡ câu UIT-VSFC] ."
+test,964,topic,training_program,lecturer,0.972125,dạy rất chi tiết .
+test,3073,topic,others,lecturer,0.972032,[đã gỡ câu UIT-VSFC] .
+test,3046,topic,others,lecturer,0.971985,"[đã gỡ câu UIT-VSFC] ."
+test,3096,topic,others,lecturer,0.971531,"[đã gỡ câu UIT-VSFC] ."
+test,1552,topic,training_program,lecturer,0.971524,"[đã gỡ câu UIT-VSFC] ."
+test,43,topic,training_program,lecturer,0.970143,"cô vui tính , học không áp lực ."
+test,2921,topic,training_program,lecturer,0.97006,"[đã gỡ câu UIT-VSFC] ."
+test,1378,topic,training_program,lecturer,0.969952,dạy tương đối đầy đủ chương trình .

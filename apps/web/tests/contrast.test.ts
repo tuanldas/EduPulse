@@ -53,13 +53,25 @@ describe.each(THEMES)("tương phản token · theme %s", (theme) => {
     expect(ratio("primary-text", "primary-soft")).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("nút primary: chữ trắng trên nền nút, và nền nút nhìn rõ trên nền trang", () => {
+  it("nút primary: chữ trắng trên nền nút (cả khi hover), và nền nút nhìn rõ trên nền trang", () => {
     expect(ratio("primary-foreground", "primary")).toBeGreaterThanOrEqual(4.5);
+    expect(ratio("primary-foreground", "primary-hover")).toBeGreaterThanOrEqual(4.5);
     expect(ratio("primary", "background")).toBeGreaterThanOrEqual(3);
+    expect(ratio("primary-hover", "background")).toBeGreaterThanOrEqual(3);
   });
 
   it("viền ô nhập và khung nhìn rõ trên nền trang (WCAG 1.4.11)", () => {
     expect(ratio("border", "background")).toBeGreaterThanOrEqual(3);
+  });
+
+  it("vòng tiêu điểm bàn phím (ring-ring/70 trong component) nhìn rõ trên nền trang và nền bg2", () => {
+    const [r, g, b] = colorOf(theme, "ring");
+    for (const surface of ["background", "muted"]) {
+      const ring = over([r, g, b, 0.7], colorOf(theme, surface));
+      expect(contrast(ring, colorOf(theme, surface))).toBeGreaterThanOrEqual(3);
+    }
+    // Viền tiêu điểm mặc định của trình duyệt dùng màu ring đặc.
+    expect(ratio("ring", "background")).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each(["info", "warn", "ok", "err"])("khối thông báo %s: chữ trên nền nhạt", (tone) => {

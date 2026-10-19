@@ -20,12 +20,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar className="max-[640px]:hidden" />
       <div className="min-w-0 flex-1">
         <MobileNav className="min-[641px]:hidden" />
-        <div className="flex h-14 items-center justify-end px-5 max-[640px]:hidden">
+        <header className="flex h-14 items-center justify-end px-5 max-[640px]:hidden">
           <ThemeToggle />
-        </div>
+        </header>
         <main
           id="noi-dung"
-          className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 pt-5 pb-24 min-[641px]:px-20 min-[641px]:pt-6 min-[641px]:pb-[120px]"
+          tabIndex={-1}
+          className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 pt-5 pb-24 outline-none min-[641px]:px-8 min-[641px]:pt-6 min-[641px]:pb-[120px] min-[1100px]:px-20"
         >
           {children}
         </main>

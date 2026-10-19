@@ -375,6 +375,8 @@ export interface components {
             demo_reason: string | null;
             /** Source Url */
             source_url: string;
+            /** Model Url */
+            model_url: string;
         };
         /**
          * ArchitectureRow

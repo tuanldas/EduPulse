@@ -35,14 +35,19 @@ export function Callout({ tone = "info", icon, title, children, role = "note", a
   return (
     <div
       role={role}
-      className={cn("flex items-start gap-3 rounded-lg px-4 py-3.5 text-[15px] leading-[1.55]", style.box, className)}
+      className={cn(
+        "flex flex-wrap items-start gap-x-3 gap-y-2 rounded-lg px-4 py-3.5 text-[15px] leading-[1.55] min-[641px]:flex-nowrap",
+        style.box,
+        className,
+      )}
     >
       <Icon name={icon ?? style.icon} className="mt-px" />
       <div className="min-w-0 flex-1">
         {title ? <b className="font-semibold">{title} </b> : null}
         {children}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {/* Màn hình hẹp: nút xuống dòng riêng, thẳng hàng với chữ (icon 20px + khoảng cách 12px) thay vì ép chữ thành cột hẹp. */}
+      {action ? <div className="shrink-0 max-[640px]:basis-full max-[640px]:pl-8">{action}</div> : null}
     </div>
   );
 }

@@ -220,7 +220,7 @@ def train_negatives() -> dict[str, list[str]]:
     path = Path(load_settings().data_dir / "raw" / "train.parquet")
     if not path.is_file():
         pytest.skip("chưa có data/raw — chạy `make data`")
-    import pyarrow.parquet as pq
+    pq = pytest.importorskip("pyarrow.parquet")
 
     table = pq.read_table(path)
     out: dict[str, list[str]] = {t: [] for t in TOPIC}

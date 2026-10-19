@@ -159,6 +159,7 @@ class AppConfig(ApiModel):
     demo_available: bool  # dữ liệu demo, file mẫu và câu mẫu đã được dựng lúc build image
     demo_reason: str | None  # vì sao không có demo (khi `demo_available` = false)
     source_url: str  # liên kết mã nguồn (AGPL-3.0 §13); "" nếu chưa cấu hình
+    model_url: str  # liên kết tới model trên Hugging Face; "" nếu chưa cấu hình (ẩn nút)
 
 
 # --- Phân tích một câu --------------------------------------------------------------------------

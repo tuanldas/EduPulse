@@ -10,7 +10,9 @@ import fcntl
 import hashlib
 import json
 import os
+import platform
 import random
+import shutil
 import subprocess
 import tempfile
 import time
@@ -150,6 +152,13 @@ def docker_running() -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def keep_awake() -> subprocess.Popen[bytes] | None:
+    """Giữ máy macOS không ngủ trong suốt tiến trình này (ngủ giữa chừng từng làm mất một run)."""
+    if platform.system() != "Darwin" or shutil.which("caffeinate") is None:
+        return None
+    return subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
 
 
 class MpsBusyError(RuntimeError):
@@ -334,6 +343,12 @@ def macro_f1(logits: np.ndarray, y: Sequence[int], n_classes: int) -> float:
 
 def phobert_runs_dir() -> Path:
     return settings().models_dir / "phobert"
+
+
+def phobert_run_name(heads: str, seed: int, dry: bool = False) -> str:
+    """Tên thư mục run: `mtl-s42`, `stl-sentiment-s43` (chạy thử có tiền tố `dry-`)."""
+    base = "mtl" if heads == "mtl" else f"stl-{heads}"
+    return f"{'dry-' if dry else ''}{base}-s{seed}"
 
 
 def finished_runs(prefix: str = "mtl-s") -> list[Path]:
