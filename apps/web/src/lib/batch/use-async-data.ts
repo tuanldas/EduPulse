@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { isAbort } from "./failure";
+import { isAbortError } from "./failure";
 import { useLatest } from "./use-latest";
 
 export type AsyncState<T> =
@@ -46,7 +46,7 @@ export function useAsyncData<T>(
         setResult({ key, attempt, outcome: { ok: true, data }, lastData: data });
       },
       (failure: unknown) => {
-        if (signal.aborted || isAbort(failure)) return;
+        if (signal.aborted || isAbortError(failure)) return;
         setResult((previous) => ({
           key,
           attempt,

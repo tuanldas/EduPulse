@@ -1,8 +1,5 @@
-import type {
-  InsightsResponse,
-  SentimentLabel,
-  TopicLabel,
-} from "@/lib/batch/types";
+import type { InsightsResponse, SentimentLabel, TopicLabel } from "@/lib/batch/types";
+import { LABEL_ORDER } from "@/lib/labels";
 
 type Topics = InsightsResponse["topics"];
 type Alerts = InsightsResponse["alerts"];
@@ -53,12 +50,6 @@ export function kpiDelta(metric: KpiMetric, deltaPoints: number, digits = 1): Kp
 
 // --- Cột chồng cảm xúc theo chủ đề -------------------------------------------------------------
 
-export const SENTIMENT_STACK_ORDER = [
-  "negative",
-  "neutral",
-  "positive",
-] as const satisfies readonly SentimentLabel[];
-
 /** Đoạn có tỉ lệ nhỏ hơn mức này không ghi số trong ô (chật), số vẫn có trong chú thích văn bản. */
 export const SEGMENT_LABEL_MIN_SHARE = 0.07;
 
@@ -84,7 +75,7 @@ export function topicBars(topics: Topics): TopicBar[] {
     n: stat.n,
     empty: stat.n === 0,
     baseline: stat.baseline_negative_rate,
-    segments: SENTIMENT_STACK_ORDER.map((sentiment) => {
+    segments: LABEL_ORDER.sentiment.map((sentiment) => {
       const share = stat.sentiment_shares[sentiment];
       return { sentiment, share, showLabel: share >= SEGMENT_LABEL_MIN_SHARE };
     }),

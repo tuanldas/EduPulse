@@ -1,13 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { failureFromResponse } from "@/lib/api/errors";
 import { useBatchSession, type UseBatchSessionOptions } from "@/lib/batch/use-batch-session";
-
-class HttpError extends Error {
-  constructor(readonly status: number) {
-    super(`http ${status}`);
-  }
-}
 
 function setup(overrides: Partial<UseBatchSessionOptions> = {}) {
   const sendHeartbeat = vi.fn<UseBatchSessionOptions["sendHeartbeat"]>().mockResolvedValue();
@@ -86,7 +81,7 @@ describe("useBatchSession", () => {
 
   it("nhận 404 thì báo onGone một lần và dừng heartbeat", async () => {
     const { sendHeartbeat, onGone } = setup();
-    sendHeartbeat.mockRejectedValue(new HttpError(404));
+    sendHeartbeat.mockRejectedValue(failureFromResponse(404, { detail: { code: "batch_not_found" } }));
     await advance(60_000);
     expect(onGone).toHaveBeenCalledTimes(1);
     await advance(300_000);

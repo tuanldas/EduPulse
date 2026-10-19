@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { NO_OVERRIDES } from "@/lib/batch/overrides";
 import {
@@ -58,6 +58,10 @@ describe("parseReviewEdits", () => {
 });
 
 describe("useReviewEdits", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
   it("lưu vào sessionStorage theo batch và đọc lại được ở lần dựng sau", () => {
     const first = renderHook(() => useReviewEdits("batch-a"));
     act(() => first.result.current.change(5, { sentiment: "neutral" }));

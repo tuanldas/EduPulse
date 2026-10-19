@@ -1,14 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { failureFromResponse } from "@/lib/api/errors";
 import type { BatchStatus } from "@/lib/batch/types";
 import { useBatchPolling } from "@/lib/batch/use-batch-polling";
-
-class HttpError extends Error {
-  constructor(readonly status: number) {
-    super(`http ${status}`);
-  }
-}
 
 function status(overrides: Partial<BatchStatus> = {}): BatchStatus {
   return {
@@ -93,7 +88,7 @@ describe("useBatchPolling", () => {
     const fetchStatus = vi
       .fn<Fetcher>()
       .mockResolvedValueOnce(status())
-      .mockRejectedValueOnce(new HttpError(404));
+      .mockRejectedValueOnce(failureFromResponse(404, { detail: { code: "batch_not_found" } }));
     const { result } = renderHook(() => useBatchPolling({ batchId: "b1", fetchStatus }));
     await advance(0);
     await advance(1000);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { isAbort, isNotFound } from "./failure";
+import { isAbortError, isNotFound } from "./failure";
 import { isActiveState, type BatchStatus } from "./types";
 
 export type PollingState =
@@ -85,7 +85,7 @@ export function useBatchPolling(options: UseBatchPollingOptions): UseBatchPollin
         publish(fromStatus(status));
         if (isActiveState(status.state)) timer = setTimeout(() => void tick(), intervalMs);
       } catch (failure) {
-        if (signal.aborted || isAbort(failure)) return;
+        if (signal.aborted || isAbortError(failure)) return;
         if (isNotFound(failure)) {
           publish({ phase: "gone" });
           return;
