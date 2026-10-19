@@ -116,16 +116,16 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Thanh bên cố định ở màn hình rộng (> 640px). */
+/**
+ * Thanh bên cố định ở màn hình rộng (> 640px). Cột ngoài kéo dài hết chiều cao trang để nền thanh
+ * bên không đứt khi trang dài; phần trong dính ở đầu màn hình và cuộn riêng khi màn hình thấp.
+ */
 export function AppSidebar({ className }: { className?: string }) {
   return (
-    <aside
-      className={cn(
-        "sticky top-0 h-screen w-72 shrink-0 overflow-y-auto border-r border-divider bg-muted px-4 pt-5 pb-6",
-        className,
-      )}
-    >
-      <SidebarContent />
-    </aside>
+    <div className={cn("w-72 shrink-0 border-r border-divider bg-muted", className)}>
+      <aside className="sticky top-0 h-screen overflow-y-auto px-4 pt-5 pb-6">
+        <SidebarContent />
+      </aside>
+    </div>
   );
 }

@@ -38,14 +38,16 @@ function Word({ token }: { token: SentenceToken }) {
 
 interface XaiSentenceProps {
   head: HeadExplanation;
+  /** Câu đã ẩn thông tin cá nhân (`display_text`): có thì khôi phục chữ hoa/thường của câu gốc. */
+  originalText?: string;
   className?: string;
 }
 
 /** Câu đã tách từ với các từ ảnh hưởng nhất được tô nổi. */
-export function XaiSentence({ head, className }: XaiSentenceProps) {
+export function XaiSentence({ head, originalText, className }: XaiSentenceProps) {
   const tokens = React.useMemo(
-    () => sentenceTokens(head.tokens, head.support, head.oppose),
-    [head.tokens, head.support, head.oppose],
+    () => sentenceTokens(head.tokens, head.support, head.oppose, originalText),
+    [head.tokens, head.support, head.oppose, originalText],
   );
   return (
     <p className={cn("text-[21px] leading-[2.15] tracking-[0.005em] max-[640px]:text-[18px]", className)}>

@@ -22,12 +22,51 @@ const TRAILING_PUNCTUATION = /^(?:[.,;:!?…]+|[)\]}”’»%])$/;
 // Dấu mở ngoặc/ngoặc kép dính vào từ đứng sau. "[TÊN]" nhiều ký tự nên không khớp.
 const LEADING_PUNCTUATION = /^[([{“‘«]$/;
 
-/** Gắn vai trò (ủng hộ theo hạng / phản đối) và khoảng trắng cho từng từ của câu. */
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/** Từ khớp phải đứng trọn vẹn: không nằm giữa một từ khác ("an" trong "bạn"). */
+function isWholeWord(text: string, at: number, length: number): boolean {
+  const startsInside = WORD_CHAR.test(text[at]) && at > 0 && WORD_CHAR.test(text[at - 1]);
+  const last = at + length - 1;
+  const endsInside = WORD_CHAR.test(text[last]) && last + 1 < text.length && WORD_CHAR.test(text[last + 1]);
+  return !startsInside && !endsInside;
+}
+
+/**
+ * Mô hình nhìn câu đã chuẩn hoá thành chữ thường, nên `tokens[].text` đều thường. Trả lại chữ hoa/thường
+ * của câu gốc cho từng từ bằng cách dò theo thứ tự trong câu; từ nào không dò được thì giữ nguyên dạng
+ * của mô hình. Chỉ để đọc cho dễ: không ảnh hưởng tới nhãn hay phần giải thích.
+ */
+export function restoreCasing(tokens: readonly TokenEffect[], original: string): string[] {
+  const haystack = original.toLowerCase();
+  if (haystack.length !== original.length) return tokens.map((token) => token.text);
+  let cursor = 0;
+  return tokens.map((token) => {
+    const needle = token.text.toLowerCase();
+    if (!needle) return token.text;
+    for (let from = cursor; ; ) {
+      const at = haystack.indexOf(needle, from);
+      if (at === -1) return token.text;
+      if (isWholeWord(haystack, at, needle.length)) {
+        cursor = at + needle.length;
+        return original.slice(at, cursor);
+      }
+      from = at + 1;
+    }
+  });
+}
+
+/**
+ * Gắn vai trò (ủng hộ theo hạng / phản đối) và khoảng trắng cho từng từ của câu. Có `originalText`
+ * (câu đã ẩn thông tin cá nhân, giữ hoa/thường) thì hiển thị đúng chữ hoa/thường của câu gốc.
+ */
 export function sentenceTokens(
   tokens: readonly TokenEffect[],
   support: readonly number[],
   oppose: readonly number[],
+  originalText?: string,
 ): SentenceToken[] {
+  const texts = originalText ? restoreCasing(tokens, originalText) : tokens.map((token) => token.text);
   const rankByIndex = new Map(support.map((tokenIndex, position) => [tokenIndex, position + 1]));
   const opposed = new Set(oppose);
   return tokens.map((token, index) => {
@@ -37,7 +76,7 @@ export function sentenceTokens(
     const previous = index > 0 ? tokens[index - 1].text : null;
     const spaceBefore =
       previous !== null && !TRAILING_PUNCTUATION.test(token.text) && !LEADING_PUNCTUATION.test(previous);
-    return { index, text: token.text, role, spaceBefore };
+    return { index, text: texts[index], role, spaceBefore };
   });
 }
 

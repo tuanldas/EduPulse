@@ -59,10 +59,13 @@ export function formatEta(seconds: number): string {
   return `khoảng ${Math.round(s / 60)} phút`;
 }
 
+// Tối đa 1 chữ số thập phân và bỏ ",0" thừa: 5.242.880 byte -> "5 MB", 1.536 -> "1,5 KB".
+const compact = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 });
+
 /** Dung lượng: `10485760` -> `10 MB`, `1536` -> `1,5 KB`. */
 export function formatBytes(bytes: number): string {
   const b = Math.max(0, finite(bytes));
   if (b < 1024) return `${formatNumber(b)} B`;
-  if (b < 1024 * 1024) return `${formatNumber(b / 1024, b < 10 * 1024 ? 1 : 0)} KB`;
-  return `${formatNumber(b / (1024 * 1024), b < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+  if (b < 1024 * 1024) return `${compact.format(b / 1024)} KB`;
+  return `${compact.format(b / (1024 * 1024))} MB`;
 }
