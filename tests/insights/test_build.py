@@ -280,9 +280,34 @@ def test_group_alert_when_only_one_group_is_high_and_the_overall_rate_is_not():
     out = build(rows)
     (alert,) = out.alerts
     assert (alert.kind, alert.group, alert.topic) == ("negative_rate", "A", "lecturer")
-    assert alert.title == "Giảng dạy ở nhóm A: tỉ lệ tiêu cực cao hơn mức nền"
-    assert "ở nhóm A" in alert.summary and alert.evidence.n == 20
+    assert alert.title == "Giảng dạy ở A: tỉ lệ tiêu cực cao hơn mức nền"
+    assert "ở A là tiêu cực" in alert.summary and alert.evidence.n == 20
     assert alert.note == "Tổng hợp theo nhóm, không gắn với cá nhân."
+
+
+@pytest.mark.parametrize("group", ["Nhóm B", "Nhập môn lập trình", "Lớp 12A1", "K45"])
+def test_group_names_are_quoted_as_they_are_without_an_extra_word_nhom(group: str):
+    """Tên nhóm là dữ liệu của người dùng; "Nhóm B" không được thành "nhóm Nhóm B"."""
+    rows = [
+        *topic_rows("lecturer", 20, 0, group=group),
+        *topic_rows("lecturer", 20, 80, group="Nhóm khác"),
+    ]
+    (alert,) = build(rows).alerts
+    assert alert.group == group
+    assert alert.title == f"Giảng dạy ở {group}: tỉ lệ tiêu cực cao hơn mức nền"
+    assert f"về giảng dạy ở {group} là tiêu cực (20/20 câu)" in alert.summary
+    for text in (alert.title, alert.summary):
+        assert f"nhóm {group}" not in text
+
+
+def test_highlight_sentence_does_not_double_the_word_nhom_either():
+    rows = [
+        *topic_rows("lecturer", 90, 10, group="Nhóm A"),
+        *topic_rows("lecturer", 20, 80, group="Nhóm B"),
+    ]
+    (alert,) = build(rows).alerts
+    assert "Nhiều nhất ở Nhóm A (90/100 câu)." in alert.summary
+    assert "nhóm Nhóm" not in alert.summary
 
 
 def test_topic_alert_names_the_standout_group_and_says_when_all_groups_are_high():
@@ -291,7 +316,7 @@ def test_topic_alert_names_the_standout_group_and_says_when_all_groups_are_high(
     assert alert.group is None
     assert alert.highlight is not None and alert.highlight.group == "A"
     assert (alert.highlight.k, alert.highlight.n) == (45, 50)
-    assert "Cao ở cả 2 nhóm, nhiều nhất ở nhóm A (45/50 câu)." in alert.summary
+    assert "Cao ở cả 2 nhóm, nhiều nhất ở A (45/50 câu)." in alert.summary
 
 
 def test_a_group_below_baseline_stops_the_all_groups_claim():
@@ -299,7 +324,7 @@ def test_a_group_below_baseline_stops_the_all_groups_claim():
     rows = [*topic_rows("lecturer", 90, 10, group="A"), *topic_rows("lecturer", 20, 80, group="B")]
     (alert,) = build(rows).alerts
     assert alert.group is None
-    assert "Cao ở cả" not in alert.summary and "Nhiều nhất ở nhóm A (90/100 câu)." in alert.summary
+    assert "Cao ở cả" not in alert.summary and "Nhiều nhất ở A (90/100 câu)." in alert.summary
 
 
 # --- Nhóm và heatmap ------------------------------------------------------------------------------

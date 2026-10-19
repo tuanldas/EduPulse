@@ -196,7 +196,8 @@ def test_ties_keep_the_order_of_the_rule_table():
 def test_the_busiest_group_is_named_only_when_it_stands_out():
     stands_out = projector_rows(8, "Nhóm A") + projector_rows(2, "Nhóm B")
     (rec,) = recommend({"facility": stands_out}, n_groups=2)
-    assert rec.evidence.endswith("Nhiều nhất ở nhóm Nhóm A (8 câu).")
+    assert rec.evidence.endswith("Nhiều nhất ở Nhóm A (8 câu).")
+    assert "nhóm Nhóm" not in rec.evidence  # tên nhóm giữ nguyên, không thêm chữ "nhóm"
     even = projector_rows(4, "A") + projector_rows(4, "B") + projector_rows(4, "C")
     (rec,) = recommend({"facility": even}, n_groups=3)
     assert "Nhiều nhất" not in rec.evidence  # 4/12 < 40%
