@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 # Câu viết tay đủ ba cảm xúc và bốn chủ đề; không lấy từ UIT-VSFC.
 SENTENCES = [
-    "[đã gỡ câu UIT-VSFC].",
+    "Thầy giải thích rõ ràng, em nghe một lần là hiểu.",
     "Phòng máy nóng, máy chiếu mờ, quạt kêu to.",
     "Giáo trình cần được cập nhật thêm ví dụ thực tế.",
     "Em không có ý kiến gì thêm về môn học này.",

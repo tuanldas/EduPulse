@@ -172,7 +172,7 @@ def _evidence(match: RuleMatch, n_groups: int) -> str:
     if match.top_group is not None and n_groups >= 2:
         group, count = match.top_group
         if count >= GROUP_MENTION_MIN_ROWS and count >= GROUP_MENTION_SHARE * match.rows:
-            text += f" Nhiều nhất ở nhóm {group} ({count} câu)."
+            text += f" Nhiều nhất ở {group} ({count} câu)."
     return text
 
 

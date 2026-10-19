@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import math
+import re
 import socket
 import sys
 import threading
@@ -37,16 +38,25 @@ def gate(
     upload: dict | None = None,
     batch: float | None = 20.0,
     startup: float | None = 3.0,
-    peak: float | None = 600.0,
+    peak: float | None = 700.0,
+    ram: float | None = 650.0,
+    bench_ram: float | None = 560.0,
+    cache: float = 0.0,
     checks: dict | None = None,
     oom: bool = False,
+    compare: dict | None | str = "default",
 ) -> dict:
-    """Một lượt đo hợp lệ ở dạng mà `verdict_rows` đọc."""
+    """Một lượt đo hợp lệ ở dạng mà `verdict_rows` đọc (`compare=None`: chưa đo so sánh).
+
+    `peak` là memory.peak của cgroup (gồm page cache `cache`); `ram` và `bench_ram` là đỉnh không
+    thu hồi lấy mẫu của container server và của container bench (None: không lấy mẫu được).
+    """
 
     def summary(p95):
         return {"n": 30, "p50_s": 0.1, "p95_s": p95, "max_s": 9.9}
 
     result: dict = {
+        "label": "gate",
         "startup_s": startup,
         "latency_idle": {
             "analyze": summary(label),
@@ -59,14 +69,43 @@ def gate(
         "server_state": {"oom_killed": oom},
         "checks": {"a": True, "b": True} if checks is None else checks,
     }
+    if ram is not None:
+        result["memory_watch"] = memory_watch(ram, cache)
+    if bench_ram is not None:
+        result["bench"]["memory_watch"] = memory_watch(bench_ram)
     if cap is not None:
         result["limits"] = {"xai_max_words": cap, "source": "/api/config"}
     if upload is not None:
         result["upload"] = upload
+    if compare == "default":
+        compare = dict(GOOD_COMPARE)
+    if compare is not None:
+        result["compare"] = compare
     return result
 
 
+def memory_watch(ram: float, cache: float = 0.0) -> dict:
+    """Kết quả của `MemoryWatch.summary()` cho một container."""
+    return {
+        "samples": 120,
+        "period_s": 0.5,
+        "unreclaimable_peak_mb": ram,
+        "unreclaimable_peak_at": "14:40:12",
+        "page_cache_mb": cache,
+    }
+
+
 GOOD_UPLOAD = {"bytes": 5 * 1048576, "rows": 2000, "upload_s": 0.4, "run_s": 31.5, "ok": True}
+GOOD_COMPARE = {
+    "ok": True,
+    "cold_s": 1.4,
+    "warm_s": 0.06,
+    "predict_ms": 5.5,
+    "rss_before_mb": 540.0,
+    "rss_after_mb": 668.0,
+    "rss_delta_mb": 128.0,
+    "load_s": 1.2,
+}
 
 
 def rows_by_metric(verdict: list[dict]) -> dict[str, dict]:
@@ -85,7 +124,7 @@ def test_thresholds_are_the_pdr_5_numbers_and_the_old_combined_gate_is_gone():
     assert smoke.GO["label_p95_s"] == 0.5
     assert smoke.GO["explain_p95_s"] == 2.0
     assert "single_p95_s" not in smoke.GO
-    assert (smoke.GO["memory_peak_mb"], smoke.GO["batch_total_s"], smoke.GO["startup_s"]) == (
+    assert (smoke.GO["ram_mb"], smoke.GO["batch_total_s"], smoke.GO["startup_s"]) == (
         1200,
         30.0,
         20.0,
@@ -168,15 +207,93 @@ def test_unmeasured_values_are_not_failures():
 
 
 def test_other_gates_are_kept_with_their_thresholds():
-    verdict = smoke.verdict_rows(gate(peak=1201.0, batch=30.1, startup=20.5, oom=True))
+    verdict = smoke.verdict_rows(gate(ram=1200.5, batch=30.1, startup=20.5, oom=True))
     by_metric = rows_by_metric(verdict)
-    assert by_metric["memory.peak (MB)"]["ok"] is False
+    assert row_starting(verdict, "RAM không thu hồi")["ok"] is False
     assert by_metric["1.000 câu end-to-end (s)"]["ok"] is False
     assert by_metric["Khởi động tới health 200 (s)"]["ok"] is False
     assert by_metric["OOM-kill"]["ok"] is False
-    good = rows_by_metric(smoke.verdict_rows(gate(peak=1200.0, batch=30.0, startup=20.0)))
-    assert good["memory.peak (MB)"]["ok"] and good["1.000 câu end-to-end (s)"]["ok"]
-    assert good["Khởi động tới health 200 (s)"]["ok"] and good["OOM-kill"]["ok"]
+    good_rows = smoke.verdict_rows(gate(ram=1200.0, batch=30.0, startup=20.0))
+    good = rows_by_metric(good_rows)
+    assert row_starting(good_rows, "RAM không thu hồi")["ok"] is True
+    assert good["1.000 câu end-to-end (s)"]["ok"] and good["Khởi động tới health 200 (s)"]["ok"]
+    assert good["OOM-kill"]["ok"]
+
+
+def test_ram_gate_also_covers_the_process_after_the_baseline_is_loaded():
+    ok = row_starting(smoke.verdict_rows(gate()), "RSS tiến trình")
+    assert (ok["value"], ok["threshold"], ok["ok"]) == (668.0, "≤ 1200", True)
+    at_limit = dict(GOOD_COMPARE, rss_after_mb=1200.0)
+    assert row_starting(smoke.verdict_rows(gate(compare=at_limit)), "RSS tiến trình")["ok"] is True
+    over = dict(GOOD_COMPARE, rss_after_mb=1200.5)
+    verdict = smoke.verdict_rows(gate(compare=over))
+    assert row_starting(verdict, "RSS tiến trình")["ok"] is False and not smoke.is_go(verdict)
+
+
+def test_ram_row_says_it_includes_the_comparison_and_what_it_counts():
+    metric = row_starting(smoke.verdict_rows(gate()), "RAM không thu hồi")["metric"]
+    assert "đã gồm so sánh" in metric and "anon + kernel + shmem" in metric
+
+
+def test_a_cold_page_cache_inflates_memory_peak_but_not_the_ram_gate():
+    # Số đo thật của lượt chính thức 19/10: memory.peak 1292,8 MB, trong đó ~620 MB là page cache.
+    cold = smoke.verdict_rows(gate(peak=1292.8, ram=653.0, cache=623.0, bench_ram=560.0))
+    ram = row_starting(cold, "RAM không thu hồi")
+    assert (ram["value"], ram["threshold"], ram["ok"]) == (653.0, "≤ 1200", True)
+    reference = row_starting(cold, "memory.peak của cgroup")
+    assert (reference["value"], reference["threshold"], reference["ok"]) == (
+        1292.8,
+        smoke.INFO,
+        None,
+    )
+    assert "cache lạnh" in reference["metric"] and smoke.is_go(cold)
+    warm = smoke.verdict_rows(gate(peak=693.3, ram=653.0, cache=0.0))
+    assert "cache ấm" in row_starting(warm, "memory.peak của cgroup")["metric"]
+    unsampled = smoke.verdict_rows(gate(ram=None, bench_ram=None))
+    assert "cache không rõ" in row_starting(unsampled, "memory.peak của cgroup")["metric"]
+
+
+def test_cache_counts_as_cold_from_one_hundred_megabytes():
+    assert smoke.cache_state(smoke.COLD_CACHE_MB) == "lạnh"
+    assert smoke.cache_state(smoke.COLD_CACHE_MB - 0.1) == "ấm"
+    assert smoke.cache_state(None) == "không rõ"
+
+
+def test_unreclaimable_memory_of_the_bench_container_counts_too():
+    verdict = smoke.verdict_rows(gate(ram=600.0, bench_ram=1250.0))
+    row = row_starting(verdict, "RAM không thu hồi")
+    assert (row["value"], row["ok"]) == (1250.0, False) and not smoke.is_go(verdict)
+
+
+def test_without_samples_the_ram_gate_falls_back_to_memory_peak_and_never_looks_better():
+    over = smoke.verdict_rows(gate(peak=1250.0, ram=None, bench_ram=None))
+    row = row_starting(over, "memory.peak (MB), không lấy mẫu được")
+    assert (row["value"], row["ok"]) == (1250.0, False)
+    fine = smoke.verdict_rows(gate(peak=900.0, ram=None, bench_ram=None))
+    assert row_starting(fine, "memory.peak (MB), không lấy mẫu được")["ok"] is True
+
+
+def test_nothing_measured_about_memory_is_not_a_failure():
+    verdict = smoke.verdict_rows(gate(peak=None, ram=None, bench_ram=None))
+    assert row_starting(verdict, "RAM không thu hồi")["ok"] is None
+    assert smoke.is_go(verdict)
+
+
+def test_cold_load_time_is_shown_for_reference_and_never_fails_the_run():
+    row = row_starting(smoke.verdict_rows(gate()), "So sánh mô hình")
+    assert (row["value"], row["threshold"], row["ok"]) == (1.4, smoke.INFO, None)
+    slow = dict(GOOD_COMPARE, cold_s=60.0)
+    assert smoke.is_go(smoke.verdict_rows(gate(compare=slow)))
+    lines = smoke.render_markdown(report_of(gate())).splitlines()
+    table_row = [line for line in lines if line.startswith("| So sánh mô hình")]
+    assert table_row and table_row[0].endswith("| tham khảo |")
+
+
+def test_missing_comparison_numbers_are_not_failures_but_a_broken_comparison_is():
+    verdict = smoke.verdict_rows(gate(compare=None))
+    assert row_starting(verdict, "RSS tiến trình")["ok"] is None and smoke.is_go(verdict)
+    broken = smoke.verdict_rows(gate(checks={"compare_with_baseline_works": False}))
+    assert row_starting(broken, "Hành vi")["ok"] is False and not smoke.is_go(broken)
 
 
 def test_behaviour_and_log_checks_must_all_pass():
@@ -261,6 +378,31 @@ def test_latency_table_names_the_commands_and_skips_the_counter():
     assert len(rows) == 6
 
 
+def test_report_has_a_comparison_section_with_cold_time_and_memory():
+    markdown = smoke.render_markdown(report_of(gate(peak=1292.8, ram=653.0, cache=623.0)))
+    assert "## So sánh với mô hình cơ sở" in markdown
+    assert "(nạp lạnh): 1.4 s; lần sau 0.06 s; mô hình cơ sở tự báo 5.5 ms" in markdown
+    assert "Nạp scikit-learn và hai mô hình skops: 1.2 s theo log" in markdown
+    assert "RSS tiến trình: 540.0 MB → 668.0 MB (+128.0 MB)" in markdown
+    assert (
+        "RAM không thu hồi lớn nhất của container (anon + kernel + shmem, lấy mẫu mỗi 0.5 s):"
+        " 653.0 MB lúc 14:40:12, tính cả phần nạp mô hình cơ sở (ngưỡng ≤ 1200)" in markdown
+    )
+    assert (
+        "memory.peak của container: 1292.8 MB, gồm page cache của file thu hồi được;"
+        " page cache 623.0 MB lúc đầy nhất (cache lạnh); chỉ để tham khảo" in markdown
+    )
+    assert "không chạy được" not in markdown
+    unsampled = smoke.render_markdown(report_of(gate(peak=701.5, ram=None)))
+    assert "RAM không thu hồi lớn nhất của container" not in unsampled
+    assert "memory.peak của container: 701.5 MB" in unsampled and "(cache không rõ)" in unsampled
+    broken = gate(compare=dict(GOOD_COMPARE, ok=False))
+    assert "so sánh với mô hình cơ sở không chạy được" in smoke.render_markdown(report_of(broken))
+    assert "## So sánh với mô hình cơ sở" not in smoke.render_markdown(
+        report_of(gate(compare=None))
+    )
+
+
 def test_report_has_an_upload_section_with_the_problems():
     upload = dict(GOOD_UPLOAD, ok=False, problems=["tiến độ bị giảm"], flagged=210)
     markdown = smoke.render_markdown(report_of(gate(upload=upload)))
@@ -278,6 +420,341 @@ def test_one_cpu_reference_lists_the_two_p95_separately():
 def test_report_footnote_says_the_word_limit_is_settled_on_the_vps():
     markdown = smoke.render_markdown(report_of(gate()))
     assert "XAI_MAX_WORDS" in markdown and "--url" in markdown
+
+
+# --- Giờ từng pha và việc nặng của người khác -----------------------------------------------------
+
+
+def with_phases(run: dict, *phases: tuple[str, list[str] | None]) -> dict:
+    run["phases"] = [
+        {"name": name, "start": "14:40:00", "end": "14:40:30", "seconds": 30.0, "noisy_with": seen}
+        for name, seen in phases
+    ]
+    return run
+
+
+NOISE_WINDOW = {"start": "14:42:30", "end": "14:42:36", "kinds": ["node", "pnpm-native"]}
+
+
+def test_report_lists_every_phase_with_its_times_and_marks_the_noisy_ones():
+    main = with_phases(gate(), ("Khởi động", []), ("Bench 1000 câu", ["node", "pnpm-native"]))
+    report = report_of(main)
+    report["host"].update(
+        started="14:39:12",
+        ended="14:51:00",
+        heavy_watch={"samples": 100, "busy_samples": 3, "windows": [NOISE_WINDOW]},
+    )
+    markdown = smoke.render_markdown(report)
+    assert "## Giờ từng pha đo" in markdown and "Lượt `gate`:" in markdown
+    assert "| Khởi động | 14:40:00 | 14:40:30 | 30.0 | không |" in markdown
+    assert "| Bench 1000 câu | 14:40:00 | 14:40:30 | 30.0 | CÓ: node, pnpm-native |" in markdown
+    assert "Giờ đo 14:39:12 → 14:51:00" in markdown
+    assert "có việc nặng khác chạy cùng** lúc 14:42:30–14:42:36 (node, pnpm-native)" in markdown
+    assert "3/100 lần lấy mẫu" in markdown
+    warning = [line for line in markdown.splitlines() if "Cảnh báo nhiễu" in line]
+    assert len(warning) == 1 and "Bench 1000 câu" in warning[0] and "Khởi động" not in warning[0]
+    assert "Kết luận: **GO**" in markdown  # nhiễu chỉ cảnh báo, không đổi kết luận
+
+
+def test_report_names_each_run_in_its_own_phase_table():
+    main = with_phases(gate(), ("Khởi động", []))
+    main["label"] = "gate"
+    one_cpu = with_phases(gate(label=0.4, explain=3.3), ("Khởi động", ["pytest"]))
+    one_cpu.update(label="1cpu", cpus=1.0)
+    markdown = smoke.render_markdown(report_of(main, [one_cpu]))
+    assert "Lượt `gate`:" in markdown and "Lượt `1cpu`:" in markdown
+    assert "CÓ: pytest" in markdown
+    assert "Cảnh báo nhiễu" not in markdown  # chỉ lượt đo chính được cảnh báo
+
+
+def test_report_says_when_the_machine_was_clean_and_when_it_was_not_watched():
+    clean = report_of(with_phases(gate(), ("Khởi động", [])))
+    clean["host"]["heavy_watch"] = {"samples": 150, "busy_samples": 0, "windows": []}
+    markdown = smoke.render_markdown(clean)
+    assert "không thấy việc nặng khác chạy cùng (150 lần lấy mẫu)" in markdown
+    assert "Cảnh báo nhiễu" not in markdown
+    unwatched = smoke.render_markdown(report_of(with_phases(gate(), ("Khởi động", None))))
+    assert "chưa theo dõi việc nặng khác" in unwatched
+    assert "| Khởi động | 14:40:00 | 14:40:30 | 30.0 | - |" in unwatched
+    assert "## Giờ từng pha đo" not in smoke.render_markdown(report_of(gate()))  # chưa có pha nào
+
+
+def test_the_heavy_pattern_matches_the_four_tools_and_never_its_own_command_line():
+    for command in (
+        "node /x/vitest run",
+        "pnpm exec playwright test",
+        "pytest -q tests",
+        "node /x/next build",
+    ):
+        assert re.search(smoke.HEAVY_PATTERN, command), command
+    assert not re.search(smoke.HEAVY_PATTERN, f"pgrep -f {smoke.HEAVY_PATTERN}")
+    assert not re.search(smoke.HEAVY_PATTERN, "uv run python scripts/smoke_test.py --also-1cpu")
+
+
+def test_heavy_processes_names_the_executables_once_each(monkeypatch):
+    answers = iter(
+        [
+            SimpleNamespace(stdout="11\n12\n13\n"),
+            SimpleNamespace(stdout="/usr/bin/node\n  pytest \nnode\n"),
+        ]
+    )
+    monkeypatch.setattr(smoke.subprocess, "run", lambda *args, **kwargs: next(answers))
+    assert smoke.heavy_processes() == ["node", "pytest"]
+
+
+def test_heavy_processes_is_empty_when_nothing_matches_or_pgrep_is_missing(monkeypatch):
+    monkeypatch.setattr(smoke.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=""))
+    assert smoke.heavy_processes() == []
+
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("pgrep")
+
+    monkeypatch.setattr(smoke.subprocess, "run", missing)
+    assert smoke.heavy_processes() == []
+
+
+def watch_with(samples: list[tuple[float, list[str]]]) -> "smoke.BusyWatch":
+    watch = smoke.BusyWatch(period=2.0)
+    watch.samples = samples
+    return watch
+
+
+def test_a_phase_sees_the_tasks_running_inside_it_and_the_ones_already_running_at_its_start():
+    watch = watch_with([(100.0, []), (102.0, ["node"]), (104.0, ["node", "vitest"]), (106.0, [])])
+    assert watch.seen_between(103.0, 105.0) == ["node", "vitest"]
+    assert watch.seen_between(103.9, 103.95) == [
+        "node"
+    ]  # chạy từ trước và chưa xong lúc pha bắt đầu
+    assert watch.seen_between(100.0, 101.0) == []
+    assert watch.seen_between(106.5, 120.0) == []
+
+
+def test_busy_windows_merge_neighbouring_samples_and_split_on_a_real_gap():
+    watch = watch_with(
+        [
+            (100.0, []),
+            (102.0, ["node"]),
+            (104.0, ["vitest"]),
+            (106.0, []),
+            (108.0, []),
+            (110.0, ["node"]),
+            (118.0, ["node"]),
+        ]
+    )
+    assert watch.busy_windows() == [
+        {"start": smoke.clock(102.0), "end": smoke.clock(104.0), "kinds": ["node", "vitest"]},
+        {"start": smoke.clock(110.0), "end": smoke.clock(110.0), "kinds": ["node"]},
+        {"start": smoke.clock(118.0), "end": smoke.clock(118.0), "kinds": ["node"]},
+    ]
+    summary = watch.summary()
+    assert (summary["samples"], summary["busy_samples"]) == (7, 4)
+    assert watch_with([]).busy_windows() == [] and watch_with([(1.0, [])]).busy_windows() == []
+
+
+def test_a_running_watch_keeps_sampling_until_it_is_closed():
+    with smoke.BusyWatch(probe=lambda: ["node"], period=0.01) as watch:
+        time.sleep(0.15)
+    taken = len(watch.samples)
+    assert taken >= 3 and watch.summary()["busy_samples"] == taken
+    time.sleep(0.05)
+    assert len(watch.samples) == taken  # đã dừng
+
+
+class FakeWatch:
+    """Trả lần lượt các câu trả lời đã định cho từng pha; giờ bắt đầu không sau giờ kết thúc."""
+
+    def __init__(self, *answers: list[str]):
+        self.answers = list(answers)
+
+    def seen_between(self, start: float, end: float) -> list[str]:
+        assert start <= end
+        return self.answers.pop(0)
+
+
+def test_timeline_records_each_phase_in_order_with_clock_times_and_the_noise_seen():
+    timeline = smoke.Timeline(FakeWatch([], ["node"]))
+    with timeline.phase("một"):
+        pass
+    with timeline.phase("hai"):
+        time.sleep(0.15)
+    first, second = timeline.phases
+    assert [p["name"] for p in timeline.phases] == ["một", "hai"]
+    assert (first["noisy_with"], second["noisy_with"]) == ([], ["node"])
+    for phase in timeline.phases:
+        assert re.fullmatch(r"\d\d:\d\d:\d\d", phase["start"])
+        assert re.fullmatch(r"\d\d:\d\d:\d\d", phase["end"])
+    assert second["seconds"] >= 0.1 and first["end"] <= second["start"]
+
+
+def test_timeline_without_a_watch_leaves_the_noise_unknown_and_records_failed_phases():
+    timeline = smoke.Timeline()
+    with pytest.raises(RuntimeError), timeline.phase("lỗi"):
+        raise RuntimeError("máy chủ không lên")
+    (phase,) = timeline.phases
+    assert phase["name"] == "lỗi" and phase["noisy_with"] is None
+
+
+def test_service_measurement_records_idle_long_and_loaded_phases_in_order():
+    near = [" ".join(["từ"] * 22) + f" {i}" for i in range(8)]
+    timeline = smoke.Timeline()
+    with StubService() as service:
+        smoke.measure_service(service.base, [*near, SHORT], repeat=4, timeline=timeline)
+    phases = timeline.phases
+    assert len(phases) == 3 and "câu dài" in phases[1]["name"] and "tải" in phases[2]["name"]
+    assert all(a["end"] <= b["start"] for a, b in zip(phases, phases[1:], strict=False))
+    plain = smoke.Timeline()
+    with StubService() as service:
+        smoke.measure_service(service.base, [SHORT] * 4, repeat=4, timeline=plain)
+    assert len(plain.phases) == 2  # không có câu dài sát giới hạn thì bỏ pha đó
+
+
+# --- Bộ nhớ không thu hồi được --------------------------------------------------------------------
+
+MiB = 1048576
+# memory.stat của cgroup v2 rút gọn: lúc cache lạnh, `file` gồm cả 20 MiB shmem.
+COLD_STAT = (
+    f"anon {638 * MiB}\nfile {643 * MiB}\nkernel {15 * MiB}\nkernel_stack 262144\nslab 1000\n"
+    f"shmem {20 * MiB}\nfile_mapped {50 * MiB}\nkhong_phai_so abc\ndong_khong_co_gia_tri\n"
+)
+
+
+def test_memory_stat_keeps_only_the_four_entries_it_needs_and_ignores_garbage():
+    stat = smoke.parse_memory_stat(COLD_STAT)
+    assert stat == {"anon": 638 * MiB, "file": 643 * MiB, "kernel": 15 * MiB, "shmem": 20 * MiB}
+    assert smoke.parse_memory_stat("") == {} and smoke.parse_memory_stat("anon abc\n") == {}
+
+
+def test_unreclaimable_memory_is_anon_kernel_and_shmem_and_page_cache_excludes_shmem():
+    stat = smoke.parse_memory_stat(COLD_STAT)
+    assert smoke.unreclaimable_bytes(stat) == (638 + 15 + 20) * MiB
+    assert smoke.page_cache_bytes(stat) == (643 - 20) * MiB  # file đã gồm shmem
+    assert smoke.unreclaimable_bytes({}) == 0 and smoke.page_cache_bytes({"shmem": 5}) == 0
+
+
+def memory_samples(*points: tuple[float, int, int]) -> "smoke.MemoryWatch":
+    """Bộ theo dõi đã có sẵn mẫu: mỗi điểm là (giờ, MiB anon, MiB page cache)."""
+    watch = smoke.MemoryWatch(read=lambda: "")
+    watch.samples = [(t, {"anon": a * MiB, "file": f * MiB}) for t, a, f in points]
+    return watch
+
+
+def test_summary_reports_the_unreclaimable_peak_and_the_cache_when_memory_is_fullest():
+    watch = memory_samples((100.0, 480, 502), (101.0, 641, 623), (102.0, 575, 623), (103.0, 300, 0))
+    summary = watch.summary()
+    assert summary["unreclaimable_peak_mb"] == 641.0
+    assert summary["unreclaimable_peak_at"] == smoke.clock(101.0)
+    assert summary["page_cache_mb"] == 623.0 and summary["samples"] == 4
+    warm = memory_samples((100.0, 549, 0), (101.0, 641, 0)).summary()
+    assert (warm["unreclaimable_peak_mb"], warm["page_cache_mb"]) == (641.0, 0.0)
+    assert memory_samples().summary() is None
+
+
+def test_each_phase_gets_the_largest_unreclaimable_memory_seen_inside_it():
+    watch = memory_samples((100.0, 480, 0), (101.0, 641, 0), (102.0, 575, 0))
+    assert watch.max_between(100.0, 100.5) == 480.0
+    assert watch.max_between(100.5, 102.5) == 641.0
+    assert watch.max_between(103.0, 104.0) is None  # không có mẫu nào trong pha
+
+
+def test_a_watch_samples_right_away_and_survives_a_failed_read():
+    answers = iter([smoke.SmokeError("container chưa chạy"), COLD_STAT, "", COLD_STAT])
+
+    def read() -> str:
+        answer = next(answers, COLD_STAT)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    with smoke.MemoryWatch(read, period=0.01) as watch:
+        time.sleep(0.15)
+    assert len(watch.samples) >= 2  # mẫu lỗi và mẫu rỗng bị bỏ qua, các mẫu sau vẫn lấy được
+    assert all(smoke.unreclaimable_bytes(stat) == 673 * MiB for _, stat in watch.samples)
+    quick = smoke.MemoryWatch(lambda: COLD_STAT, period=60)
+    quick.start()
+    quick.stop()  # dừng ngay sau khi bắt đầu vẫn có ít nhất một mẫu
+    assert len(quick.samples) == 1
+
+
+def test_timeline_records_the_unreclaimable_peak_of_each_phase():
+    watch = memory_samples()
+    timeline = smoke.Timeline(memory=watch)
+    with timeline.phase("có mẫu"):
+        watch.samples.append((time.time(), {"anon": 700 * MiB}))
+    with timeline.phase("không mẫu"):
+        pass  # mẫu ở trên nằm ngoài khoảng của pha này
+    assert [p["ram_mb"] for p in timeline.phases] == [700.0, None]
+    plain = smoke.Timeline()
+    with plain.phase("không theo dõi"):
+        pass
+    assert plain.phases[0]["ram_mb"] is None
+
+
+def test_container_reads_memory_stat_through_docker_exec(monkeypatch):
+    asked = []
+
+    def fake_docker(*args, **kwargs):
+        asked.append((args, kwargs))
+        return COLD_STAT
+
+    monkeypatch.setattr(smoke, "docker", fake_docker)
+    text = smoke.Container("c", "img", 2.0, "1536m").memory_stat()
+    assert text == COLD_STAT
+    args, kwargs = asked[0]
+    assert args == ("exec", "c", "cat", "/sys/fs/cgroup/memory.stat")
+    assert kwargs["check"] is False and kwargs["timeout"] <= 30  # container mất thì không báo lỗi
+
+
+class FakeBenchContainer:
+    """Thay Container trong run_bench: bench "chạy" xong ngay và trả một dòng JSON."""
+
+    def __init__(self, name, image, cpus, memory, port=None, platform=None):
+        self.name = name
+
+    def start(self, *command, mounts=()):
+        self.command = command
+
+    def memory_stat(self) -> str:
+        return COLD_STAT
+
+    def state(self) -> dict:
+        return {"oom_killed": False, "exit_code": 0, "restarts": 0}
+
+    def logs(self) -> tuple[str, str]:
+        return '{"total_s": 27.5, "cgroup_memory_peak_mb": 969.2}\n', ""
+
+    def remove(self) -> None:
+        pass
+
+
+def test_the_bench_result_carries_the_sampled_unreclaimable_peak(monkeypatch):
+    monkeypatch.setattr(smoke, "Container", FakeBenchContainer)
+    monkeypatch.setattr(smoke, "docker", lambda *args, **kwargs: "0\n")
+    result = smoke.run_bench("img", "bench", 2.0, "1536m", Path("cau.txt"), 1000, 20, None)
+    assert result["total_s"] == 27.5 and result["cgroup_memory_peak_mb"] == 969.2
+    assert result["memory_watch"]["unreclaimable_peak_mb"] == 673.0
+    assert result["memory_watch"]["page_cache_mb"] == 623.0 and "error" not in result
+
+
+def test_a_bench_that_exits_with_an_error_reports_it_without_memory(monkeypatch):
+    monkeypatch.setattr(smoke, "Container", FakeBenchContainer)
+    monkeypatch.setattr(smoke, "docker", lambda *args, **kwargs: "3\n")
+    result = smoke.run_bench("img", "bench", 2.0, "1536m", Path("cau.txt"), 1000, 20, None)
+    assert result["error"] == "bench thoát mã 3" and "memory_watch" not in result
+
+
+def test_report_adds_a_ram_column_to_the_phase_table_only_when_it_was_measured():
+    main = with_phases(gate(), ("Khởi động", []), ("Upload 5MB", []))
+    main["phases"][0]["ram_mb"] = 549.0
+    main["phases"][1]["ram_mb"] = 638.0
+    markdown = smoke.render_markdown(report_of(main))
+    assert (
+        "| Pha | Bắt đầu | Kết thúc | Giây | RAM không thu hồi lớn nhất (MB) | Nhiễu |" in markdown
+    )
+    assert "| Khởi động | 14:40:00 | 14:40:30 | 30.0 | 549.0 | không |" in markdown
+    assert "| Upload 5MB | 14:40:00 | 14:40:30 | 30.0 | 638.0 | không |" in markdown
+    plain = smoke.render_markdown(report_of(with_phases(gate(), ("Khởi động", []))))
+    assert "| Pha | Bắt đầu | Kết thúc | Giây | Nhiễu |" in plain
+    assert "RAM không thu hồi lớn nhất (MB)" not in plain
 
 
 # --- Tệp upload thử -------------------------------------------------------------------------------
@@ -333,14 +810,49 @@ def test_log_check_catches_every_marker_including_the_filename_and_the_batch_id(
         assert checks["logs_have_no_request_content"] is False, leak
 
 
+def test_sentences_come_from_a_file_one_per_line_without_blank_lines(tmp_path: Path):
+    file = tmp_path / "sentences.txt"
+    file.write_text("Câu một.\n\n  Câu hai.  \n", encoding="utf-8")
+    assert smoke.load_sentences(str(file), SimpleNamespace(data_dir=tmp_path)) == [
+        "Câu một.",
+        "Câu hai.",
+    ]
+
+
+def test_missing_validation_set_is_a_clear_error_not_a_crash(tmp_path: Path):
+    with pytest.raises(smoke.SmokeError, match="validation.parquet"):
+        smoke.load_sentences(None, SimpleNamespace(data_dir=tmp_path))
+
+
+def test_container_asks_for_a_platform_only_when_emulating(monkeypatch):
+    commands: list[tuple] = []
+    monkeypatch.setattr(smoke, "docker", lambda *args, **kwargs: commands.append(args) or "")
+    smoke.Container("c", "img:1", 2.0, "1536m", 8000, platform="linux/amd64").start()
+    smoke.Container("c", "img:1", 2.0, "1536m", 8000).start()
+    emulated, native = [c for c in commands if c[0] == "run"]  # theo thứ tự đã gọi
+    assert "--platform" not in native
+    assert emulated[emulated.index("--platform") + 1] == "linux/amd64"
+    assert emulated[-1] == "img:1" and "--memory=1536m" in emulated
+
+
 # --- Phép đo với một máy chủ giả để thử công cụ đo ------------------------------------------------
 
 
 class StubService:
     """HTTP server nhỏ giả lập hợp đồng của API để thử logic đo (không phải để lấy số đo)."""
 
-    def __init__(self, cap: int | None = 25, config_status: int = 200, analyze_delay: float = 0.0):
+    def __init__(
+        self,
+        cap: int | None = 25,
+        config_status: int = 200,
+        analyze_delay: float = 0.0,
+        compare_status: int = 200,
+        baseline_mb: float = 130.0,
+    ):
         self.cap, self.config_status, self.analyze_delay = cap, config_status, analyze_delay
+        self.compare_status, self.baseline_mb = compare_status, baseline_mb
+        self.rss_mb = 520.0
+        self.baseline_loaded = False
         self.calls: list[tuple[str, str]] = []
         service = self
 
@@ -361,16 +873,30 @@ class StubService:
                 if self.path == "/api/config" and service.config_status == 200:
                     limits = {} if service.cap is None else {"xai_max_words": service.cap}
                     self._reply(200, {"limits": limits})
+                elif self.path == "/api/health":
+                    self._reply(200, {"status": "ok", "rss_mb": service.rss_mb})
                 else:
                     self._reply(404, {"detail": {"code": "not_found", "message": "-"}})
 
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", 0))
-                text = json.loads(self.rfile.read(length) or b"{}").get("text", "")
+                request = json.loads(self.rfile.read(length) or b"{}")
+                text = request.get("text", "")
                 service.calls.append(("POST", self.path))
                 words = len(text.split())
                 limit = service.cap if service.cap is not None else 25
-                if self.path == "/api/analyze":
+                if self.path == "/api/analyze" and request.get("compare"):
+                    if service.compare_status != 200:
+                        self._reply(service.compare_status, {"detail": {"code": "unavailable"}})
+                        return
+                    if not service.baseline_loaded:  # nạp lười ở lần đầu: chậm hơn và tốn RAM
+                        time.sleep(0.05)
+                        service.baseline_loaded = True
+                        service.rss_mb += service.baseline_mb
+                    self._reply(
+                        200, {"xai_available": words <= limit, "baseline": {"elapsed_ms": 4.2}}
+                    )
+                elif self.path == "/api/analyze":
                     time.sleep(service.analyze_delay)
                     self._reply(200, {"xai_available": words <= limit})
                 elif self.path == "/api/explain" and words <= limit:
@@ -399,6 +925,43 @@ class StubService:
 
 SHORT = "Thầy dạy rất hay"  # 4 từ
 LONG = " ".join(["từ"] * 30)  # 30 từ, quá giới hạn mặc định 25
+
+
+def test_first_comparison_reports_cold_and_warm_time_and_the_memory_it_added():
+    with StubService() as service:
+        result = smoke.measure_compare(service.base, SHORT)
+    assert result["ok"] is True
+    assert result["cold_s"] >= 0.05 > result["warm_s"]  # lần đầu nạp lười nên chậm hơn hẳn
+    assert result["predict_ms"] == 4.2
+    assert (result["rss_before_mb"], result["rss_after_mb"], result["rss_delta_mb"]) == (
+        520.0,
+        650.0,
+        130.0,
+    )
+
+
+def test_the_comparison_asks_twice_for_the_baseline_and_reads_memory_before_and_after():
+    with StubService() as service:
+        smoke.measure_compare(service.base, SHORT)
+    assert service.calls == [
+        ("GET", "/api/health"),
+        ("POST", "/api/analyze"),
+        ("POST", "/api/analyze"),
+        ("GET", "/api/health"),
+    ]
+
+
+def test_a_server_without_the_baseline_makes_the_comparison_check_fail_not_crash():
+    with StubService(compare_status=503) as service:
+        result = smoke.measure_compare(service.base, SHORT)
+    assert result["ok"] is False and result["predict_ms"] is None
+    assert result["rss_delta_mb"] == 0.0  # không nạp được nên bộ nhớ không đổi
+
+
+def test_baseline_load_time_is_read_from_the_server_log():
+    logs = "INFO edupulse.engine: Đã nạp mô hình cơ sở trong 1.7 s\nPOST /api/analyze 200 9ms"
+    assert smoke.baseline_load_seconds(logs) == 1.7
+    assert smoke.baseline_load_seconds("POST /api/analyze 200 9ms") is None
 
 
 def test_server_limits_come_from_the_config_of_the_service_being_measured():
@@ -519,8 +1082,9 @@ def live_base():
     thread.join(30)
 
 
+# Câu tự viết; câu cuối dài hơn giới hạn giải thích (25 từ) để máy chủ từ chối giải thích nó.
 REAL_TEXTS = [
-    "[đã gỡ câu UIT-VSFC].",
+    "Thầy giải thích rõ ràng, em nghe một lần là hiểu.",
     "Phòng máy nóng, máy chiếu mờ, quạt kêu to.",
     "Giáo trình cần được cập nhật thêm ví dụ thực tế.",
     "Em không có ý kiến gì thêm về môn học này.",
@@ -528,9 +1092,9 @@ REAL_TEXTS = [
     "Lịch thi dày đặc, mong nhà trường dàn đều hơn.",
     "Wifi trong giảng đường yếu nên không tra cứu tài liệu được.",
     "Môn học hữu ích và gắn với thực tế công việc.",
-    "[đã gỡ câu UIT-VSFC] "
-    "thuyết suông [đã gỡ câu UIT-VSFC] "
-    "lý thuyết.",
+    "Em mong nhà trường bố trí thêm giờ thực hành ngay trong phòng máy, vì chỉ nghe giảng lý "
+    "thuyết thì rất khó hình dung, nhiều bạn học xong vẫn chưa tự làm được bài tập, còn thầy "
+    "cô thì không đủ thời gian hướng dẫn từng nhóm.",
 ]
 
 
@@ -546,6 +1110,15 @@ def test_measuring_the_real_api_yields_a_verdict_with_both_latencies(live_base):
     verdict = smoke.verdict_rows(result)
     assert row_starting(verdict, "Nhãn")["ok"] is not None
     assert row_starting(verdict, "Giải thích")["ok"] is not None
+
+
+@pytest.mark.model
+def test_the_real_baseline_answers_the_first_comparison_and_the_memory_is_reported(live_base):
+    result = smoke.measure_compare(live_base, REAL_TEXTS[0])
+    assert result["ok"] is True, result
+    assert result["cold_s"] > 0 and result["warm_s"] > 0 and result["predict_ms"] >= 0
+    assert result["rss_before_mb"] > 0 and result["rss_after_mb"] > 0
+    assert result["rss_delta_mb"] == round(result["rss_after_mb"] - result["rss_before_mb"], 1)
 
 
 @pytest.mark.model
@@ -574,8 +1147,10 @@ def test_remote_mode_end_to_end_writes_a_coherent_report(live_base, tmp_path: Pa
     report = report_of(run)
     markdown = smoke.render_markdown(report)
     assert "**Nhãn**, p95 của /api/analyze" in markdown and "**Giải thích**, p95" in markdown
-    assert "## Upload 5MB" in markdown
+    assert "## Upload 5MB" in markdown and "## So sánh với mô hình cơ sở" in markdown
     assert run["upload"]["ok"] is True
+    assert run["compare"]["ok"] is True and run["checks"]["compare_with_baseline_works"] is True
+    assert len(run["phases"]) >= 4 and all(p["noisy_with"] is None for p in run["phases"])
     # Bản web chưa chắc đã build ở máy chạy test, nên chỉ kiểm các hành vi của API.
     assert run["checks"]["api_unknown_is_json_404"] and run["checks"]["wrong_method_is_405"]
     (tmp_path / "report.json").write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")

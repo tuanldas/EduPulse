@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-19",
+  "commit": "837a364",
+  "bundle_version": "v1.0",
+  "host": {
+    "platform": "Darwin arm64",
+    "loadavg_start": [
+      29.5,
+      21.2,
+      15.4
+    ],
+    "docker_server": "29.8.2",
+    "docker_cpus": 10,
+    "docker_mem_gb": 7.7,
+    "other_containers": 17
+  },
+  "sample": {
+    "seed": 0,
+    "val_available": 1583,
+    "val_n": 200
+  },
+  "build_s": 102.5,
+  "limits": {
+    "cpus": 2.0,
+    "memory": "1536m"
+  },
+  "containers": {
+    "arm64": {
+      "image": "edupulse:v1.0",
+      "platform": "linux/arm64",
+      "startup_s": 8.0,
+      "requests_s": 9.3,
+      "machine": "aarch64",
+      "cpu_flags": [
+        "asimddp"
+      ],
+      "memory_peak_mb": 591.4
+    },
+    "amd64": {
+      "image": "edupulse:v1.0-amd64",
+      "platform": "linux/amd64",
+      "startup_s": 15.7,
+      "requests_s": 21.0,
+      "machine": "x86_64",
+      "cpu_flags": [
+        "sse4_2"
+      ],
+      "memory_peak_mb": 656.5
+    }
+  },
+  "golden": {
+    "total": 20,
+    "arm64_mismatches": [],
+    "amd64_mismatches": []
+  },
+  "val": {
+    "n": 200,
+    "same_both": 197,
+    "same_sentiment": 198,
+    "same_topic": 199,
+    "needed": 196,
+    "rate_pct": 98.5,
+    "differences": [
+      {
+        "val_row": 28,
+        "arm64": [
+          "positive",
+          "training_program"
+        ],
+        "amd64": [
+          "negative",
+          "training_program"
+        ]
+      },
+      {
+        "val_row": 635,
+        "arm64": [
+          "neutral",
+          "lecturer"
+        ],
+        "amd64": [
+          "neutral",
+          "others"
+        ]
+      },
+      {
+        "val_row": 861,
+        "arm64": [
+          "negative",
+          "lecturer"
+        ],
+        "amd64": [
+          "neutral",
+          "lecturer"
+        ]
+      }
+    ]
+  },
+  "prob_gap": {
+    "max": 0.3201,
+    "mean": 0.004336
+  },
+  "verdict": [
+    {
+      "metric": "Golden: nhãn amd64 trùng golden_predictions.json",
+      "threshold": "20/20",
+      "value": "20/20",
+      "ok": true
+    },
+    {
+      "metric": "200 câu val: cả hai nhãn amd64 trùng arm64",
+      "threshold": "≥ 98%",
+      "value": "98.5% (197/200)",
+      "ok": true
+    }
+  ],
+  "go": true
+}

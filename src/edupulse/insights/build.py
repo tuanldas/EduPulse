@@ -268,7 +268,8 @@ def _group_rates(rows: Sequence[InsightRow], topic: str) -> dict[str, tuple[int,
 
 
 def _rate_summary(topic: str, group: str | None, evidence: m.AlertEvidence) -> str:
-    where = f" ở nhóm {group}" if group else ""
+    # Tên nhóm là dữ liệu của người dùng ("Nhóm B", "Nhập môn lập trình"): không thêm chữ "nhóm".
+    where = f" ở {group}" if group else ""
     return (
         f"{percent(evidence.rate)} góp ý về {TOPIC_PHRASE[topic]}{where} là tiêu cực "
         f"({evidence.k}/{evidence.n} câu), cao hơn mức nền {percent(evidence.baseline)} "
@@ -294,7 +295,7 @@ def _highlight(
     highlight = m.GroupHighlight(group=group, k=k, n=n, rate=round(k / n, 4))
     return (
         highlight,
-        f"{note}{', nhiều nhất' if note else ' Nhiều nhất'} ở nhóm {group} ({k}/{n} câu).",
+        f"{note}{', nhiều nhất' if note else ' Nhiều nhất'} ở {group} ({k}/{n} câu).",
     )
 
 
@@ -340,7 +341,7 @@ def _alerts(
                     kind="negative_rate",
                     topic=topic,
                     group=group,
-                    title=(f"{TOPIC_TITLE[topic]} ở nhóm {group}: tỉ lệ tiêu cực cao hơn mức nền"),
+                    title=(f"{TOPIC_TITLE[topic]} ở {group}: tỉ lệ tiêu cực cao hơn mức nền"),
                     summary=_rate_summary(topic, group, evidence),
                     evidence=evidence,
                     keywords=terms,

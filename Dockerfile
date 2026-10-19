@@ -12,7 +12,9 @@ ARG PYTHON_IMAGE=python:3.12-slim-trixie
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.22
 
 # ---- web: dựng Next.js thành HTML/JS tĩnh trong /web/out ----
-FROM ${NODE_IMAGE} AS web
+# Đầu ra tĩnh không phụ thuộc kiến trúc nên dựng bằng kiến trúc của máy build, kể cả khi image đích
+# là amd64 dựng giả lập trên máy arm64 (không phải chạy node và next build dưới giả lập).
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS web
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NEXT_TELEMETRY_DISABLED=1 \
     CI=true

@@ -1,0 +1,623 @@
+{
+  "date": "2026-10-19",
+  "arch": "arm64",
+  "commit": "55a9050",
+  "host": {
+    "platform": "Darwin arm64",
+    "loadavg_start": [
+      5.5,
+      7.2,
+      8.3
+    ],
+    "docker_server": "29.8.2",
+    "docker_cpus": 10,
+    "docker_mem_gb": 7.7,
+    "other_containers": 0,
+    "started": "14:58:53",
+    "ended": "15:10:09",
+    "heavy_watch": {
+      "samples": 330,
+      "busy_samples": 0,
+      "windows": []
+    },
+    "loadavg_end": [
+      5.4,
+      6.0,
+      7.3
+    ]
+  },
+  "image": {
+    "tag": "edupulse:v1.0",
+    "size_mb": 1213,
+    "compressed_mb": 571,
+    "build_s": null
+  },
+  "runs": [
+    {
+      "label": "gate",
+      "cpus": 2.0,
+      "memory": "1536m",
+      "startup_s": 2.54,
+      "health": {
+        "status": "ok",
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "stage": "release",
+        "ner_enabled": false,
+        "rss_mb": 545.8
+      },
+      "compare": {
+        "ok": true,
+        "cold_s": 2.283,
+        "warm_s": 0.022,
+        "predict_ms": 9.39,
+        "rss_before_mb": 545.8,
+        "rss_after_mb": 642.6,
+        "rss_delta_mb": 96.8,
+        "load_s": 2.2
+      },
+      "limits": {
+        "xai_max_words": 25,
+        "source": "/api/config"
+      },
+      "first_analyze_s": 0.017,
+      "latency_idle": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.025,
+          "p95_s": 0.046,
+          "max_s": 0.078
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.112,
+          "p95_s": 0.655,
+          "max_s": 0.66
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.13,
+          "p95_s": 0.705,
+          "max_s": 0.747
+        },
+        "not_explained": 2
+      },
+      "latency_idle_long": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.04,
+          "p95_s": 0.056,
+          "max_s": 0.148
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.583,
+          "p95_s": 0.838,
+          "max_s": 0.909
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.585,
+          "p95_s": 0.913,
+          "max_s": 1.144
+        },
+        "not_explained": 0
+      },
+      "latency_under_load": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.076,
+          "p95_s": 0.114,
+          "max_s": 0.164
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.433,
+          "p95_s": 1.466,
+          "max_s": 1.492
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.48,
+          "p95_s": 1.485,
+          "max_s": 1.897
+        },
+        "not_explained": 2
+      },
+      "load": {
+        "workers": 2,
+        "requests": 1114,
+        "errors": 0,
+        "req_per_s": 25.6
+      },
+      "checks": {
+        "api_unknown_is_json_404": true,
+        "root_is_html": true,
+        "unknown_page_is_html_404": true,
+        "wrong_method_is_405": true,
+        "compare_with_baseline_works": true,
+        "logs_have_no_request_content": true,
+        "logs_have_route_template": true
+      },
+      "upload": {
+        "bytes": 5242880,
+        "rows": 2000,
+        "problems": [],
+        "ok": true,
+        "upload_s": 0.14,
+        "run_s": 56.7,
+        "flagged": 200
+      },
+      "bench": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 1,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 159,
+        "steps_s": {
+          "prepare": 0.444,
+          "predict": 26.67,
+          "flags": 0.011,
+          "explain": 3.698
+        },
+        "total_s": 30.823,
+        "per_sentence_ms": 30.82,
+        "load_s": 1.53,
+        "rss_mb": 536.1,
+        "cgroup_memory_peak_mb": 572.8,
+        "cgroup_cpu_throttle": {
+          "periods": 330,
+          "throttled": 157,
+          "throttled_s": 3.009
+        },
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "bench_batched": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 32,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 204,
+        "steps_s": {
+          "prepare": 0.342,
+          "predict": 21.307,
+          "flags": 0.018,
+          "explain": 5.813
+        },
+        "total_s": 27.48,
+        "per_sentence_ms": 27.48,
+        "load_s": 1.34,
+        "rss_mb": 595.7,
+        "cgroup_memory_peak_mb": 573.4,
+        "cgroup_cpu_throttle": {
+          "periods": 293,
+          "throttled": 128,
+          "throttled_s": 2.507
+        },
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "server_memory_peak_mb": 1292.8,
+      "server_state": {
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "phases": [
+        {
+          "name": "Khởi động container tới health 200",
+          "start": "14:58:58",
+          "end": "14:59:00",
+          "seconds": 2.8,
+          "noisy_with": []
+        },
+        {
+          "name": "So sánh với mô hình cơ sở: nạp lạnh, RSS",
+          "start": "14:59:00",
+          "end": "14:59:03",
+          "seconds": 2.3,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi rảnh: nhãn, giải thích",
+          "start": "14:59:03",
+          "end": "14:59:18",
+          "seconds": 15.4,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi rảnh: câu dài sát giới hạn giải thích",
+          "start": "14:59:18",
+          "end": "14:59:57",
+          "seconds": 39.1,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi có tải nền",
+          "start": "14:59:57",
+          "end": "15:00:41",
+          "seconds": 43.4,
+          "noisy_with": []
+        },
+        {
+          "name": "Hành vi API",
+          "start": "15:00:41",
+          "end": "15:00:41",
+          "seconds": 0.0,
+          "noisy_with": []
+        },
+        {
+          "name": "Upload 5MB chạy xong",
+          "start": "15:00:41",
+          "end": "15:01:38",
+          "seconds": 57.3,
+          "noisy_with": []
+        },
+        {
+          "name": "Yêu cầu dò nội dung nhật ký",
+          "start": "15:01:38",
+          "end": "15:01:38",
+          "seconds": 0.1,
+          "noisy_with": []
+        },
+        {
+          "name": "Bench 1000 câu trong container riêng",
+          "start": "15:01:38",
+          "end": "15:02:12",
+          "seconds": 33.5,
+          "noisy_with": []
+        },
+        {
+          "name": "Bench lô ONNX 32 (tham khảo)",
+          "start": "15:02:12",
+          "end": "15:02:41",
+          "seconds": 29.8,
+          "noisy_with": []
+        }
+      ]
+    },
+    {
+      "label": "1cpu",
+      "cpus": 1.0,
+      "memory": "1536m",
+      "startup_s": 2.58,
+      "health": {
+        "status": "ok",
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "stage": "release",
+        "ner_enabled": false,
+        "rss_mb": 546.6
+      },
+      "compare": {
+        "ok": true,
+        "cold_s": 1.899,
+        "warm_s": 0.028,
+        "predict_ms": 7.0,
+        "rss_before_mb": 546.7,
+        "rss_after_mb": 645.5,
+        "rss_delta_mb": 98.8,
+        "load_s": 1.9
+      },
+      "limits": {
+        "xai_max_words": 25,
+        "source": "/api/config"
+      },
+      "first_analyze_s": 0.024,
+      "latency_idle": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.072,
+          "p95_s": 0.104,
+          "max_s": 0.18
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.286,
+          "p95_s": 1.499,
+          "max_s": 1.591
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.32,
+          "p95_s": 1.587,
+          "max_s": 2.077
+        },
+        "not_explained": 2
+      },
+      "latency_idle_long": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.088,
+          "p95_s": 0.104,
+          "max_s": 0.125
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 1.09,
+          "p95_s": 1.61,
+          "max_s": 2.181
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 1.155,
+          "p95_s": 1.706,
+          "max_s": 1.905
+        },
+        "not_explained": 0
+      },
+      "latency_under_load": {
+        "analyze": {
+          "n": 100,
+          "p50_s": 0.168,
+          "p95_s": 0.27,
+          "max_s": 0.317
+        },
+        "explain": {
+          "n": 30,
+          "p50_s": 0.906,
+          "p95_s": 3.2,
+          "max_s": 3.28
+        },
+        "analyze_explain": {
+          "n": 30,
+          "p50_s": 0.946,
+          "p95_s": 3.292,
+          "max_s": 3.498
+        },
+        "not_explained": 2
+      },
+      "load": {
+        "workers": 2,
+        "requests": 1120,
+        "errors": 0,
+        "req_per_s": 12.8
+      },
+      "checks": {
+        "api_unknown_is_json_404": true,
+        "root_is_html": true,
+        "unknown_page_is_html_404": true,
+        "wrong_method_is_405": true,
+        "compare_with_baseline_works": true,
+        "logs_have_no_request_content": true,
+        "logs_have_route_template": true
+      },
+      "upload": {
+        "bytes": 5242880,
+        "rows": 2000,
+        "problems": [],
+        "ok": true,
+        "upload_s": 0.14,
+        "run_s": 112.3,
+        "flagged": 200
+      },
+      "bench": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 1,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 159,
+        "steps_s": {
+          "prepare": 0.798,
+          "predict": 54.305,
+          "flags": 0.016,
+          "explain": 7.455
+        },
+        "total_s": 62.573,
+        "per_sentence_ms": 62.57,
+        "load_s": 1.55,
+        "rss_mb": 529.8,
+        "cgroup_memory_peak_mb": 573.5,
+        "cgroup_cpu_throttle": {
+          "periods": 648,
+          "throttled": 640,
+          "throttled_s": 69.89
+        },
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "bench_batched": {
+        "n": 1000,
+        "skipped_no_content": 0,
+        "budget_pct": 10,
+        "batch_size": 32,
+        "flagged": 100,
+        "xai_rows": 20,
+        "xai_forwards": 204,
+        "steps_s": {
+          "prepare": 0.875,
+          "predict": 46.232,
+          "flags": 0.01,
+          "explain": 11.9
+        },
+        "total_s": 59.018,
+        "per_sentence_ms": 59.02,
+        "load_s": 1.52,
+        "rss_mb": 605.0,
+        "cgroup_memory_peak_mb": 573.2,
+        "cgroup_cpu_throttle": {
+          "periods": 612,
+          "throttled": 605,
+          "throttled_s": 66.557
+        },
+        "ort_threads": 2,
+        "ner": false,
+        "bundle_version": "v1.0",
+        "model_version": "edupulse-mtl-s42",
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "server_memory_peak_mb": 660.8,
+      "server_state": {
+        "oom_killed": false,
+        "exit_code": 0,
+        "restarts": 0
+      },
+      "phases": [
+        {
+          "name": "Khởi động container tới health 200",
+          "start": "15:02:42",
+          "end": "15:02:45",
+          "seconds": 2.8,
+          "noisy_with": []
+        },
+        {
+          "name": "So sánh với mô hình cơ sở: nạp lạnh, RSS",
+          "start": "15:02:45",
+          "end": "15:02:46",
+          "seconds": 1.9,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi rảnh: nhãn, giải thích",
+          "start": "15:02:47",
+          "end": "15:03:23",
+          "seconds": 36.7,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi rảnh: câu dài sát giới hạn giải thích",
+          "start": "15:03:23",
+          "end": "15:04:42",
+          "seconds": 78.4,
+          "noisy_with": []
+        },
+        {
+          "name": "Độ trễ khi có tải nền",
+          "start": "15:04:42",
+          "end": "15:06:09",
+          "seconds": 87.3,
+          "noisy_with": []
+        },
+        {
+          "name": "Hành vi API",
+          "start": "15:06:09",
+          "end": "15:06:09",
+          "seconds": 0.0,
+          "noisy_with": []
+        },
+        {
+          "name": "Upload 5MB chạy xong",
+          "start": "15:06:09",
+          "end": "15:08:02",
+          "seconds": 112.8,
+          "noisy_with": []
+        },
+        {
+          "name": "Yêu cầu dò nội dung nhật ký",
+          "start": "15:08:02",
+          "end": "15:08:02",
+          "seconds": 0.0,
+          "noisy_with": []
+        },
+        {
+          "name": "Bench 1000 câu trong container riêng",
+          "start": "15:08:02",
+          "end": "15:09:07",
+          "seconds": 65.4,
+          "noisy_with": []
+        },
+        {
+          "name": "Bench lô ONNX 32 (tham khảo)",
+          "start": "15:09:07",
+          "end": "15:10:09",
+          "seconds": 61.7,
+          "noisy_with": []
+        }
+      ]
+    }
+  ],
+  "verdict": [
+    {
+      "metric": "OOM-kill",
+      "threshold": "0",
+      "value": 0,
+      "ok": true
+    },
+    {
+      "metric": "memory.peak (MB), đã gồm so sánh với mô hình cơ sở",
+      "threshold": "≤ 1200",
+      "value": 1292.8,
+      "ok": false
+    },
+    {
+      "metric": "RSS tiến trình sau khi nạp mô hình cơ sở (MB)",
+      "threshold": "≤ 1200",
+      "value": 642.6,
+      "ok": true
+    },
+    {
+      "metric": "So sánh mô hình: nạp lạnh lần đầu (s)",
+      "threshold": "tham khảo",
+      "value": 2.283,
+      "ok": null
+    },
+    {
+      "metric": "Nhãn 1 câu: p95 /api/analyze (s)",
+      "threshold": "≤ 0.5",
+      "value": 0.046,
+      "ok": true
+    },
+    {
+      "metric": "Giải thích: p95 /api/explain, câu ≤ 25 từ (s)",
+      "threshold": "≤ 2",
+      "value": 0.655,
+      "ok": true
+    },
+    {
+      "metric": "1.000 câu end-to-end (s)",
+      "threshold": "≤ 30",
+      "value": 30.823,
+      "ok": false
+    },
+    {
+      "metric": "Khởi động tới health 200 (s)",
+      "threshold": "≤ 20",
+      "value": 2.54,
+      "ok": true
+    },
+    {
+      "metric": "Upload 5MB chạy xong",
+      "threshold": "không lỗi",
+      "value": "5.0 MB, 2000 dòng, chạy 56.7 s",
+      "ok": true
+    },
+    {
+      "metric": "Hành vi API và nhật ký",
+      "threshold": "tất cả đạt",
+      "value": "7/7",
+      "ok": true
+    }
+  ],
+  "go": false,
+  "thresholds": {
+    "memory_peak_mb": 1200,
+    "label_p95_s": 0.5,
+    "explain_p95_s": 2.0,
+    "batch_total_s": 30.0,
+    "startup_s": 20.0
+  }
+}
