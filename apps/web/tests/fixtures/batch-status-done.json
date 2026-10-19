@@ -1,0 +1,12 @@
+{
+  "state": "done",
+  "step": null,
+  "done": 20,
+  "total": 20,
+  "progress": 1,
+  "eta_s": null,
+  "n_rows": 20,
+  "pii_rows": 2,
+  "error_code": null,
+  "illustrative_groups": true
+}

@@ -1,0 +1,36 @@
+{
+  "batch_id": "fixture-batch",
+  "filename": "gop-y-tu-viet.csv",
+  "n_rows": 20,
+  "columns": [
+    "Góp ý",
+    "Nhóm (minh hoạ)"
+  ],
+  "preview": [
+    [
+      "Thầy giảng bài rất dễ hiểu và luôn [đã gỡ câu UIT-VSFC].",
+      "Nhóm A"
+    ],
+    [
+      "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
+      "Nhóm B"
+    ],
+    [
+      "Thầy dạy vào thứ ba và thứ năm hằng tuần, mỗi buổi kéo dài ba tiết.",
+      "Nhóm C"
+    ],
+    [
+      "Chương trình học có nhiều bài thực hành, nội dung sát với yêu cầu của doanh nghiệp.",
+      "Nhóm D"
+    ],
+    [
+      "Môn học này nặng lý thuyết, giáo trình đã cũ và bài tập thực hành quá ít.",
+      "Nhóm E"
+    ]
+  ],
+  "suggested_text_col": "Góp ý",
+  "suggested_group_col": "Nhóm (minh hoạ)",
+  "encoding": "utf-8-sig",
+  "warnings": [],
+  "illustrative_groups": true
+}

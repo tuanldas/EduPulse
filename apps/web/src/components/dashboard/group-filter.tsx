@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { Icon } from "@/components/shared/icon";
 import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,8 @@ interface GroupFilterProps {
 /** "Lọc theo Môn học": nhiều lựa chọn, chọn hết hoặc không chọn gì đều là xem tất cả. */
 export function GroupFilter({ columnLabel, groups, selected, onChange, illustrative }: GroupFilterProps) {
   const chosen = new Set(selected);
+  const labelId = useId();
+  const valueId = useId();
 
   function toggle(name: string, checked: boolean) {
     const next = new Set(chosen);
@@ -41,7 +45,7 @@ export function GroupFilter({ columnLabel, groups, selected, onChange, illustrat
   return (
     <div>
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
-        <span id="loc-nhom-nhan">Lọc theo {columnLabel}</span>
+        <span id={labelId}>Lọc theo {columnLabel}</span>
         {illustrative ? <IllustrativeBadge /> : null}
       </div>
       <DropdownMenu>
@@ -49,12 +53,14 @@ export function GroupFilter({ columnLabel, groups, selected, onChange, illustrat
           render={
             <Button
               variant="outline"
-              aria-labelledby="loc-nhom-nhan"
+              aria-labelledby={`${labelId} ${valueId}`}
               className="w-full justify-between bg-muted px-3.5 font-normal"
             />
           }
         >
-          <span className="truncate">{groupSummary(selected, groups.length)}</span>
+          <span id={valueId} className="truncate">
+            {groupSummary(selected, groups.length)}
+          </span>
           <Icon name="keyboard_arrow_down" size="xs" className="text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="max-h-80 min-w-64">

@@ -1,0 +1,276 @@
+{
+  "withHighlights": {
+    "index": 8,
+    "response": {
+      "n_forwards": 11,
+      "sentiment": {
+        "label": "negative",
+        "probability": 0.3883,
+        "tokens": [
+          {
+            "text": "phòng",
+            "delta": 0.162,
+            "p_without": 0.2263
+          },
+          {
+            "text": "thực hành",
+            "delta": 0.1374,
+            "p_without": 0.2509
+          },
+          {
+            "text": "nằm",
+            "delta": -0.0049,
+            "p_without": 0.3932
+          },
+          {
+            "text": "ở",
+            "delta": 0.0727,
+            "p_without": 0.3156
+          },
+          {
+            "text": "tầng",
+            "delta": -0.0337,
+            "p_without": 0.4221
+          },
+          {
+            "text": "ba",
+            "delta": 0.0381,
+            "p_without": 0.3503
+          },
+          {
+            "text": "của",
+            "delta": 0.0675,
+            "p_without": 0.3209
+          },
+          {
+            "text": "toà",
+            "delta": -0.0957,
+            "p_without": 0.484
+          },
+          {
+            "text": "nhà",
+            "delta": 0.0245,
+            "p_without": 0.3638
+          },
+          {
+            "text": "b",
+            "delta": -0.088,
+            "p_without": 0.4763
+          },
+          {
+            "text": ".",
+            "delta": 0,
+            "p_without": 0.3883
+          }
+        ],
+        "support": [
+          0,
+          1,
+          3
+        ],
+        "oppose": [
+          7
+        ]
+      },
+      "topic": {
+        "label": "facility",
+        "probability": 0.9038,
+        "tokens": [
+          {
+            "text": "phòng",
+            "delta": 0.0886,
+            "p_without": 0.8152
+          },
+          {
+            "text": "thực hành",
+            "delta": 0.1239,
+            "p_without": 0.7799
+          },
+          {
+            "text": "nằm",
+            "delta": -0.0121,
+            "p_without": 0.9159
+          },
+          {
+            "text": "ở",
+            "delta": 0.0206,
+            "p_without": 0.8832
+          },
+          {
+            "text": "tầng",
+            "delta": 0.0051,
+            "p_without": 0.8987
+          },
+          {
+            "text": "ba",
+            "delta": 0.0042,
+            "p_without": 0.8997
+          },
+          {
+            "text": "của",
+            "delta": 0.0075,
+            "p_without": 0.8963
+          },
+          {
+            "text": "toà",
+            "delta": -0.0162,
+            "p_without": 0.92
+          },
+          {
+            "text": "nhà",
+            "delta": 0.0136,
+            "p_without": 0.8902
+          },
+          {
+            "text": "b",
+            "delta": -0.0256,
+            "p_without": 0.9295
+          },
+          {
+            "text": ".",
+            "delta": 0,
+            "p_without": 0.9038
+          }
+        ],
+        "support": [
+          1,
+          0
+        ],
+        "oppose": []
+      }
+    }
+  },
+  "noHighlights": {
+    "index": 12,
+    "response": {
+      "n_forwards": 12,
+      "sentiment": {
+        "label": "positive",
+        "probability": 0.9748,
+        "tokens": [
+          {
+            "text": "thay",
+            "delta": 0.0004,
+            "p_without": 0.9744
+          },
+          {
+            "text": "day",
+            "delta": -0.0049,
+            "p_without": 0.9797
+          },
+          {
+            "text": "rat",
+            "delta": 0.0005,
+            "p_without": 0.9743
+          },
+          {
+            "text": "de",
+            "delta": -0.0011,
+            "p_without": 0.9759
+          },
+          {
+            "text": "hieu",
+            "delta": -0.0017,
+            "p_without": 0.9765
+          },
+          {
+            "text": "va",
+            "delta": -0.0011,
+            "p_without": 0.9759
+          },
+          {
+            "text": "nhiet",
+            "delta": -0.0005,
+            "p_without": 0.9753
+          },
+          {
+            "text": "tinh",
+            "delta": 0.001,
+            "p_without": 0.9738
+          },
+          {
+            "text": "voi",
+            "delta": -0.0019,
+            "p_without": 0.9767
+          },
+          {
+            "text": "sinh",
+            "delta": -0.0002,
+            "p_without": 0.975
+          },
+          {
+            "text": "vien",
+            "delta": -0.0004,
+            "p_without": 0.9752
+          }
+        ],
+        "support": [],
+        "oppose": []
+      },
+      "topic": {
+        "label": "lecturer",
+        "probability": 0.9687,
+        "tokens": [
+          {
+            "text": "thay",
+            "delta": -0.0031,
+            "p_without": 0.9718
+          },
+          {
+            "text": "day",
+            "delta": 0.0155,
+            "p_without": 0.9532
+          },
+          {
+            "text": "rat",
+            "delta": -0.0007,
+            "p_without": 0.9694
+          },
+          {
+            "text": "de",
+            "delta": 0.0016,
+            "p_without": 0.9671
+          },
+          {
+            "text": "hieu",
+            "delta": 0.0011,
+            "p_without": 0.9676
+          },
+          {
+            "text": "va",
+            "delta": 0.0026,
+            "p_without": 0.9661
+          },
+          {
+            "text": "nhiet",
+            "delta": 0.0003,
+            "p_without": 0.9684
+          },
+          {
+            "text": "tinh",
+            "delta": -0.0015,
+            "p_without": 0.9702
+          },
+          {
+            "text": "voi",
+            "delta": 0.0034,
+            "p_without": 0.9653
+          },
+          {
+            "text": "sinh",
+            "delta": -0.0005,
+            "p_without": 0.9692
+          },
+          {
+            "text": "vien",
+            "delta": 0.0005,
+            "p_without": 0.9683
+          }
+        ],
+        "support": [],
+        "oppose": []
+      }
+    }
+  },
+  "tooLongIndex": 16
+}
