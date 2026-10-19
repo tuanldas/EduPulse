@@ -165,7 +165,7 @@ def test_a_pickle_in_place_of_a_skops_file_is_refused(tmp_path: Path):
 
 @pytest.mark.data
 def test_baseline_accuracy_on_validation_sentences_is_in_the_expected_range(baseline: Baseline):
-    import pyarrow.parquet as pq
+    pq = pytest.importorskip("pyarrow.parquet")
 
     path = load_settings().data_dir / "raw" / "validation.parquet"
     if not path.is_file():

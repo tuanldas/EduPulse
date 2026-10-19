@@ -24,7 +24,7 @@ def validation_csv() -> bytes:
     path = load_settings().data_dir / "raw" / "validation.parquet"
     if not path.is_file():
         pytest.skip("chưa có data/raw — chạy `make data`")
-    import pyarrow.parquet as pq
+    pq = pytest.importorskip("pyarrow.parquet")
 
     sentences = pq.read_table(path).column("sentence").to_pylist()[:N]
     out = io.StringIO()

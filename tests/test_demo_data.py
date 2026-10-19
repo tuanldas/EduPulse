@@ -296,6 +296,7 @@ def test_reasons_are_truncated():
 
 @pytest.fixture(scope="module")
 def raw_dir() -> Path:
+    pytest.importorskip("pyarrow.parquet")
     path = load_settings().data_dir / "raw"
     if not all((path / f"{split}.parquet").is_file() for split in demo.REMOTE_PATHS):
         pytest.skip("chưa có data/raw — chạy `make data`")

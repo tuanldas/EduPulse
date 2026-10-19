@@ -600,6 +600,7 @@ def real_background() -> InsightBackground:
 @pytest.mark.data
 @pytest.mark.model
 def test_keywords_on_the_real_training_set_have_the_right_sign(real_background):
+    pytest.importorskip("pandas")  # `ml.common.load_processed` đọc parquet bằng pandas
     from ml.common import load_processed
 
     train = load_processed("train")
