@@ -53,7 +53,12 @@ export function kpiDelta(metric: KpiMetric, deltaPoints: number, digits = 1): Kp
 export interface BarSegment {
   sentiment: SentimentLabel;
   share: number;
+  /** Vạch mức nền nằm đè lên chỗ đặt số của đoạn này nên không ghi số trong ô (số vẫn có ở mô tả chữ và gợi ý khi rê chuột). */
+  labelBlocked: boolean;
 }
+
+/** Nửa bề rộng của một con số "38%" tính theo tỉ lệ của cột (cột hẹp nhất ~170px, số rộng ~24px). */
+const LABEL_HALF_SHARE = 0.07;
 
 export interface TopicBar {
   topic: TopicLabel;
@@ -65,13 +70,25 @@ export interface TopicBar {
   empty: boolean;
 }
 
+function barSegments(stat: Topics[number]): BarSegment[] {
+  let start = 0;
+  return LABEL_ORDER.sentiment.map((sentiment) => {
+    const share = stat.sentiment_shares[sentiment];
+    const center = start + share / 2;
+    start += share;
+    // Số nằm giữa đoạn; nếu vạch nền (rộng ~3px) rơi vào vùng đó thì hai thứ chồng lên nhau.
+    const labelBlocked = Math.abs(stat.baseline_negative_rate - center) < Math.min(LABEL_HALF_SHARE, share / 2 + 0.01);
+    return { sentiment, share, labelBlocked };
+  });
+}
+
 export function topicBars(topics: Topics): TopicBar[] {
   return topics.map((stat) => ({
     topic: stat.topic,
     n: stat.n,
     empty: stat.n === 0,
     baseline: stat.baseline_negative_rate,
-    segments: LABEL_ORDER.sentiment.map((sentiment) => ({ sentiment, share: stat.sentiment_shares[sentiment] })),
+    segments: barSegments(stat),
   }));
 }
 

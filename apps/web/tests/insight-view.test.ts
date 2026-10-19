@@ -79,6 +79,25 @@ describe("topicBars", () => {
     expect(bars[1].n).toBe(90);
   });
 
+  it("không ghi số ở đoạn có vạch mức nền đè lên chỗ đặt số", () => {
+    // Trung tính chiếm 33–50% nên số đặt ở 41,5%; vạch nền 40,2% đè lên nó.
+    const [blocked] = topicBars([
+      makeTopicStat({
+        baseline_negative_rate: 0.402,
+        sentiment_shares: { negative: 0.333, neutral: 0.167, positive: 0.5 },
+      }),
+    ]);
+    expect(blocked.segments.map((segment) => segment.labelBlocked)).toEqual([false, true, false]);
+    // Vạch nền xa chỗ đặt số thì số được giữ (ví dụ trong wireframe: nền 35,6% với đoạn tiêu cực 38%).
+    const [clear] = topicBars([
+      makeTopicStat({
+        baseline_negative_rate: 0.356,
+        sentiment_shares: { negative: 0.38, neutral: 0.03, positive: 0.59 },
+      }),
+    ]);
+    expect(clear.segments.map((segment) => segment.labelBlocked)).toEqual([false, false, false]);
+  });
+
   it("mang đúng tỉ lệ từng đoạn để vẽ", () => {
     const [bar] = topicBars([
       makeTopicStat({ sentiment_shares: { negative: 0.956, neutral: 0.011, positive: 0.033 } }),

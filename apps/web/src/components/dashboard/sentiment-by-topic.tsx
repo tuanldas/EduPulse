@@ -44,9 +44,12 @@ function Row({ bar }: { bar: TopicBar }) {
                     TEXT_ON_SOLID[SENTIMENT_META[segment.sentiment].tone],
                   )}
                   style={{ width: `${segment.share * 100}%` }}
+                  title={`${SENTIMENT_META[segment.sentiment].vi} ${formatPercent(segment.share)}`}
                 >
-                  {/* Số chỉ hiện khi đoạn đủ rộng (đo bằng container query), tránh bị cắt nửa chừng. */}
-                  <span className="hidden @min-[34px]:inline">{formatPercent(segment.share)}</span>
+                  {/* Số chỉ hiện khi đoạn đủ rộng (đo bằng container query) và không bị vạch nền đè lên. */}
+                  {segment.labelBlocked ? null : (
+                    <span className="hidden @min-[34px]:inline">{formatPercent(segment.share)}</span>
+                  )}
                 </i>
               ) : null,
             )}
