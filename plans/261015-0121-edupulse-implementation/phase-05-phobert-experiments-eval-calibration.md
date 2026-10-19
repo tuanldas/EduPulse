@@ -19,7 +19,9 @@ depends_on: [3, 4]
 - Prototype (scratchpad phiên): `scratchpad/r1/qrun.sh`, `r1/paired_vs_baseline.py`, `r3/scripts/calib_phobert_val.py`, `r3/scripts/bias_phobert_val.py`.
 
 ## Overview
-- Ngày: 2026-10-17 → 2026-10-21 · Effort: 12h người/agent + ~3h máy MPS (đêm 17/10, sau M1) · Priority: P1 · Trạng thái: chưa bắt đầu.
+<!-- Updated: Session 6 - bỏ train thêm; chỉ đánh giá + phân tích trên CPU -->
+- **Session 6 (2026-10-17): KHÔNG train thêm.** Phạm vi còn lại (chỉ CPU, không MPS/Docker): dùng MTL seed 42 làm bản deploy; freeze → đánh giá test ĐÚNG 1 lần cho 3 baseline + PhoBERT (FP32 và int8 batch=1); bootstrap CI 95% + McNemar/paired bootstrap so với LinearSVC; ECE + reliability trên test; hiệu quả ngân sách duyệt trên test; error analysis, bias, CheckList; model card; build `artifacts/v1.0/`; dừng M2. Các bước 9 run/3 seed/STL bên dưới không còn áp dụng; so sánh MTL/STL lấy thí nghiệm sơ bộ của research (ghi rõ sơ bộ). Effort còn ~6h.
+- Ngày: 2026-10-19 → 2026-10-20 · Priority: P1 · Trạng thái: đang làm.
 - Chạy đủ thực nghiệm (MTL + 2 STL × 3 seed), so sánh trên val, chọn bản deploy, export int8 cuối, calibration + ngưỡng ngân sách, ĐÓNG BĂNG rồi đánh giá test đúng 1 lần; kiểm định, lỗi, bias, CheckList; đóng `artifacts/v1.0/` (model + cấu hình). **Mốc dừng M2** = kết quả test + xong khối ML; **M3** = hỏi trước khi đẩy HF Hub.
 - Song song với phase 6, 7 (máy chạy nền); chỉ chạy MPS sau M1 và khi Docker Desktop tắt.
 

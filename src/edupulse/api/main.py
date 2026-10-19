@@ -22,7 +22,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from edupulse.api.access_log import AccessLogMiddleware
 from edupulse.api.errors import http_error_handler, install_error_handlers
 from edupulse.api.paths import is_api_path
-from edupulse.api.routes import analyze, meta
+from edupulse.api.routes import analyze, batches, meta
+from edupulse.api.schemas import ErrorResponse
 from edupulse.api.security_headers import SecurityHeadersMiddleware
 from edupulse.config import Settings, load_settings
 from edupulse.engine.service import Analyzer
@@ -99,12 +100,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         swagger_ui_oauth2_redirect_url=None,
         # Tên hàm làm operationId, để kiểu TypeScript sinh ra có tên ổn định.
         generate_unique_id_function=lambda route: route.name,
+        # Thân lỗi 422 thật là `ErrorResponse` (xem errors.py), không phải `HTTPValidationError`
+        # mà FastAPI tự thêm vào OpenAPI khi route chưa khai báo 422.
+        responses={422: {"model": ErrorResponse}},
     )
     app.state.settings = settings
 
     install_error_handlers(app)
     app.include_router(meta.router)
     app.include_router(analyze.router)
+    app.include_router(batches.router)
     _serve_web(app, settings.web_dir)
 
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.
