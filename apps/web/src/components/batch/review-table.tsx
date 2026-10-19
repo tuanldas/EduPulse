@@ -88,7 +88,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table className="min-w-[1080px]">
+      <Table className="min-w-[1080px]" label={editable ? "Danh sách câu cần duyệt" : "Toàn bộ kết quả phân tích"}>
         <caption className="sr-only">
           {editable ? "Danh sách câu cần duyệt, có cột để sửa nhãn" : "Toàn bộ kết quả phân tích"}
         </caption>
@@ -97,7 +97,9 @@ export function ReviewTable({
             <TableHead scope="col" className="w-px text-right">
               #
             </TableHead>
-            <TableHead scope="col">Câu (đã ẩn thông tin cá nhân)</TableHead>
+            <TableHead scope="col" className="whitespace-normal">
+              Câu (đã ẩn thông tin cá nhân)
+            </TableHead>
             <TableHead scope="col">Lý do</TableHead>
             <TableHead scope="col">Cảm xúc</TableHead>
             {editable ? <TableHead scope="col">Sửa cảm xúc</TableHead> : null}
@@ -116,21 +118,19 @@ export function ReviewTable({
               <TableRow key={row.index} data-highlight={patch !== undefined}>
                 <TableCell className="text-right text-muted-foreground tabular-nums">{row.source_row}</TableCell>
                 <TableCell>
-                  <div className="max-w-[260px] truncate" title={row.text}>
+                  {/* Hai dòng là đủ đọc ý chính; hàng của tab duyệt cao theo ô chọn nên không cao thêm. */}
+                  <div className="line-clamp-2 w-[170px]" title={row.text}>
                     <PiiText text={row.text} />
                   </div>
                 </TableCell>
-                <TableCell
-                  className={cn("whitespace-nowrap", row.source === "audit" && "text-muted-foreground")}
-                  title={reasonDetail(row)}
-                >
-                  {reasonText(row, xaiMaxWords)}
+                <TableCell className={cn(row.source === "audit" && "text-muted-foreground")} title={reasonDetail(row)}>
+                  <div className="w-[130px] text-balance">{reasonText(row, xaiMaxWords)}</div>
                 </TableCell>
                 <TableCell>
                   <SentimentText label={row.sentiment} />
                 </TableCell>
                 {editable ? (
-                  <TableCell className="min-w-[124px]">
+                  <TableCell className="min-w-[116px]">
                     <NativeSelect
                       size="sm"
                       aria-label={`Sửa cảm xúc câu ${row.source_row}`}
@@ -167,12 +167,12 @@ export function ReviewTable({
                 <TableCell>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
                     aria-label={`Giải thích câu ${row.source_row}`}
+                    title="Giải thích"
                     onClick={() => onExplain(offset + offsetInPage)}
                   >
                     <Icon name="manage_search" size="sm" />
-                    Giải thích
                   </Button>
                 </TableCell>
                 <TableCell>

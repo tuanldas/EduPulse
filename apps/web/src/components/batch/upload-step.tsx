@@ -144,7 +144,7 @@ function Preview({ columns, rows, nRows }: PreviewProps) {
         />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-2 border-t border-divider px-4 pt-2 pb-4">
-        <Table>
+        <Table label="Xem trước các dòng đầu của file">
           <TableHeader>
             <TableRow>
               {columns.map((column, index) => (
@@ -206,7 +206,7 @@ export function UploadStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end gap-4 max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end gap-4 @max-[920px]:grid-cols-1">
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-sm">
             <span>

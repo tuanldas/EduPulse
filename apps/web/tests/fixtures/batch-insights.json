@@ -1,0 +1,352 @@
+{
+  "source": "batch",
+  "illustrative_groups": true,
+  "groups": [
+    {
+      "name": "Nhóm A",
+      "n": 4
+    },
+    {
+      "name": "Nhóm B",
+      "n": 4
+    },
+    {
+      "name": "Nhóm C",
+      "n": 4
+    },
+    {
+      "name": "Nhóm D",
+      "n": 4
+    },
+    {
+      "name": "Nhóm E",
+      "n": 4
+    }
+  ],
+  "selected_groups": null,
+  "kpis": {
+    "n_rows": 20,
+    "n_groups": 5,
+    "shares": {
+      "negative": 0.4,
+      "neutral": 0.1,
+      "positive": 0.5
+    },
+    "baseline_shares": {
+      "negative": 0.46604235953089446,
+      "neutral": 0.040084018904253456,
+      "positive": 0.4938736215648521
+    },
+    "delta_points": {
+      "negative": -6.6,
+      "neutral": 6,
+      "positive": 0.6
+    },
+    "n_flagged": 4,
+    "flagged_share": 0.2
+  },
+  "topics": [
+    {
+      "topic": "lecturer",
+      "n": 10,
+      "share": 0.5,
+      "baseline_share": 0.7146858043059688,
+      "sentiment_shares": {
+        "negative": 0.2,
+        "neutral": 0,
+        "positive": 0.8
+      },
+      "negative_n": 2,
+      "baseline_negative_rate": 0.3562331618907666,
+      "negative_ci_low": 0.056680947980693314
+    },
+    {
+      "topic": "training_program",
+      "n": 5,
+      "share": 0.25,
+      "baseline_share": 0.1926308419394364,
+      "sentiment_shares": {
+        "negative": 0.6,
+        "neutral": 0.2,
+        "positive": 0.2
+      },
+      "negative_n": 3,
+      "baseline_negative_rate": 0.7796456156292594,
+      "negative_ci_low": 0.23071993220883708
+    },
+    {
+      "topic": "facility",
+      "n": 4,
+      "share": 0.2,
+      "baseline_share": 0.04349728688955015,
+      "sentiment_shares": {
+        "negative": 0.75,
+        "neutral": 0,
+        "positive": 0.25
+      },
+      "negative_n": 3,
+      "baseline_negative_rate": 0.9537223340040242,
+      "negative_ci_low": 0.3006360524426366
+    },
+    {
+      "topic": "others",
+      "n": 1,
+      "share": 0.05,
+      "baseline_share": 0.049186066865044634,
+      "sentiment_shares": {
+        "negative": 0,
+        "neutral": 1,
+        "positive": 0
+      },
+      "negative_n": 0,
+      "baseline_negative_rate": 0.40213523131672596,
+      "negative_ci_low": 0
+    }
+  ],
+  "alerts": [],
+  "heatmap": {
+    "groups": [
+      "Nhóm A",
+      "Nhóm B",
+      "Nhóm C",
+      "Nhóm D",
+      "Nhóm E"
+    ],
+    "topics": [
+      "lecturer",
+      "training_program",
+      "facility",
+      "others"
+    ],
+    "baseline_negative_rate": [
+      0.3562,
+      0.7796,
+      0.9537,
+      0.4021
+    ],
+    "min_n": 20,
+    "cells": [
+      [
+        {
+          "n": 2,
+          "negative_rate": 0,
+          "delta_points": -35.6,
+          "shaded": false
+        },
+        {
+          "n": 2,
+          "negative_rate": 0.5,
+          "delta_points": -28,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        }
+      ],
+      [
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 64.4,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 22,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 4.6,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 0,
+          "delta_points": -40.2,
+          "shaded": false
+        }
+      ],
+      [
+        {
+          "n": 3,
+          "negative_rate": 0.3333,
+          "delta_points": -2.3,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 0,
+          "delta_points": -95.4,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        }
+      ],
+      [
+        {
+          "n": 2,
+          "negative_rate": 0,
+          "delta_points": -35.6,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 0,
+          "delta_points": -78,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 4.6,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        }
+      ],
+      [
+        {
+          "n": 2,
+          "negative_rate": 0,
+          "delta_points": -35.6,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 22,
+          "shaded": false
+        },
+        {
+          "n": 1,
+          "negative_rate": 1,
+          "delta_points": 4.6,
+          "shaded": false
+        },
+        {
+          "n": 0,
+          "negative_rate": null,
+          "delta_points": null,
+          "shaded": false
+        }
+      ]
+    ]
+  },
+  "keywords": [
+    {
+      "topic": "lecturer",
+      "n_negative": 2,
+      "keywords": []
+    },
+    {
+      "topic": "training_program",
+      "n_negative": 3,
+      "keywords": []
+    },
+    {
+      "topic": "facility",
+      "n_negative": 3,
+      "keywords": [
+        {
+          "term": "phòng",
+          "n": 3,
+          "score": 1.14
+        }
+      ]
+    }
+  ],
+  "quotes": [
+    {
+      "topic": "lecturer",
+      "quotes": [
+        {
+          "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
+          "sentiment": "negative",
+          "confidence": 0.9551,
+          "group": "Nhóm B",
+          "matched": []
+        },
+        {
+          "text": "Thầy cho nộp bài lúc 11:55 tối nên em không kịp hoàn thành hết các câu hỏi.",
+          "sentiment": "negative",
+          "confidence": 0.9472,
+          "group": "Nhóm C",
+          "matched": []
+        }
+      ]
+    },
+    {
+      "topic": "training_program",
+      "quotes": [
+        {
+          "text": "Thủ tục xin giấy xác nhận quá rườm rà, em phải đi lại nhiều lần.",
+          "sentiment": "negative",
+          "confidence": 0.9745,
+          "group": "Nhóm A",
+          "matched": []
+        },
+        {
+          "text": "Môn học này nặng lý thuyết, giáo trình đã cũ và bài tập thực hành quá ít.",
+          "sentiment": "negative",
+          "confidence": 0.9382,
+          "group": "Nhóm E",
+          "matched": []
+        }
+      ]
+    },
+    {
+      "topic": "facility",
+      "quotes": [
+        {
+          "text": "Phòng học nóng, máy chiếu mờ và micro thường xuyên bị rè nên rất khó nghe.",
+          "sentiment": "negative",
+          "confidence": 0.9383,
+          "group": "Nhóm B",
+          "matched": [
+            "phòng"
+          ]
+        },
+        {
+          "text": "Phòng máy hay hỏng, wifi yếu, máy chiếu mờ v.v... Nhà trường nên sửa sớm!!!",
+          "sentiment": "negative",
+          "confidence": 0.9351,
+          "group": "Nhóm E",
+          "matched": [
+            "phòng"
+          ]
+        }
+      ]
+    },
+    {
+      "topic": "others",
+      "quotes": []
+    }
+  ],
+  "recommendations": []
+}

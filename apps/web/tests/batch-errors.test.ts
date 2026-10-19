@@ -36,6 +36,10 @@ describe("batchFailureMessage", () => {
     expect(batchFailureMessage(failure(422, "no_text_column"))).toContain("Không tìm thấy cột văn bản");
   });
 
+  it("báo rõ khi dashboard thiếu số liệu mức nền", () => {
+    expect(batchFailureMessage(failure(503, "insights_unavailable"))).toContain("mức nền");
+  });
+
   it("nói rõ khi phiên đã kết thúc", () => {
     expect(batchFailureMessage(failure(404, "batch_not_found"))).toContain("Phiên làm việc đã kết thúc");
   });

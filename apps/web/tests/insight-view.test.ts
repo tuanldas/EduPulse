@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   calmTopics,
   filterQuotes,
+  groupSummary,
   heatmapRows,
   kpiDelta,
   NO_QUOTE_FILTER,
   topicBars,
+  TOPIC_SHORT,
 } from "@/lib/dashboard/insight-view";
 
 import { makeAlert, makeHeatmap, makeQuote, makeTopicStat } from "./helpers/insights";
@@ -77,11 +79,30 @@ describe("topicBars", () => {
     expect(bars[1].n).toBe(90);
   });
 
-  it("chỉ ghi số trong đoạn đủ rộng", () => {
+  it("không ghi số ở đoạn có vạch mức nền đè lên chỗ đặt số", () => {
+    // Trung tính chiếm 33–50% nên số đặt ở 41,5%; vạch nền 40,2% đè lên nó.
+    const [blocked] = topicBars([
+      makeTopicStat({
+        baseline_negative_rate: 0.402,
+        sentiment_shares: { negative: 0.333, neutral: 0.167, positive: 0.5 },
+      }),
+    ]);
+    expect(blocked.segments.map((segment) => segment.labelBlocked)).toEqual([false, true, false]);
+    // Vạch nền xa chỗ đặt số thì số được giữ (ví dụ trong wireframe: nền 35,6% với đoạn tiêu cực 38%).
+    const [clear] = topicBars([
+      makeTopicStat({
+        baseline_negative_rate: 0.356,
+        sentiment_shares: { negative: 0.38, neutral: 0.03, positive: 0.59 },
+      }),
+    ]);
+    expect(clear.segments.map((segment) => segment.labelBlocked)).toEqual([false, false, false]);
+  });
+
+  it("mang đúng tỉ lệ từng đoạn để vẽ", () => {
     const [bar] = topicBars([
       makeTopicStat({ sentiment_shares: { negative: 0.956, neutral: 0.011, positive: 0.033 } }),
     ]);
-    expect(bar.segments.map((segment) => segment.showLabel)).toEqual([true, false, false]);
+    expect(bar.segments.map((segment) => segment.share)).toEqual([0.956, 0.011, 0.033]);
   });
 
   it("đánh dấu chủ đề chưa có câu", () => {
@@ -89,7 +110,7 @@ describe("topicBars", () => {
       makeTopicStat({ n: 0, sentiment_shares: { negative: 0, neutral: 0, positive: 0 } }),
     ]);
     expect(bar.empty).toBe(true);
-    expect(bar.segments.every((segment) => !segment.showLabel)).toBe(true);
+    expect(bar.segments.every((segment) => segment.share === 0)).toBe(true);
   });
 });
 
@@ -175,5 +196,28 @@ describe("filterQuotes", () => {
   it("lọc theo nhóm và kết hợp với từ khoá", () => {
     expect(filterQuotes(quotes, { term: null, group: "Nhóm B" }).map((q) => q.text)).toEqual(["b"]);
     expect(filterQuotes(quotes, { term: "máy chiếu", group: "Nhóm B" })).toEqual([]);
+  });
+});
+
+describe("groupSummary", () => {
+  it("không chọn gì hoặc chọn hết là tất cả", () => {
+    expect(groupSummary([], 6)).toBe("Tất cả 6 nhóm");
+    expect(groupSummary(["A", "B", "C"], 3)).toBe("Tất cả 3 nhóm");
+  });
+
+  it("một hoặc hai nhóm thì ghi tên", () => {
+    expect(groupSummary(["Nhập môn lập trình"], 6)).toBe("Nhập môn lập trình");
+    expect(groupSummary(["A", "B"], 6)).toBe("A, B");
+  });
+
+  it("từ ba nhóm trở lên thì ghi số lượng", () => {
+    expect(groupSummary(["A", "B", "C"], 6)).toBe("3/6 nhóm");
+  });
+});
+
+describe("TOPIC_SHORT", () => {
+  it("rút gọn chủ đề dài nhất cho chỗ hẹp", () => {
+    expect(TOPIC_SHORT.facility).toBe("CSVC");
+    expect(TOPIC_SHORT.lecturer).toBe("Giảng viên");
   });
 });

@@ -4,7 +4,7 @@ import { LABEL_ORDER } from "@/lib/labels";
 type Topics = InsightsResponse["topics"];
 type Alerts = InsightsResponse["alerts"];
 type Heatmap = NonNullable<InsightsResponse["heatmap"]>;
-type Quotes = InsightsResponse["quotes"][number]["quotes"];
+type Quote = InsightsResponse["quotes"][number]["quotes"][number];
 
 // Luật cảnh báo của máy chủ, chỉ để viết lại thành chú thích cho người đọc; giá trị thật nằm ở API.
 /** Số câu tối thiểu của một chủ đề (hoặc ô nhóm × chủ đề) để được xét cảnh báo. */
@@ -50,14 +50,15 @@ export function kpiDelta(metric: KpiMetric, deltaPoints: number, digits = 1): Kp
 
 // --- Cột chồng cảm xúc theo chủ đề -------------------------------------------------------------
 
-/** Đoạn có tỉ lệ nhỏ hơn mức này không ghi số trong ô (chật), số vẫn có trong chú thích văn bản. */
-export const SEGMENT_LABEL_MIN_SHARE = 0.07;
-
 export interface BarSegment {
   sentiment: SentimentLabel;
   share: number;
-  showLabel: boolean;
+  /** Vạch mức nền nằm đè lên chỗ đặt số của đoạn này nên không ghi số trong ô (số vẫn có ở mô tả chữ và gợi ý khi rê chuột). */
+  labelBlocked: boolean;
 }
+
+/** Nửa bề rộng của một con số "38%" tính theo tỉ lệ của cột (cột hẹp nhất ~170px, số rộng ~24px). */
+const LABEL_HALF_SHARE = 0.07;
 
 export interface TopicBar {
   topic: TopicLabel;
@@ -69,16 +70,25 @@ export interface TopicBar {
   empty: boolean;
 }
 
+function barSegments(stat: Topics[number]): BarSegment[] {
+  let start = 0;
+  return LABEL_ORDER.sentiment.map((sentiment) => {
+    const share = stat.sentiment_shares[sentiment];
+    const center = start + share / 2;
+    start += share;
+    // Số nằm giữa đoạn; nếu vạch nền (rộng ~3px) rơi vào vùng đó thì hai thứ chồng lên nhau.
+    const labelBlocked = Math.abs(stat.baseline_negative_rate - center) < Math.min(LABEL_HALF_SHARE, share / 2 + 0.01);
+    return { sentiment, share, labelBlocked };
+  });
+}
+
 export function topicBars(topics: Topics): TopicBar[] {
   return topics.map((stat) => ({
     topic: stat.topic,
     n: stat.n,
     empty: stat.n === 0,
     baseline: stat.baseline_negative_rate,
-    segments: LABEL_ORDER.sentiment.map((sentiment) => {
-      const share = stat.sentiment_shares[sentiment];
-      return { sentiment, share, showLabel: share >= SEGMENT_LABEL_MIN_SHARE };
-    }),
+    segments: barSegments(stat),
   }));
 }
 
@@ -169,10 +179,27 @@ export interface QuoteFilter {
 
 export const NO_QUOTE_FILTER: QuoteFilter = { term: null, group: null };
 
-export function filterQuotes(quotes: Quotes, filter: QuoteFilter): Quotes {
+export function filterQuotes(quotes: readonly Quote[], filter: QuoteFilter): Quote[] {
   return quotes.filter(
     (quote) =>
       (filter.term === null || quote.matched.includes(filter.term)) &&
       (filter.group === null || quote.group === filter.group),
   );
+}
+
+// --- Nhãn rút gọn và bộ lọc nhóm --------------------------------------------------------------
+
+/** Tên chủ đề rút gọn cho chỗ hẹp (tiêu đề cột heatmap, nhãn khuyến nghị). */
+export const TOPIC_SHORT: Record<TopicLabel, string> = {
+  lecturer: "Giảng viên",
+  training_program: "Chương trình",
+  facility: "CSVC",
+  others: "Khác",
+};
+
+/** Chữ trên nút lọc nhóm: "Tất cả 6 nhóm", tên nhóm (tối đa 2), hoặc "3/6 nhóm". */
+export function groupSummary(selected: readonly string[], total: number): string {
+  if (selected.length === 0 || selected.length >= total) return `Tất cả ${total} nhóm`;
+  if (selected.length <= 2) return selected.join(", ");
+  return `${selected.length}/${total} nhóm`;
 }
