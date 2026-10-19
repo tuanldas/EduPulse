@@ -7,14 +7,36 @@ import { Icon } from "@/components/shared/icon";
 import { Caption } from "@/components/shared/section-heading";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { failureMessage } from "@/lib/api/errors";
 import { useAppConfig } from "@/lib/app-config";
+import { formatPercent } from "@/lib/format";
+import { labelMeta } from "@/lib/labels";
 
 import { AnalyzeForm } from "./analyze-form";
 import { ComparePanel } from "./compare-panel";
 import { ExplainPanel } from "./explain-panel";
 import { ResultCards, ResultHeader } from "./result-cards";
 import { EmptyState, NoContentNotice, NoDiacriticsNotice, PiiNotice } from "./state-notices";
-import { useAnalysis } from "./use-analysis";
+import { useAnalysis, type AnalysisState } from "./use-analysis";
+
+/** Câu ngắn cho trình đọc màn hình khi trạng thái đổi; nội dung chi tiết vẫn đọc được theo cấu trúc trang. */
+function announcement(state: AnalysisState): string {
+  switch (state.phase) {
+    case "idle":
+      return "";
+    case "loading":
+      return "Đang phân tích câu.";
+    case "error":
+      return failureMessage(state.failure);
+    case "done": {
+      const { sentiment, topic, flag } = state.analysis;
+      const summary = `Kết quả: cảm xúc ${labelMeta("sentiment", sentiment.label).vi} ${formatPercent(sentiment.confidence)}, chủ đề ${labelMeta("topic", topic.label).vi} ${formatPercent(topic.confidence)}.`;
+      const review = flag.needs_review ? " Câu này cần xem xét." : "";
+      const explained = state.explain.status === "ready" ? " Đã có phần giải thích từng từ." : "";
+      return `${summary}${review}${explained}`;
+    }
+  }
+}
 
 function ResultSkeleton() {
   return (
@@ -74,7 +96,11 @@ export function AnalyzePage() {
 
       <hr className="my-2 border-divider" />
 
-      <div aria-live="polite" className="flex flex-col gap-4">
+      <p role="status" className="sr-only">
+        {announcement(state)}
+      </p>
+
+      <div className="flex flex-col gap-4">
         {state.phase === "idle" ? <EmptyState /> : null}
         {state.phase === "loading" ? <ResultSkeleton /> : null}
         {state.phase === "error" && state.failure.code === "no_content" ? <NoContentNotice /> : null}
