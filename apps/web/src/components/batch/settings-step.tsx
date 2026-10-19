@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Callout } from "@/components/shared/callout";
 import { Icon } from "@/components/shared/icon";
 import { Caption } from "@/components/shared/section-heading";
@@ -80,7 +80,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
         <div>
           <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
             <label htmlFor={groupId}>Cột nhóm (tuỳ chọn)</label>
-            {batch.illustrativeGroups ? <WrappingIllustrativeBadge /> : null}
+            {batch.illustrativeGroups ? <IllustrativeBadge /> : null}
           </div>
           <NativeSelect
             id={groupId}

@@ -1,4 +1,4 @@
-import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Caption } from "@/components/shared/section-heading";
 import { Card } from "@/components/ui/card";
 import type { InsightsResponse } from "@/lib/batch/types";
@@ -74,7 +74,7 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
       <div className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h3 className="text-[15px] font-semibold">Tiêu cực theo {groupLabel} × Chủ đề</h3>
-          {illustrative ? <WrappingIllustrativeBadge /> : null}
+          {illustrative ? <IllustrativeBadge /> : null}
         </div>
         <Caption>Ô ghi % tiêu cực · màu = cao hơn mức nền của chủ đề bao nhiêu điểm</Caption>
       </div>

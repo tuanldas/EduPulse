@@ -12,7 +12,12 @@ export const VIEWPORTS = [
   { label: "390", width: 390, height: 844 },
 ] as const;
 export const THEMES = ["light", "dark"] as const;
-export type Viewport = (typeof VIEWPORTS)[number];
+/** Khung nhìn của một kịch bản; `VIEWPORTS` là hai cỡ chụp ảnh chuẩn, spec co giãn dùng thêm các cỡ khác. */
+export interface Viewport {
+  readonly label: string;
+  readonly width: number;
+  readonly height: number;
+}
 export type Theme = (typeof THEMES)[number];
 
 // Câu tự viết (tests/fixtures/golden_sentences.json ở thư mục gốc), không phải câu UIT-VSFC.
@@ -22,7 +27,7 @@ export const SENTENCES = {
   plain: "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
   noDiacritics: "thay day rat de hieu va nhiet tinh voi sinh vien",
   withPhone: "Thầy giảng hay, em xin liên hệ 0912345678 để hỏi thêm về bài tập.",
-  long: Array.from({ length: 6 }, () => "[đã gỡ câu UIT-VSFC] thử nghiệm ngay những gì vừa học.").join(" "),
+  long: Array.from({ length: 6 }, () => "Môn này nên có thêm tiết thực hành để sinh viên làm thử ngay phần vừa học.").join(" "),
   onlyPhone: "0912345678",
 } as const;
 
