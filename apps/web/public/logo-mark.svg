@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="EduPulse">
+  <title>EduPulse</title>
+  <path fill="#5B68EE" d="M17 5H47A13 13 0 0 1 60 18V36A13 13 0 0 1 47 49H29L16.9 58.2C15.3 59.4 13.2 58 13.9 56.1L17 49A13 13 0 0 1 4 36V18A13 13 0 0 1 17 5Z"/>
+  <path fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M12.5 27.5H21L25.5 17.5L32 38.5L37.5 22.5L40.5 27.5H51.5"/>
+</svg>

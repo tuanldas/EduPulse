@@ -1,0 +1,192 @@
+{
+  "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
+  "response": {
+    "n_forwards": 16,
+    "sentiment": {
+      "label": "negative",
+      "probability": 0.9551,
+      "tokens": [
+        {
+          "text": "cô",
+          "delta": 0.0034,
+          "p_without": 0.9518
+        },
+        {
+          "text": "dạy",
+          "delta": 0.0059,
+          "p_without": 0.9492
+        },
+        {
+          "text": "quá",
+          "delta": 0.001,
+          "p_without": 0.9541
+        },
+        {
+          "text": "nhanh",
+          "delta": -0.0071,
+          "p_without": 0.9622
+        },
+        {
+          "text": ",",
+          "delta": 0,
+          "p_without": 0.9551
+        },
+        {
+          "text": "em",
+          "delta": 0.0078,
+          "p_without": 0.9473
+        },
+        {
+          "text": "không",
+          "delta": 0.0048,
+          "p_without": 0.9503
+        },
+        {
+          "text": "kịp",
+          "delta": 0.0006,
+          "p_without": 0.9545
+        },
+        {
+          "text": "ghi chép",
+          "delta": 0.0018,
+          "p_without": 0.9533
+        },
+        {
+          "text": "và",
+          "delta": 0.0045,
+          "p_without": 0.9506
+        },
+        {
+          "text": "rất",
+          "delta": -0.0025,
+          "p_without": 0.9576
+        },
+        {
+          "text": "ít",
+          "delta": 0.0045,
+          "p_without": 0.9506
+        },
+        {
+          "text": "khi",
+          "delta": -0.0013,
+          "p_without": 0.9564
+        },
+        {
+          "text": "được",
+          "delta": 0.0018,
+          "p_without": 0.9533
+        },
+        {
+          "text": "hỏi",
+          "delta": 0.0006,
+          "p_without": 0.9545
+        },
+        {
+          "text": "lại",
+          "delta": 0.002,
+          "p_without": 0.9531
+        },
+        {
+          "text": ".",
+          "delta": 0,
+          "p_without": 0.9551
+        }
+      ],
+      "support": [],
+      "oppose": []
+    },
+    "topic": {
+      "label": "lecturer",
+      "probability": 0.9682,
+      "tokens": [
+        {
+          "text": "cô",
+          "delta": -0.0021,
+          "p_without": 0.9703
+        },
+        {
+          "text": "dạy",
+          "delta": -0.0013,
+          "p_without": 0.9695
+        },
+        {
+          "text": "quá",
+          "delta": -0.0003,
+          "p_without": 0.9685
+        },
+        {
+          "text": "nhanh",
+          "delta": 0.0071,
+          "p_without": 0.9611
+        },
+        {
+          "text": ",",
+          "delta": 0,
+          "p_without": 0.9682
+        },
+        {
+          "text": "em",
+          "delta": -0.0037,
+          "p_without": 0.9718
+        },
+        {
+          "text": "không",
+          "delta": -0.0024,
+          "p_without": 0.9706
+        },
+        {
+          "text": "kịp",
+          "delta": -0.0004,
+          "p_without": 0.9686
+        },
+        {
+          "text": "ghi chép",
+          "delta": -0.0003,
+          "p_without": 0.9685
+        },
+        {
+          "text": "và",
+          "delta": -0.0022,
+          "p_without": 0.9704
+        },
+        {
+          "text": "rất",
+          "delta": 0.0012,
+          "p_without": 0.9669
+        },
+        {
+          "text": "ít",
+          "delta": -0.0025,
+          "p_without": 0.9707
+        },
+        {
+          "text": "khi",
+          "delta": 0.0006,
+          "p_without": 0.9676
+        },
+        {
+          "text": "được",
+          "delta": -0.0013,
+          "p_without": 0.9694
+        },
+        {
+          "text": "hỏi",
+          "delta": 0.0008,
+          "p_without": 0.9674
+        },
+        {
+          "text": "lại",
+          "delta": -0.0011,
+          "p_without": 0.9693
+        },
+        {
+          "text": ".",
+          "delta": 0,
+          "p_without": 0.9682
+        }
+      ],
+      "support": [],
+      "oppose": []
+    }
+  }
+}

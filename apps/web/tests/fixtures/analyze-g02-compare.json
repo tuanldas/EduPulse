@@ -1,0 +1,10 @@
+{
+  "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.",
+  "status": 501,
+  "body": {
+    "detail": {
+      "code": "not_implemented",
+      "message": "Chức năng này chưa được cài đặt."
+    }
+  }
+}
