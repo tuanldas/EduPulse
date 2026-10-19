@@ -401,6 +401,18 @@ def is_illustrative_name(name: str) -> bool:
     return "minh hoa" in fold(name)
 
 
+def is_illustrative(kind: str, group_col: str | None, columns: list[str]) -> bool:
+    """Nhóm là dữ liệu minh hoạ khi batch tạo từ file mẫu hoặc tên cột nhóm ghi "minh hoạ".
+
+    Chưa chọn cột nhóm (lúc vừa tải file) thì xét mọi tên cột.
+    """
+    if kind == "sample":
+        return True
+    if group_col is not None:
+        return is_illustrative_name(group_col)
+    return any(is_illustrative_name(name) for name in columns)
+
+
 def _column_cells(table: ParsedTable, index: int) -> list[str]:
     return [row[index] for row in table.rows[:SAMPLE_FOR_GUESS] if row[index]]
 

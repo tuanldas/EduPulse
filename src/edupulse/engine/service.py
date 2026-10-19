@@ -253,13 +253,15 @@ class Analyzer:
         batch_size: int | None = None,
         progress: ProgressCallback | None = None,
         cancelled: Callable[[], bool] | None = None,
+        on_prepared: Callable[[list[Prepared]], None] | None = None,
     ) -> BatchOutcome:
         """Đường của job nền: tiền xử lý → dự đoán → cờ theo ngân sách → mẫu kiểm tra → giải thích
         tự động cho `explain_top` câu cờ có điểm thấp nhất (chỉ câu không dài quá giới hạn).
 
         Câu không còn nội dung không có nhãn và không tính vào ngân sách. `seed` quyết định mẫu kiểm
         tra, nên cùng batch luôn cho cùng kết quả. `cancelled()` được hỏi giữa các đợt xử lý; trả
-        True thì ném `BatchCancelled`. Ném `NoContent` nếu không câu nào còn nội dung.
+        True thì ném `BatchCancelled`. `on_prepared` nhận kết quả tiền xử lý ngay khi xong bước đó
+        (để báo số câu có thông tin bị ẩn sớm). Ném `NoContent` nếu không câu nào còn nội dung.
         """
 
         def report(step: str, done: int, total: int) -> None:
@@ -278,6 +280,8 @@ class Analyzer:
             prepared.extend(self.prepare_many(texts[start : start + PREPARE_CHUNK]))
             report("prepare", len(prepared), total)
         steps["prepare"] = time.perf_counter() - started
+        if on_prepared is not None:
+            on_prepared(prepared)
 
         kept = [i for i, p in enumerate(prepared) if p.n_words > 0]
         if not kept:
