@@ -48,7 +48,7 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Tương thích: dự án mới, không dữ liệu cũ; hợp đồng giữa các phần = `data/processed/MANIFEST.json` + `artifacts/<version>/manifest.json` (`normalizer_version`, nhãn, sha256, schema `bundle_schema`) + snapshot OpenAPI.
 
 ## Ưu tiên & cắt giảm (MoSCoW)
-- **Must:** `make` tái lập (gồm `report`); chuẩn hoá + PII regex + luật tên "xưng hô + Viết Hoa" dùng chung; 3 baseline; PhoBERT MTL + STL × 3 seed; test 1 lần + McNemar/bootstrap/ECE; int8 + cổng; T-scaling + ngân sách duyệt; XAI occlusion; insight Wilson + từ khoá + khuyến nghị; dữ liệu demo tính lúc build; heartbeat/close batch; 4 trang lõi; export CSV an toàn; Docker/compose/deployment.md; smoke + perf + kiểm nhãn amd64 (QEMU); pytest + E2E vàng; model card, disclaimer, CheckList.
+- **Must:** `make` tái lập (gồm `report`); chuẩn hoá + PII regex + luật tên "xưng hô + Viết Hoa" dùng chung; 3 baseline; PhoBERT MTL 1 run (seed 42, đã train, không train thêm — S6); test 1 lần + McNemar/bootstrap/CI 95%/ECE; int8 + cổng; T-scaling + ngân sách duyệt; XAI occlusion; insight Wilson + từ khoá + khuyến nghị; dữ liệu demo tính lúc build; heartbeat/close batch; 4 trang lõi; export CSV an toàn; Docker/compose/deployment.md; smoke + perf + kiểm nhãn amd64 (QEMU); pytest + E2E vàng; model card, disclaimer, CheckList.
 - **Must (bảo vệ — chỉ cắt khi người dùng quyết ở M6):** so sánh PhoBERT↔LinearSVC (mặc định tắt) · script retrain · nhập XLSX · heatmap nhóm × chủ đề.
 - **Should** (~4,5h; cắt khi trễ mốc, theo thứ tự): thăm dò 6 epoch → error/bias chi tiết → Vitest đầy đủ → lọc câu tiêu biểu theo từ khoá → NER underthesea.
 - **Could** (cắt đầu tiên, phần lớn chưa tính vào effort): sparkline hiệu quả · polish mobile 390 · axe a11y · đo faithfulness XAI · Caddy HTTPS · CI/GHCR.
@@ -70,6 +70,10 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Smoke chính thức (`results/perf/smoke-2026-10-15-arm64.md`, container 2 CPU/1,5GB): RAM đỉnh 618MB, khởi động 2,3 s, 1.000 câu 27,3 s, API/log sạch: ĐẠT. 1 câu + giải thích p95 1,09 s > 0,6 s: TRƯỢT. Nguyên nhân: phần FP32 chạy chậm ~2,9× trong VM Docker trên Mac (trên máy thật ~1,3×), chưa có số x86.
 - Người dùng chọn phương án A: nhãn hiện ngay, giải thích tải sau; `XAI_MAX_WORDS` mặc định 25 (phủ ~90% câu val, chỉnh bằng env), chốt sau khi đo trên VPS (phase 9). Tiêu chí PDR 5 tách: nhãn p95 ≤0,5 s, giải thích p95 ≤2 s. Giữ nguyên cấu hình lượng tử hoá (đạt cổng chất lượng).
 - Sửa lỗi phát hiện ở M1: token id ngoài bảng embedding (≥64001) → `<unk>`; giải thích chạy lô 1 để nhất quán với nhãn.
+
+### Thay đổi phạm vi — Session 6 (2026-10-17): bỏ train thêm
+- Người dùng duyệt bỏ 8 run MPS còn lại của phase 5 (không tắt Docker, không chạy đêm). Thay bằng: bootstrap CI 95% trên test thay cho mean ± std 3 seed; so sánh MTL/STL dùng thí nghiệm sơ bộ của research (val, 1 seed, p=0,31/0,46) và ghi rõ là sơ bộ; vòng người duyệt (HITL) chạy trọn với LinearSVC trên CPU + smoke retrain PhoBERT 20 bước trên CPU. Bản deploy = MTL seed 42 (`v0-smoke` → đánh giá test 1 lần → `v1.0`).
+- Bối cảnh: mạng mất 2 lần (tối 15/10) làm toàn bộ agent dừng tới 19/10; mất ~3,5 ngày lịch. Docker Desktop của người dùng đang tắt (không do team).
 
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
