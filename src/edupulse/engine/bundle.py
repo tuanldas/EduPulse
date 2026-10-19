@@ -11,13 +11,15 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
-from edupulse.bundle_schema import Calibration, Manifest
+from edupulse.bundle_schema import Calibration, InsightBackground, Manifest, ModelCard
 from edupulse.text.pipeline import NORMALIZER_VERSION
 
 MANIFEST = "manifest.json"
 CALIBRATION = "calibration.json"
 MODEL = "model.int8.onnx"
 TOKENIZER = "tokenizer.json"
+MODEL_CARD = "model_card.json"
+INSIGHT_BACKGROUND = "insight_background.json"
 REQUIRED_FILES = (MODEL, TOKENIZER, CALIBRATION)
 
 _HOW_TO_GET = (
@@ -106,3 +108,19 @@ def load_bundle(root: Path, *, verify_files: bool = True) -> Bundle:
         _verify_files(root, manifest.files)
     calibration = _read_json_model(root / CALIBRATION, Calibration)
     return Bundle(root=root, manifest=manifest, calibration=calibration)
+
+
+def load_model_card(bundle: Bundle) -> ModelCard:
+    """Model card của bundle (đã được kiểm sha256 cùng các tệp khác khi nạp bundle)."""
+    return _read_json_model(bundle.root / MODEL_CARD, ModelCard)
+
+
+def load_insight_background(bundle: Bundle) -> InsightBackground:
+    """Đếm n-gram nền và mức nền của train; lệch bản chuẩn hoá thì không dùng được."""
+    background = _read_json_model(bundle.root / INSIGHT_BACKGROUND, InsightBackground)
+    if background.normalizer_version != NORMALIZER_VERSION:
+        raise BundleError(
+            f"Số liệu nền dựng với chuẩn hoá văn bản phiên bản {background.normalizer_version}, "
+            f"mã nguồn là {NORMALIZER_VERSION}. Dựng lại bundle bằng mã nguồn hiện tại."
+        )
+    return background

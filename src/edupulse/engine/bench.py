@@ -14,7 +14,7 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
-from edupulse.config import AUTO_XAI_TOP, DEFAULT_BUDGET, XAI_MAX_WORDS, load_settings
+from edupulse.config import AUTO_XAI_TOP, DEFAULT_BUDGET, load_settings
 from edupulse.engine.memory import cgroup_cpu_throttle, cgroup_peak_mb, current_rss_mb
 from edupulse.engine.service import Analyzer
 
@@ -50,10 +50,10 @@ def measure(
     steps["flags"] = time.perf_counter() - started
 
     started = time.perf_counter()
-    candidates = sorted(
-        (a for a in analyses if a.flag.needs_review and a.prepared.n_words <= XAI_MAX_WORDS),
-        key=lambda a: a.score,
-    )[:xai_rows]
+    explainable = (
+        a for a in analyses if a.flag.needs_review and a.prepared.n_words <= analyzer.xai_max_words
+    )
+    candidates = sorted(explainable, key=lambda a: a.score)[:xai_rows]
     forwards = sum(analyzer.explain_prepared(a.prepared).n_forwards for a in candidates)
     steps["explain"] = time.perf_counter() - started
 

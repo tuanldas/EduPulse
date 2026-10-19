@@ -26,6 +26,13 @@ from edupulse.api.routes import analyze, batches, meta
 from edupulse.api.schemas import ErrorResponse
 from edupulse.api.security_headers import SecurityHeadersMiddleware
 from edupulse.config import Settings, load_settings
+from edupulse.demo_data import load_demo
+from edupulse.engine.bundle import (
+    Bundle,
+    BundleError,
+    load_insight_background,
+    load_model_card,
+)
 from edupulse.engine.service import Analyzer
 
 logger = logging.getLogger("edupulse.api")
@@ -42,18 +49,37 @@ def _configure_logging() -> None:
     root.setLevel(logging.INFO)
 
 
+def _load_optional[T](load: Callable[[Bundle], T], bundle: Bundle, what: str) -> T | None:
+    """Tệp phụ của bundle hỏng thì API vẫn chạy; endpoint cần nó báo lỗi rõ ràng."""
+    try:
+        return load(bundle)
+    except BundleError as exc:
+        logger.warning("Bundle không có %s dùng được: %s", what, exc)
+        return None
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Nạp mô hình trước khi nhận kết nối; thiếu hoặc lệch bundle thì dừng với thông báo rõ."""
     settings: Settings = app.state.settings
     # Nạp mất vài giây (băm tệp, ONNX, JVM): chạy ngoài vòng lặp sự kiện.
-    app.state.analyzer = await run_in_threadpool(Analyzer.load, settings)
-    manifest = app.state.analyzer.bundle.manifest
+    analyzer: Analyzer = await run_in_threadpool(Analyzer.load, settings)
+    app.state.analyzer = analyzer
+    manifest = analyzer.bundle.manifest
+    app.state.model_card = _load_optional(load_model_card, analyzer.bundle, "model card")
+    app.state.background = _load_optional(
+        load_insight_background, analyzer.bundle, "số liệu nền của insight"
+    )
+    demo = load_demo(settings.demo_dir, manifest.bundle_version)
+    app.state.demo = demo
+    if not demo.available:
+        logger.warning("Không có dữ liệu demo: %s", demo.reason)
     logger.info(
-        "Sẵn sàng: bundle %s (%s, mô hình %s), web %s",
+        "Sẵn sàng: bundle %s (%s, mô hình %s), demo %s, web %s",
         manifest.bundle_version,
         manifest.stage,
         manifest.model_version,
+        "có" if demo.available else "không",
         settings.web_dir,
     )
     yield
