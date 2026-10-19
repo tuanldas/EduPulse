@@ -29,8 +29,14 @@ async function openPage(browser: Browser, viewport: (typeof VIEWPORTS)[number], 
   const page = await context.newPage();
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
+  // Dòng "Failed to load resource" của trình duyệt không nói địa chỉ nào hỏng, nên ghi theo phản hồi HTTP.
   page.on("console", (message) => {
-    if (message.type() === "error") problems.push(`console: ${message.text()}`);
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) {
+      problems.push(`console: ${message.text()}`);
+    }
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) problems.push(`http ${response.status()}: ${new URL(response.url()).pathname}`);
   });
   return { context, page, problems };
 }
@@ -101,8 +107,8 @@ for (const viewport of VIEWPORTS) {
       await page.getByRole("button", { name: "Phân tích" }).click();
       await expect(page.getByText("Không còn nội dung để phân tích.")).toBeVisible();
       await page.screenshot({ path: path.join(OUTPUT, `01-khong-con-noi-dung-${tag}.png`), fullPage: true });
-      // Câu chỉ có số điện thoại cố ý nhận 422 `no_content`; trình duyệt tự ghi dòng này vào console.
-      expect(problems.filter((problem) => !problem.includes("status of 422"))).toEqual([]);
+      // Câu chỉ có số điện thoại cố ý nhận 422 `no_content`.
+      expect(problems.filter((problem) => problem !== "http 422: /api/analyze")).toEqual([]);
       await context.close();
     });
 
@@ -117,8 +123,8 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole("region", { name: "So sánh mô hình" })).toBeVisible();
       await expect(page.getByLabel("Đang tính mô hình cơ sở")).toHaveCount(0, { timeout: 30_000 });
       await page.screenshot({ path: path.join(OUTPUT, `01-so-sanh-mo-hinh-${tag}.png`), fullPage: true });
-      // Route so sánh có thể còn trả 501 (chưa cài đặt): trình duyệt tự ghi dòng này vào console.
-      expect(problems.filter((problem) => !problem.includes("status of 501"))).toEqual([]);
+      // Route so sánh có thể còn trả 501 (chưa cài đặt).
+      expect(problems.filter((problem) => problem !== "http 501: /api/analyze")).toEqual([]);
       await context.close();
     });
 
