@@ -77,5 +77,6 @@
   ],
   "demo_available": true,
   "demo_reason": null,
-  "source_url": "https://github.com/your-user/edupulse"
+  "source_url": "https://github.com/your-user/edupulse",
+  "model_url": ""
 }

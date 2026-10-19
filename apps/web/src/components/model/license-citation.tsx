@@ -68,6 +68,7 @@ function isGithub(url: string): boolean {
 export function LicenseCitation() {
   const state = useAppConfig();
   const sourceUrl = state.status === "ready" ? state.config.source_url : "";
+  const modelUrl = state.status === "ready" ? state.config.model_url : "";
   return (
     <section aria-labelledby="giay-phep" className="flex flex-col gap-4">
       <SectionHeading id="giay-phep" icon="gavel" className="mt-4">
@@ -85,16 +86,30 @@ export function LicenseCitation() {
               </div>
             ))}
           </dl>
-          {sourceUrl ? (
+          {sourceUrl || modelUrl ? (
             <div className="flex flex-wrap gap-2">
-              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline" })}>
-                <Icon name="code" size="sm" />
-                {isGithub(sourceUrl) ? "Mã nguồn trên GitHub" : "Mã nguồn"}
-              </a>
+              {sourceUrl ? (
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline" })}>
+                  <Icon name="code" size="sm" />
+                  {isGithub(sourceUrl) ? "Mã nguồn trên GitHub" : "Mã nguồn"}
+                </a>
+              ) : null}
+              {modelUrl ? (
+                <a href={modelUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline" })}>
+                  <Icon name="deployed_code" size="sm" />
+                  Mô hình trên Hugging Face
+                </a>
+              ) : null}
             </div>
           ) : null}
           <Caption>
             {sourceUrl ? <code>{sourceUrl}</code> : "Liên kết mã nguồn chưa được cấu hình trên máy chủ này."}
+            {modelUrl ? (
+              <>
+                {" · "}
+                <code>{modelUrl}</code>
+              </>
+            ) : null}
             <br />
             Vì PhoBERT-base-v2 dùng AGPL-3.0, toàn bộ mã nguồn ứng dụng được công khai tại liên kết trên.
           </Caption>

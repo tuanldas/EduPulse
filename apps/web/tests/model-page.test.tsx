@@ -135,6 +135,29 @@ describe("trang Mô hình & đạo đức", () => {
     expect(screen.queryByRole("link", { name: /Mã nguồn trên/ })).toBeNull();
   });
 
+  it("nút mô hình trên Hugging Face chỉ hiện khi /api/config có model_url", async () => {
+    stubApi({
+      "GET /api/model-card": () => json(card),
+      "GET /api/config": () => json({ ...config, model_url: "https://huggingface.co/someone/edupulse-phobert-mtl" }),
+    });
+    const first = render(<ModelPage />);
+    const link = await screen.findByRole("link", { name: /Mô hình trên Hugging Face/ });
+    expect(link).toHaveAttribute("href", "https://huggingface.co/someone/edupulse-phobert-mtl");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    first.unmount();
+
+    resetAppConfig();
+    stubApi({
+      "GET /api/model-card": () => json(card),
+      "GET /api/config": () => json({ ...config, model_url: "" }),
+    });
+    render(<ModelPage />);
+    await screen.findByRole("heading", { name: /Giấy phép, mã nguồn/ });
+    await waitFor(() => expect(screen.getByRole("link", { name: /Mã nguồn/ })).toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: /Hugging Face/ })).toBeNull();
+  });
+
   it("sao chép BibTeX vào clipboard", async () => {
     serve();
     render(<ModelPage />);
