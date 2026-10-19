@@ -232,8 +232,11 @@
     font-size: 16px;
     line-height: 1.6;
   }
-  a {
+  /* Liên kết trong đoạn văn (không có class): màu link + gạch chân. Liên kết có class tự định kiểu. */
+  a:not([class]) {
     color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   code {
     @apply font-mono;

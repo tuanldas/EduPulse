@@ -18,6 +18,11 @@ export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/+$/,
 
 export const api = createClient<paths>({ baseUrl: API_BASE });
 
+/** Địa chỉ đầy đủ của một đường dẫn API, cho `fetch` thường (upload multipart, sendBeacon, tải CSV). */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 /** Thời gian chờ mặc định cho một lần gọi ngắn (phân tích, giải thích, cấu hình). */
 export const DEFAULT_TIMEOUT_MS = 30_000;
 
