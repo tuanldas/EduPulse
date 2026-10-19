@@ -1,6 +1,6 @@
 """Đóng băng cấu hình trước khi chấm test, và các chốt chặn của lần chấm cuối.
 
-`results/freeze.json` ghi lại mọi thứ đã chọn bằng validation (seed triển khai, E*, nhiệt độ T,
+`results/freeze.json` ghi lại mọi thứ đã chọn bằng validation (run được triển khai, nhiệt độ T,
 ngưỡng τ_B, siêu tham số baseline, sha256 của mọi mô hình sẽ được chấm). Nó phải được COMMIT trước
 khi `evaluate --split test --final` chạy; lần chấm cuối từ chối chạy khi:
 
@@ -32,15 +32,20 @@ from ml.common import (
     sha256_file,
     write_json,
 )
-from ml.preds import BASELINES, DEPLOY_KEY, all_keys
+from ml.preds import BASELINES
 
 SCHEMA_VERSION = 1
 FREEZE_PATH = REPO_ROOT / "results" / "freeze.json"
 POLICY = (
-    "Tập test chỉ được chấm một lần, sau khi tệp này đã commit. Mọi lựa chọn (seed triển khai, "
-    "số epoch, nhiệt độ, ngưỡng cờ, siêu tham số baseline) lấy từ validation. Phân tích sau đó "
-    "(kiểm định, lỗi, ngân sách duyệt, thẻ mô hình) chỉ đọc dự đoán lưu ở outputs/test_preds/."
+    "Tập test chỉ được chấm một lần, sau khi tệp này đã commit. Mọi lựa chọn (run triển khai, "
+    "nhiệt độ, ngưỡng cờ, siêu tham số baseline) lấy từ validation. Phân tích sau đó (kiểm định, "
+    "lỗi, ngân sách duyệt, thẻ mô hình) chỉ đọc dự đoán lưu ở outputs/test_preds/."
 )
+SCOPE = (
+    "Không huấn luyện thêm: bản triển khai là run PhoBERT đa nhiệm duy nhất (seed 42) đã train ở "
+    "lần chạy đầu; so sánh với đơn nhiệm chỉ có thí nghiệm sơ bộ của nghiên cứu (validation)."
+)
+DEPLOY_RULE = "Run PhoBERT đa nhiệm duy nhất đã huấn luyện (best_run: điểm validation cao nhất)."
 
 
 class GuardError(RuntimeError):
@@ -91,15 +96,14 @@ def calibration_path(deploy_run: str) -> Path:
     return settings().outputs_dir / "calibration" / deploy_run / "calibration.json"
 
 
-def frozen_files(deploy_run: str, run_names: list[str]) -> dict[str, Path]:
-    """Tên logic -> tệp được băm: checkpoint 9 run, ONNX int8, calibration, tokenizer, baseline."""
+def frozen_files(deploy_run: str) -> dict[str, Path]:
+    """Tên logic -> tệp được băm: checkpoint, ONNX int8, calibration, tokenizer, 6 baseline."""
     from ml.phobert_model import tokenizer_path
     from ml.predictors import baseline_path, deploy_onnx_path
 
     files: dict[str, Path] = {}
-    for run in run_names:
-        for name in ("model.safetensors", "config.json"):
-            files[f"phobert/{run}/{name}"] = phobert_runs_dir() / run / name
+    for name in ("model.safetensors", "config.json"):
+        files[f"phobert/{deploy_run}/{name}"] = phobert_runs_dir() / deploy_run / name
     files["onnx/model.int8.onnx"] = deploy_onnx_path(deploy_run)
     files["calibration/calibration.json"] = calibration_path(deploy_run)
     files["tokenizer.json"] = tokenizer_path()
@@ -118,18 +122,28 @@ def hash_files(files: dict[str, Path]) -> dict[str, str]:
     return dict(zip(files, digests, strict=True))
 
 
-def experiment_run_names() -> list[str]:
-    """Tên 9 run của bảng so sánh (đã được `evaluate --split val` kiểm là đủ)."""
-    return [key for key in all_keys() if key not in BASELINES and key != DEPLOY_KEY]
-
-
 # --- tạo và kiểm freeze ---------------------------------------------------------------------------
 
 
-def build_freeze(val_summary: dict[str, Any], repo: Path | None = None) -> dict[str, Any]:
-    """Nội dung freeze từ tóm tắt validation (do `evaluate.build_val_summary` tính)."""
+def deploy_summary(deploy_run: str) -> dict[str, Any]:
+    """Run được triển khai và điểm validation của nó (đọc từ history.json của run)."""
+    history = read_json(phobert_runs_dir() / deploy_run / "history.json")
+    if not history.get("finished"):
+        raise GuardError(f"run {deploy_run} chưa hoàn tất")
+    return {
+        "run": deploy_run,
+        "rule": DEPLOY_RULE,
+        "seed": history["args"]["seed"],
+        "epochs": history["args"]["epochs"],
+        "best_epoch": history["best_epoch"],
+        "val_mean_macro_f1": history["best_score"],
+    }
+
+
+def build_freeze(deploy_run: str | None = None, repo: Path | None = None) -> dict[str, Any]:
+    """Nội dung freeze cho run được triển khai (mặc định theo `best_run`)."""
     repo = repo or REPO_ROOT
-    deploy_run = val_summary["deploy"]["run"]
+    deploy_run = deploy_run or best_run().name
     gate_path = settings().outputs_dir / "onnx" / deploy_run / "onnx_gate.json"
     for needed in (gate_path, calibration_path(deploy_run)):
         if not needed.is_file():
@@ -153,9 +167,8 @@ def build_freeze(val_summary: dict[str, Any], repo: Path | None = None) -> dict[
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "git": {"commit": git_head(repo), "dirty": git_dirty(repo)},
         "policy": POLICY,
-        "epochs": val_summary["epochs"],
-        "deploy": val_summary["deploy"],
-        "mtl_vs_stl": val_summary["mtl_vs_stl"],
+        "scope": SCOPE,
+        "deploy": deploy_summary(deploy_run),
         "quantization": {
             "config": gate["quant_config"],
             "heads_fp32": gate.get("heads_fp32"),
@@ -179,7 +192,7 @@ def build_freeze(val_summary: dict[str, Any], repo: Path | None = None) -> dict[
             "test_sha256": manifest["files"]["test"]["sha256"],
             "rows": {split: info["rows"] for split, info in manifest["files"].items()},
         },
-        "files": hash_files(frozen_files(deploy_run, experiment_run_names())),
+        "files": hash_files(frozen_files(deploy_run)),
         "reruns": [],
     }
 
@@ -203,17 +216,14 @@ def file_problems(freeze: dict[str, Any]) -> list[str]:
     deploy_run = freeze["deploy"]["run"]
     now = best_run().name
     if now != deploy_run:
-        problems.append(f"seed triển khai theo luật hiện là {now}, freeze ghi {deploy_run}")
+        problems.append(f"run triển khai theo luật hiện là {now}, freeze ghi {deploy_run}")
     manifest = processed_manifest()
     if manifest["files"]["test"]["sha256"] != freeze["data"]["test_sha256"]:
         problems.append("dữ liệu test đã đổi so với freeze")
     if manifest["normalizer_version"] != freeze["data"]["normalizer_version"]:
         problems.append("normalizer_version của dữ liệu đã đổi so với freeze")
     try:
-        runs = sorted(
-            {name.split("/")[1] for name in freeze["files"] if name.startswith("phobert/")}
-        )
-        current = hash_files(frozen_files(deploy_run, runs))
+        current = hash_files(frozen_files(deploy_run))
     except GuardError as error:
         return [*problems, str(error)]
     for name, digest in freeze["files"].items():

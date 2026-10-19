@@ -6,10 +6,10 @@ Mỗi mô hình một tệp `<preds_dir>/<key>.npz`; hàng i ứng với hàng i
     pred_<task>    nhãn dự đoán cứng, dùng cho acc/F1/CM/kiểm định (baseline: bản thô)
     logits_<task>  logit (PhoBERT) hoặc log xác suất đã hiệu chuẩn (baseline), hình [n, K]
 
-Khoá mô hình: `linearsvc` `logreg` `complementnb` (cả 2 tác vụ), `mtl-s<seed>` (cả 2, FP32 torch),
-`stl-sentiment-s<seed>` và `stl-topic-s<seed>` (1 tác vụ), `mtl-int8` (cả 2; bản triển khai chạy
-bằng ONNX Runtime từng câu một). `META.json` ghi split, số dòng và mô tả từng khoá. Thư mục chỉ
-được đổi tên thành `test_preds` khi đã đủ tệp và có `.done`, nên thấy `.done` là thấy đủ dự đoán.
+Khoá mô hình: `linearsvc` `logreg` `complementnb` (baseline), `mtl-s<seed>` (PhoBERT đa nhiệm FP32
+bằng torch trên CPU; tên run), `mtl-int8` (bản triển khai chạy bằng ONNX Runtime từng câu một);
+đều dự đoán cả 2 tác vụ. `META.json` ghi split, số dòng và mô tả từng khoá. Thư mục chỉ được đổi
+tên thành `test_preds` khi đã đủ tệp và có `.done`, nên thấy `.done` là thấy đủ dự đoán.
 
 Mọi phân tích sau khi chấm (kiểm định, lỗi, ngân sách, thẻ mô hình) đọc từ đây, không suy luận lại.
 """
@@ -34,46 +34,37 @@ BASELINES = ("linearsvc", "logreg", "complementnb")
 DEPLOY_KEY = "mtl-int8"
 DONE_FILE = ".done"
 META_FILE = "META.json"
-SEEDS = (42, 43, 44)
 
-_SEEDED = re.compile(r"(?P<arch>mtl|stl-sentiment|stl-topic)-s(?P<seed>\d+)")
-
-
-def tasks_of(key: str) -> tuple[str, ...]:
-    """Các tác vụ mà mô hình `key` dự đoán."""
-    if key in BASELINES or key == DEPLOY_KEY:
-        return TASKS
-    match = _SEEDED.fullmatch(key)
-    if match is None:
-        raise ValueError(f"khoá mô hình lạ: {key!r}")
-    return {"mtl": TASKS, "stl-sentiment": ("sentiment",), "stl-topic": ("topic",)}[match["arch"]]
+_FP32_KEY = re.compile(r"mtl-s(?P<seed>\d+)")
 
 
-def arch_of(key: str) -> str:
-    """'baseline' | 'mtl' | 'stl-sentiment' | 'stl-topic' | 'mtl-int8'."""
-    if key in BASELINES:
-        return "baseline"
-    if key == DEPLOY_KEY:
-        return DEPLOY_KEY
-    match = _SEEDED.fullmatch(key)
-    if match is None:
-        raise ValueError(f"khoá mô hình lạ: {key!r}")
-    return match["arch"]
+def is_fp32_key(key: str) -> bool:
+    return _FP32_KEY.fullmatch(key) is not None
 
 
 def seed_of(key: str) -> int | None:
-    match = _SEEDED.fullmatch(key)
+    match = _FP32_KEY.fullmatch(key)
     return int(match["seed"]) if match else None
 
 
-def seeded_keys(arch: str, seeds: tuple[int, ...] = SEEDS) -> list[str]:
-    return [f"{arch}-s{seed}" for seed in seeds]
+def check_key(key: str) -> str:
+    if key not in BASELINES and key != DEPLOY_KEY and not is_fp32_key(key):
+        raise ValueError(f"khoá mô hình lạ: {key!r}")
+    return key
 
 
-def all_keys() -> list[str]:
-    """Thứ tự chuẩn của mọi khoá: baseline, MTL, STL cảm xúc, STL chủ đề, bản int8 triển khai."""
-    stl = [*seeded_keys("stl-sentiment"), *seeded_keys("stl-topic")]
-    return [*BASELINES, *seeded_keys("mtl"), *stl, DEPLOY_KEY]
+def final_keys(deploy_run: str) -> list[str]:
+    """Các mô hình được chấm ở lần cuối: baseline, run PhoBERT FP32 được triển khai, bản int8."""
+    return [*BASELINES, check_key(deploy_run), DEPLOY_KEY]
+
+
+def key_order(key: str) -> tuple[int, int]:
+    """Thứ tự chuẩn: baseline (theo BASELINES), rồi PhoBERT FP32 (theo seed), rồi bản int8."""
+    if key in BASELINES:
+        return 0, BASELINES.index(key)
+    if key == DEPLOY_KEY:
+        return 2, 0
+    return 1, seed_of(check_key(key)) or 0
 
 
 @dataclass
@@ -119,9 +110,8 @@ def load_preds(directory: Path, key: str) -> Preds:
 
 
 def available_keys(directory: Path) -> list[str]:
-    """Các khoá đã có tệp, theo thứ tự chuẩn của `all_keys`."""
-    present = {path.stem for path in directory.glob("*.npz")}
-    return [key for key in all_keys() if key in present]
+    """Các khoá đã có tệp, theo thứ tự chuẩn (baseline, PhoBERT FP32, bản int8)."""
+    return sorted((path.stem for path in directory.glob("*.npz")), key=key_order)
 
 
 def read_meta(directory: Path) -> dict[str, Any]:

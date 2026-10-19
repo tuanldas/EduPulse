@@ -18,7 +18,7 @@ import numpy as np
 
 from edupulse.labels import LABELS, TASKS
 from ml.common import phobert_runs_dir, settings
-from ml.preds import BASELINES, DEPLOY_KEY, Preds, arch_of
+from ml.preds import BASELINES, DEPLOY_KEY, Preds
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -86,10 +86,9 @@ def int8_preds(deploy_run: str, frame: pd.DataFrame, threads: int) -> Preds:
 
 
 def describe(key: str, deploy_run: str) -> dict[str, Any]:
-    kind = arch_of(key)
-    if kind == "baseline":
+    if key in BASELINES:
         return {"kind": "tf-idf, nhãn thô; logit = log xác suất đã hiệu chuẩn nhiệt độ"}
-    if kind == DEPLOY_KEY:
+    if key == DEPLOY_KEY:
         return {"kind": "onnx int8, batch 1, CPU", "run": deploy_run}
     return {"kind": "torch fp32, CPU"}
 

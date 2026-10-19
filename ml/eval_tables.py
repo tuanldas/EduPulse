@@ -1,7 +1,8 @@
 """Chỉ số, bảng và hình của kết quả đánh giá, tính từ dự đoán đã lưu (`ml.preds`).
 
 Không đọc dữ liệu hay mô hình, nên chạy lại bao nhiêu lần cũng không chạm test: `evaluate --final`
-chỉ chấm một lần rồi ghi dự đoán, còn mọi bảng và hình sinh lại từ đó.
+chỉ chấm một lần rồi ghi dự đoán, còn mọi bảng và hình sinh lại từ đó. Mỗi chỉ số chính kèm khoảng
+tin cậy 95% theo bootstrap (2.000 vòng, hạt giống cố định, xem `ml.stats`).
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import numpy as np
 
 from edupulse.labels import LABELS, LABELS_VI, TASKS
 from edupulse.scoring import softmax_t
+from ml import stats
 from ml.common import (
     expected_calibration_error,
     negative_log_likelihood,
@@ -21,30 +23,45 @@ from ml.common import (
     reliability_bins,
 )
 from ml.plotting import ACCENT, COLORS, GRID, INK, MUTED, plt, save_figure_to, setup_style, vn
-from ml.preds import BASELINES, DEPLOY_KEY, Preds, arch_of, available_keys, load_preds, seed_of
+from ml.preds import (
+    BASELINES,
+    DEPLOY_KEY,
+    Preds,
+    available_keys,
+    check_key,
+    key_order,
+    load_preds,
+    seed_of,
+)
 from ml.train_baseline import DISPLAY as BASELINE_DISPLAY
 
 TASK_VI = {"sentiment": "Cảm xúc", "topic": "Chủ đề"}
-ARCH_DISPLAY = {
-    "stl": "PhoBERT đơn nhiệm (STL)",
-    "mtl": "PhoBERT đa nhiệm (MTL)",
-    DEPLOY_KEY: "PhoBERT đa nhiệm · int8 (bản triển khai)",
-}
-SCALAR_METRICS = ("accuracy", "macro_f1", "weighted_f1", "ece", "nll")
+DEPLOY_DISPLAY = "PhoBERT đa nhiệm · int8 (bản triển khai)"
+SCALARS = ("accuracy", "macro_f1", "weighted_f1")
 RELIABILITY_KEYS = (DEPLOY_KEY, "linearsvc")  # chỉ hai mô hình này cần biểu đồ độ tin cậy
 
 
-def seed_stat(values: list[float]) -> dict[str, Any]:
-    """Trung bình và độ lệch chuẩn mẫu (ddof = 1; 0 khi chỉ có một giá trị)."""
-    array = np.asarray(values, dtype=np.float64)
-    std = float(array.std(ddof=1)) if len(array) > 1 else 0.0
-    return {"mean": float(array.mean()), "std": std, "n": len(array), "values": array.tolist()}
+def model_display(key: str) -> str:
+    """Tên hiển thị của một khoá mô hình."""
+    if key in BASELINES:
+        return BASELINE_DISPLAY[key]
+    if key == DEPLOY_KEY:
+        return DEPLOY_DISPLAY
+    return f"PhoBERT đa nhiệm · FP32 (seed {seed_of(check_key(key))})"
 
 
 def preds_metrics(
-    preds: Preds, task: str, temperature: float = 1.0, *, reliability: bool = False
+    preds: Preds,
+    task: str,
+    temperature: float = 1.0,
+    *,
+    reliability: bool = False,
+    intervals: bool = False,
 ) -> dict[str, Any]:
-    """Chỉ số của một mô hình trên một tác vụ: nhãn cứng cho F1/CM, xác suất cho ECE/NLL."""
+    """Chỉ số của một mô hình trên một tác vụ: nhãn cứng cho F1/CM, xác suất cho ECE/NLL.
+
+    `intervals` thêm khoá `ci95` (bootstrap 95% của accuracy, macro-F1, weighted-F1, F1 từng lớp).
+    """
     y = preds.y[task]
     probs = softmax_t(preds.logits[task].astype(np.float64), temperature)
     metrics = prediction_metrics(y, preds.pred[task], LABELS[task])
@@ -53,35 +70,9 @@ def preds_metrics(
     metrics["n"] = len(y)
     if reliability:
         metrics["reliability"] = reliability_bins(probs, y)
+    if intervals:
+        metrics["ci95"] = stats.bootstrap_intervals(y, preds.pred[task], len(LABELS[task]))
     return metrics
-
-
-def seeded_models(models: dict[str, Any], arch: str) -> list[str]:
-    keys = [key for key in models if arch_of(key) == arch]
-    return sorted(keys, key=lambda key: seed_of(key) or 0)
-
-
-def architecture_stats(models: dict[str, Any]) -> dict[str, Any]:
-    """Trung bình ± độ lệch chuẩn theo seed của MTL (cả hai tác vụ) và STL (mỗi tác vụ một họ)."""
-    sources = {
-        "mtl": {task: seeded_models(models, "mtl") for task in TASKS},
-        "stl": {task: seeded_models(models, f"stl-{task}") for task in TASKS},
-    }
-    result: dict[str, Any] = {}
-    for arch, by_task in sources.items():
-        for task, keys in by_task.items():
-            if not keys:
-                continue
-            per_model = [models[key][task] for key in keys]
-            entry: dict[str, Any] = {"seeds": [seed_of(key) for key in keys]}
-            for metric in SCALAR_METRICS:
-                entry[metric] = seed_stat([m[metric] for m in per_model])
-            entry["per_class_f1"] = [
-                seed_stat([m["per_class"][i]["f1"] for m in per_model])
-                for i in range(len(LABELS[task]))
-            ]
-            result.setdefault(arch, {})[task] = entry
-    return result
 
 
 def collect_metrics(
@@ -98,6 +89,7 @@ def collect_metrics(
                 task,
                 temperatures[task] if key == DEPLOY_KEY else 1.0,
                 reliability=key in RELIABILITY_KEYS,
+                intervals=True,
             )
             for task in preds.tasks
         }
@@ -105,76 +97,59 @@ def collect_metrics(
     return {
         "n": n,
         "temperatures": temperatures,
+        "bootstrap": {
+            "rounds": stats.BOOTSTRAP_ROUNDS,
+            "seed": stats.BOOTSTRAP_SEED,
+            "level": stats.CONFIDENCE_LEVEL,
+        },
         "models": models,
-        "architectures": architecture_stats(models),
     }
 
 
 # --- bảng chính -------------------------------------------------------------------------------
 
 
-def _single(metrics: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "n_seeds": 1,
-        **{m: {"mean": metrics[m], "std": None} for m in SCALAR_METRICS},
-        "per_class_f1": [{"mean": c["f1"], "std": None} for c in metrics["per_class"]],
-    }
-
-
-def _aggregated(entry: dict[str, Any]) -> dict[str, Any]:
-    n = entry["accuracy"]["n"]
-
-    def keep(stat: dict[str, Any]) -> dict[str, Any]:
-        return {"mean": stat["mean"], "std": stat["std"] if n > 1 else None}
-
-    return {
-        "n_seeds": n,
-        **{m: keep(entry[m]) for m in SCALAR_METRICS},
-        "per_class_f1": [keep(stat) for stat in entry["per_class_f1"]],
-    }
-
-
-def model_display(key: str) -> str:
-    """Tên hiển thị của một khoá mô hình (dùng cho tiêu đề hình)."""
-    if key in BASELINES:
-        return BASELINE_DISPLAY[key]
-    if key == DEPLOY_KEY:
-        return ARCH_DISPLAY[DEPLOY_KEY]
-    arch = arch_of(key)
-    return f"{ARCH_DISPLAY['mtl' if arch == 'mtl' else 'stl']} · seed {seed_of(key)}"
+def _with_interval(value: float, interval: dict[str, float]) -> dict[str, float]:
+    return {"value": value, "low": interval["low"], "high": interval["high"]}
 
 
 def main_rows(collected: dict[str, Any]) -> list[dict[str, Any]]:
-    """Mỗi dòng một (tác vụ, mô hình): baseline, STL và MTL (mean ± std theo seed), bản int8."""
-    models, arch = collected["models"], collected["architectures"]
+    """Mỗi dòng một (tác vụ, mô hình), theo thứ tự chuẩn; chỉ số chính kèm khoảng tin cậy 95%."""
     rows: list[dict[str, Any]] = []
     for task in TASKS:
-        for name in BASELINES:
-            if name in models:
-                row = _single(models[name][task])
-                rows.append({"task": task, "model": name, "display": BASELINE_DISPLAY[name], **row})
-        for group in ("stl", "mtl"):
-            if task in arch.get(group, {}):
-                row = _aggregated(arch[group][task])
-                rows.append({"task": task, "model": group, "display": ARCH_DISPLAY[group], **row})
-        if DEPLOY_KEY in models:
-            row = _single(models[DEPLOY_KEY][task])
-            rows.append(
-                {"task": task, "model": DEPLOY_KEY, "display": ARCH_DISPLAY[DEPLOY_KEY], **row}
-            )
+        for key in sorted(collected["models"], key=key_order):
+            metrics = collected["models"][key].get(task)
+            if metrics is None:
+                continue
+            ci = metrics["ci95"]
+            row: dict[str, Any] = {
+                "task": task,
+                "model": key,
+                "display": model_display(key),
+                "n": metrics["n"],
+                **{m: _with_interval(metrics[m], ci[m]) for m in SCALARS},
+                "ece": metrics["ece"],
+                "nll": metrics["nll"],
+                "per_class_f1": [
+                    _with_interval(cls["f1"], interval)
+                    for cls, interval in zip(metrics["per_class"], ci["per_class_f1"], strict=True)
+                ],
+            }
+            rows.append(row)
     return rows
 
 
-def _cell(stat: dict[str, Any], digits: int = 1, scale: float = 100.0) -> str:
-    text = vn(stat["mean"] * scale, digits)
-    if stat["std"] is not None:
-        text += f" ± {vn(stat['std'] * scale, digits)}"
+def _cell(stat: dict[str, float], *, interval: bool, digits: int = 1) -> str:
+    text = vn(stat["value"] * 100, digits)
+    if interval:
+        text += f" [{vn(stat['low'] * 100, digits)}–{vn(stat['high'] * 100, digits)}]"
     return text
 
 
 def main_markdown(rows: list[dict[str, Any]], *, n: int, split_label: str, note: str = "") -> str:
     lines = [
-        f"Kết quả trên tập {split_label} (n = {vn(n, 0)}); phần trăm, ± là độ lệch chuẩn theo seed."
+        f"Kết quả trên tập {split_label} (n = {vn(n, 0)}); phần trăm. Trong ngoặc vuông là khoảng "
+        "tin cậy 95% theo bootstrap (2.000 vòng chọn lại câu, hạt giống cố định)."
     ]
     for task in TASKS:
         task_rows = [r for r in rows if r["task"] == task]
@@ -185,17 +160,15 @@ def main_markdown(rows: list[dict[str, Any]], *, n: int, split_label: str, note:
             "",
             f"### {TASK_VI[task]}",
             "",
-            "| Mô hình | Số run | Acc | mF1 | wF1 | "
-            + " | ".join(f"F1 {x}" for x in labels)
-            + " | ECE |",
-            "|---|---:|---:|---:|---:|" + "---:|" * len(labels) + "---:|",
+            "| Mô hình | Acc | mF1 | wF1 | " + " | ".join(f"F1 {x}" for x in labels) + " | ECE |",
+            "|---|---:|---:|---:|" + "---:|" * len(labels) + "---:|",
         ]
         for row in task_rows:
-            f1s = " | ".join(_cell(stat) for stat in row["per_class_f1"])
+            f1s = " | ".join(_cell(stat, interval=False) for stat in row["per_class_f1"])
             lines.append(
-                f"| {row['display']} | {row['n_seeds']} | {_cell(row['accuracy'])} "
-                f"| {_cell(row['macro_f1'])} | {_cell(row['weighted_f1'])} | {f1s} "
-                f"| {_cell(row['ece'], 3, 1.0)} |"
+                f"| {row['display']} | {_cell(row['accuracy'], interval=True)} "
+                f"| {_cell(row['macro_f1'], interval=True)} "
+                f"| {_cell(row['weighted_f1'], interval=True)} | {f1s} | {vn(row['ece'], 3)} |"
             )
     if note:
         lines += ["", note]
@@ -203,26 +176,28 @@ def main_markdown(rows: list[dict[str, Any]], *, n: int, split_label: str, note:
 
 
 def write_main_csv(rows: list[dict[str, Any]], path: Path) -> None:
+    """Bảng chính dạng dài: mỗi (tác vụ, mô hình) một dòng, chỉ số kèm cận dưới/cận trên 95%."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    columns = ["task", "model", "display", "n_seeds"]
-    for metric in SCALAR_METRICS:
-        columns += [f"{metric}_mean", f"{metric}_std"]
-    label_columns = [
-        f"f1_{label}_{kind}"
-        for label in (*LABELS["sentiment"], *LABELS["topic"])
-        for kind in ("mean", "std")
-    ]
+    columns = ["task", "model", "display", "n"]
+    for metric in SCALARS:
+        columns += [metric, f"{metric}_low", f"{metric}_high"]
+    columns += ["ece", "nll"]
+    labels = [*LABELS["sentiment"], *LABELS["topic"]]
+    for label in labels:
+        columns += [f"f1_{label}", f"f1_{label}_low", f"f1_{label}_high"]
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=[*columns, *label_columns], restval="")
+        writer = csv.DictWriter(handle, fieldnames=columns, restval="")
         writer.writeheader()
         for row in rows:
-            record = {k: row[k] for k in ("task", "model", "display", "n_seeds")}
-            for metric in SCALAR_METRICS:
-                record[f"{metric}_mean"] = row[metric]["mean"]
-                record[f"{metric}_std"] = "" if row[metric]["std"] is None else row[metric]["std"]
+            record: dict[str, Any] = {k: row[k] for k in ("task", "model", "display", "n")}
+            for metric in SCALARS:
+                stat = row[metric]
+                record |= {metric: stat["value"], f"{metric}_low": stat["low"]}
+                record[f"{metric}_high"] = stat["high"]
+            record |= {"ece": row["ece"], "nll": row["nll"]}
             for label, stat in zip(LABELS[row["task"]], row["per_class_f1"], strict=True):
-                record[f"f1_{label}_mean"] = stat["mean"]
-                record[f"f1_{label}_std"] = "" if stat["std"] is None else stat["std"]
+                record |= {f"f1_{label}": stat["value"], f"f1_{label}_low": stat["low"]}
+                record[f"f1_{label}_high"] = stat["high"]
             writer.writerow(record)
 
 
@@ -230,10 +205,13 @@ def write_per_class_csv(models: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["model", "task", "label", "precision", "recall", "f1", "support"])
-        for key, by_task in models.items():
-            for task, metrics in by_task.items():
-                for cls in metrics["per_class"]:
+        writer.writerow(
+            ["model", "task", "label", "precision", "recall", "f1", "f1_low", "f1_high", "support"]
+        )
+        for key in sorted(models, key=key_order):
+            for task, metrics in models[key].items():
+                intervals = metrics["ci95"]["per_class_f1"]
+                for cls, interval in zip(metrics["per_class"], intervals, strict=True):
                     writer.writerow(
                         [
                             key,
@@ -242,6 +220,8 @@ def write_per_class_csv(models: dict[str, Any], path: Path) -> None:
                             cls["precision"],
                             cls["recall"],
                             cls["f1"],
+                            interval["low"],
+                            interval["high"],
                             cls["support"],
                         ]
                     )
@@ -284,7 +264,7 @@ def plot_reliability(path: Path, series: dict[str, dict[str, Any]], task: str, t
     )
     ax.plot([0, 1], [0, 1], color=GRID, linestyle="--", linewidth=1)
     colours = [ACCENT, COLORS["others"], COLORS["training_program"]]
-    for colour, (name, item) in zip(colours, series.items(), strict=False):
+    for index, (colour, (name, item)) in enumerate(zip(colours, series.items(), strict=False)):
         bins = [b for b in item["reliability"] if b["n"]]
         xs, ys = [b["confidence"] for b in bins], [b["accuracy"] for b in bins]
         ax.plot(xs, ys, color=colour, linewidth=1, alpha=0.6)
@@ -298,7 +278,7 @@ def plot_reliability(path: Path, series: dict[str, dict[str, Any]], task: str, t
         )
         centres = [(b["lower"] + b["upper"]) / 2 for b in item["reliability"]]
         width = 0.9 / len(item["reliability"]) / len(series)
-        offset = (list(series).index(name) - (len(series) - 1) / 2) * width
+        offset = (index - (len(series) - 1) / 2) * width
         counts.bar(
             [c + offset for c in centres],
             [b["n"] for b in item["reliability"]],
