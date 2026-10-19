@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   calmTopics,
   filterQuotes,
+  groupSummary,
   heatmapRows,
   kpiDelta,
   NO_QUOTE_FILTER,
   topicBars,
+  TOPIC_SHORT,
 } from "@/lib/dashboard/insight-view";
 
 import { makeAlert, makeHeatmap, makeQuote, makeTopicStat } from "./helpers/insights";
@@ -175,5 +177,28 @@ describe("filterQuotes", () => {
   it("lọc theo nhóm và kết hợp với từ khoá", () => {
     expect(filterQuotes(quotes, { term: null, group: "Nhóm B" }).map((q) => q.text)).toEqual(["b"]);
     expect(filterQuotes(quotes, { term: "máy chiếu", group: "Nhóm B" })).toEqual([]);
+  });
+});
+
+describe("groupSummary", () => {
+  it("không chọn gì hoặc chọn hết là tất cả", () => {
+    expect(groupSummary([], 6)).toBe("Tất cả 6 nhóm");
+    expect(groupSummary(["A", "B", "C"], 3)).toBe("Tất cả 3 nhóm");
+  });
+
+  it("một hoặc hai nhóm thì ghi tên", () => {
+    expect(groupSummary(["Nhập môn lập trình"], 6)).toBe("Nhập môn lập trình");
+    expect(groupSummary(["A", "B"], 6)).toBe("A, B");
+  });
+
+  it("từ ba nhóm trở lên thì ghi số lượng", () => {
+    expect(groupSummary(["A", "B", "C"], 6)).toBe("3/6 nhóm");
+  });
+});
+
+describe("TOPIC_SHORT", () => {
+  it("rút gọn chủ đề dài nhất cho chỗ hẹp", () => {
+    expect(TOPIC_SHORT.facility).toBe("CSVC");
+    expect(TOPIC_SHORT.lecturer).toBe("Giảng viên");
   });
 });

@@ -4,7 +4,7 @@ import { LABEL_ORDER } from "@/lib/labels";
 type Topics = InsightsResponse["topics"];
 type Alerts = InsightsResponse["alerts"];
 type Heatmap = NonNullable<InsightsResponse["heatmap"]>;
-type Quotes = InsightsResponse["quotes"][number]["quotes"];
+type Quote = InsightsResponse["quotes"][number]["quotes"][number];
 
 // Luật cảnh báo của máy chủ, chỉ để viết lại thành chú thích cho người đọc; giá trị thật nằm ở API.
 /** Số câu tối thiểu của một chủ đề (hoặc ô nhóm × chủ đề) để được xét cảnh báo. */
@@ -169,10 +169,27 @@ export interface QuoteFilter {
 
 export const NO_QUOTE_FILTER: QuoteFilter = { term: null, group: null };
 
-export function filterQuotes(quotes: Quotes, filter: QuoteFilter): Quotes {
+export function filterQuotes(quotes: readonly Quote[], filter: QuoteFilter): Quote[] {
   return quotes.filter(
     (quote) =>
       (filter.term === null || quote.matched.includes(filter.term)) &&
       (filter.group === null || quote.group === filter.group),
   );
+}
+
+// --- Nhãn rút gọn và bộ lọc nhóm --------------------------------------------------------------
+
+/** Tên chủ đề rút gọn cho chỗ hẹp (tiêu đề cột heatmap, nhãn khuyến nghị). */
+export const TOPIC_SHORT: Record<TopicLabel, string> = {
+  lecturer: "Giảng viên",
+  training_program: "Chương trình",
+  facility: "CSVC",
+  others: "Khác",
+};
+
+/** Chữ trên nút lọc nhóm: "Tất cả 6 nhóm", tên nhóm (tối đa 2), hoặc "3/6 nhóm". */
+export function groupSummary(selected: readonly string[], total: number): string {
+  if (selected.length === 0 || selected.length >= total) return `Tất cả ${total} nhóm`;
+  if (selected.length <= 2) return selected.join(", ");
+  return `${selected.length}/${total} nhóm`;
 }
