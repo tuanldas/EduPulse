@@ -31,15 +31,15 @@ const FALLBACK_HEARTBEAT_S = 60;
 
 export function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Đang tải dashboard">
+    <div className="@container flex flex-col gap-4" aria-busy="true" aria-label="Đang tải dashboard">
       <Skeleton className="h-16 w-full max-w-xl" />
-      <div className="grid grid-cols-4 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-4 gap-4 @max-[800px]:grid-cols-2 @max-[620px]:grid-cols-1">
         {[0, 1, 2, 3].map((item) => (
           <Skeleton key={item} className="h-28" />
         ))}
       </div>
       <Skeleton className="h-48 w-full" />
-      <div className="grid grid-cols-2 gap-4 max-[900px]:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 @max-[800px]:grid-cols-1">
         <Skeleton className="h-72" />
         <Skeleton className="h-72" />
       </div>
@@ -113,8 +113,9 @@ export function DashboardWorkspace() {
   const groupLabel = knownFile?.run?.groupCol ?? "nhóm";
 
   return (
-    <>
-      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end gap-4 max-[900px]:grid-cols-1">
+    // Khung đo bề rộng thật của nội dung (đã trừ thanh bên): các lưới bên dưới đổi cột theo đó, không theo bề rộng cửa sổ.
+    <div className="@container flex flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end gap-4 @max-[800px]:grid-cols-1">
         <SourceSwitch
           value={source === "batch" ? "batch" : "demo"}
           onValueChange={chooseSource}
@@ -181,7 +182,7 @@ export function DashboardWorkspace() {
           <InsightsView key={batchId} data={data} groupLabel={groupLabel} />
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 

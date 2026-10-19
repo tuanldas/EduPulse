@@ -39,7 +39,7 @@ export function BudgetEfficiency({ options, selected }: BudgetEfficiencyProps) {
         <Icon name="target" size="xs" />
         Hiệu quả ước tính ở mức {formatPercent(selected / 100)} · số đo trên tập validation
       </div>
-      <div className="grid grid-cols-3 gap-4 max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-3 gap-4 @max-[620px]:grid-cols-1">
         <Stat label="Lỗi cảm xúc được bắt" value={formatPercent(efficiency.caught_sentiment_errors)} />
         <Stat label="Lỗi chủ đề được bắt" value={formatPercent(efficiency.caught_topic_errors)} />
         <Stat label="Phần không cờ đúng cả 2 nhãn" value={formatPercent(efficiency.accept_accuracy_both, 1)}>

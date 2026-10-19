@@ -22,7 +22,7 @@ function Row({ bar }: { bar: TopicBar }) {
   const meta = labelMeta("topic", bar.topic);
   return (
     <li className="contents">
-      <span className="flex items-center gap-1.5 leading-tight whitespace-nowrap max-[640px]:whitespace-normal">
+      <span className="flex items-center gap-1.5 leading-tight whitespace-nowrap @max-[620px]:whitespace-normal">
         <Icon name={meta.icon} size="xs" className={TONE_CLASS[meta.tone].text} />
         {meta.vi}
       </span>
@@ -83,14 +83,14 @@ export function SentimentByTopic({ topics, className }: SentimentByTopicProps) {
         <h3 className="text-[15px] font-semibold">Cảm xúc theo chủ đề</h3>
         <Caption>% số câu trong từng chủ đề · vạch đen = mức nền tiêu cực</Caption>
       </div>
-      <ul className="grid grid-cols-[132px_minmax(0,1fr)_52px] items-center gap-x-3 gap-y-3 text-sm max-[640px]:grid-cols-[116px_minmax(0,1fr)_36px]">
+      <ul className="grid grid-cols-[132px_minmax(0,1fr)_52px] items-center gap-x-3 gap-y-3 text-sm @max-[620px]:grid-cols-[116px_minmax(0,1fr)_36px]">
         {bars.map((bar) => (
           <Row key={bar.topic} bar={bar} />
         ))}
       </ul>
       <div
         aria-hidden="true"
-        className="mr-[64px] ml-[144px] flex justify-between text-xs text-muted-foreground tabular-nums max-[640px]:mr-[48px] max-[640px]:ml-[128px]"
+        className="mr-[64px] ml-[144px] flex justify-between text-xs text-muted-foreground tabular-nums @max-[620px]:mr-[48px] @max-[620px]:ml-[128px]"
       >
         <span>0%</span>
         <span>50%</span>

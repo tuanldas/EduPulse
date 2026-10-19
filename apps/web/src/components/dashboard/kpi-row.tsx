@@ -51,7 +51,7 @@ interface KpiRowProps {
 export function KpiRow({ kpis }: KpiRowProps) {
   const flagged = kpis.n_flagged !== null && kpis.flagged_share !== null;
   return (
-    <div className="grid grid-cols-4 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
+    <div className="grid grid-cols-4 gap-4 @max-[800px]:grid-cols-2 @max-[620px]:grid-cols-1">
       <MetricCard
         label="Số câu"
         value={formatNumber(kpis.n_rows)}

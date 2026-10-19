@@ -2,8 +2,8 @@
 
 import { useId, useState } from "react";
 
+import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
 import { Callout } from "@/components/shared/callout";
-import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Icon } from "@/components/shared/icon";
 import { Caption } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 items-end gap-4 max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-2 items-end gap-4 @max-[620px]:grid-cols-1">
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-sm">
             <label htmlFor={textId}>Cột văn bản</label>
@@ -80,7 +80,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
         <div>
           <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
             <label htmlFor={groupId}>Cột nhóm (tuỳ chọn)</label>
-            {batch.illustrativeGroups ? <IllustrativeBadge /> : null}
+            {batch.illustrativeGroups ? <WrappingIllustrativeBadge /> : null}
           </div>
           <NativeSelect
             id={groupId}
@@ -93,7 +93,7 @@ export function SettingsStep({ batch, config, locked, finished, starting, failur
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-4 max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-4 @max-[800px]:grid-cols-1">
         <div className="flex flex-col gap-2">
           <div>
             <div className="mb-1 flex items-center justify-between gap-2 text-sm">

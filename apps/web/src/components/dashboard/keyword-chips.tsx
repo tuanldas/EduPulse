@@ -31,7 +31,7 @@ export function KeywordChips({ keywords, selected, onSelect }: KeywordChipsProps
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-3 gap-4 max-[900px]:grid-cols-1">
+      <div className="grid grid-cols-3 gap-4 @max-[800px]:grid-cols-1">
         {blocks.map((block) => (
           <Card key={block.topic} aria-label={`Từ khoá chủ đề ${labelMeta("topic", block.topic).vi}`} role="group">
             <div className="flex items-center justify-between gap-2">

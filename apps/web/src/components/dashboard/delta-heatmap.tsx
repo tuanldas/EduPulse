@@ -1,4 +1,4 @@
-import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
+import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
 import { Caption } from "@/components/shared/section-heading";
 import { Card } from "@/components/ui/card";
 import type { InsightsResponse } from "@/lib/batch/types";
@@ -32,9 +32,9 @@ function Cell({ cell, label }: { cell: CellView; label: string }) {
     return (
       <div role="cell" aria-label={label} className={CELL_BASE} style={{ background, color }}>
         <b className="text-sm font-semibold">{formatPercent(cell.rate ?? 0)}</b>
-        <small className="flex flex-wrap justify-center gap-x-1 text-xs opacity-90 max-[640px]:flex-col max-[640px]:gap-x-0">
+        <small className="flex flex-wrap justify-center gap-x-1 text-xs opacity-90 @max-[620px]:flex-col @max-[620px]:gap-x-0">
           <span>{formatPoints(cell.delta ?? 0)}</span>
-          <span aria-hidden="true" className="max-[640px]:hidden">
+          <span aria-hidden="true" className="@max-[620px]:hidden">
             ·
           </span>
           <span>n {formatNumber(cell.n)}</span>
@@ -74,7 +74,7 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
       <div className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h3 className="text-[15px] font-semibold">Tiêu cực theo {groupLabel} × Chủ đề</h3>
-          {illustrative ? <IllustrativeBadge /> : null}
+          {illustrative ? <WrappingIllustrativeBadge /> : null}
         </div>
         <Caption>Ô ghi % tiêu cực · màu = cao hơn mức nền của chủ đề bao nhiêu điểm</Caption>
       </div>
@@ -82,7 +82,7 @@ export function DeltaHeatmap({ heatmap, groupLabel, illustrative, className }: D
         <div
           role="table"
           aria-label={`Tỉ lệ tiêu cực theo ${groupLabel} và chủ đề`}
-          className="grid grid-cols-[minmax(96px,1.3fr)_repeat(4,minmax(0,1fr))] gap-[3px] max-[640px]:grid-cols-[minmax(68px,1.1fr)_repeat(4,minmax(0,1fr))]"
+          className="grid grid-cols-[minmax(96px,1.3fr)_repeat(4,minmax(0,1fr))] gap-[3px] @max-[620px]:grid-cols-[minmax(68px,1.1fr)_repeat(4,minmax(0,1fr))]"
         >
           <div role="row" className="contents">
             {/* Ô góc phải nằm trong lưới (để tiêu đề cột thẳng hàng với ô) và có chữ cho trình đọc màn hình. */}

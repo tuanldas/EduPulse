@@ -77,8 +77,8 @@ export function InsightsView({ data, groupLabel }: InsightsViewProps) {
         onSeeQuotes={seeQuotes}
       />
 
-      <div className="grid grid-cols-2 items-start gap-4 max-[900px]:grid-cols-1">
-        <SentimentByTopic topics={data.topics} className={data.heatmap === null ? "col-span-2 max-[900px]:col-span-1" : undefined} />
+      <div className="grid grid-cols-2 items-start gap-4 @max-[800px]:grid-cols-1">
+        <SentimentByTopic topics={data.topics} className={data.heatmap === null ? "col-span-2 @max-[800px]:col-span-1" : undefined} />
         {data.heatmap !== null ? (
           <DeltaHeatmap heatmap={data.heatmap} groupLabel={groupLabel} illustrative={data.illustrative_groups} />
         ) : null}
@@ -91,7 +91,7 @@ export function InsightsView({ data, groupLabel }: InsightsViewProps) {
       <SectionHeading icon="sell">Từ khoá đặc trưng trong câu tiêu cực</SectionHeading>
       <KeywordChips keywords={data.keywords} selected={keyword} onSelect={selectKeyword} />
 
-      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-x-6 gap-y-4 max-[900px]:grid-cols-1">
+      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-x-6 gap-y-4 @max-[900px]:grid-cols-1">
         <section aria-labelledby={QUOTES_ANCHOR} className="flex min-w-0 flex-col gap-3">
           <SectionHeading id={QUOTES_ANCHOR} icon="format_quote" className="scroll-mt-4">
             Câu tiêu biểu

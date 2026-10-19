@@ -56,7 +56,7 @@ export function Recommendations({ recommendations }: RecommendationsProps) {
             {recommendations.map((recommendation) => (
               <li
                 key={recommendation.id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-3.5 max-[640px]:grid-cols-[auto_minmax(0,1fr)]"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-3.5 @max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
               >
                 <Icon name={iconFor(recommendation)} className="mt-0.5 text-primary" />
                 <div className="flex min-w-0 flex-col gap-1">
@@ -66,7 +66,7 @@ export function Recommendations({ recommendations }: RecommendationsProps) {
                     <p className="text-sm leading-[1.5] text-muted-foreground">{recommendation.note}</p>
                   ) : null}
                 </div>
-                <div className="flex items-start justify-end max-[640px]:col-start-2 max-[640px]:justify-start">
+                <div className="flex items-start justify-end @max-[620px]:col-start-2 @max-[620px]:justify-start">
                   <TopicTag topic={recommendation.topic} />
                 </div>
               </li>

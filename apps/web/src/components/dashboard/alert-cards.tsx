@@ -1,6 +1,6 @@
+import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
 import { Callout } from "@/components/shared/callout";
 import { Icon } from "@/components/shared/icon";
-import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { LabelBadge } from "@/components/shared/label-badge";
 import { Caption } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ function AlertCard({
         <span>Khoảng tin cậy 95%: ít nhất {lowerBound(alert.evidence.ci_low)}</span>
         <span className="tabular-nums">n = {formatNumber(alert.evidence.n)}</span>
         {alert.group !== null ? <span>Nhóm: {alert.group}</span> : null}
-        {alert.group !== null && illustrativeGroups ? <IllustrativeBadge /> : null}
+        {alert.group !== null && illustrativeGroups ? <WrappingIllustrativeBadge /> : null}
         {keywords.length > 0 ? <span>Nổi bật: {keywords.join(", ")}</span> : null}
         {alert.note ? <span>{alert.note}</span> : null}
       </div>
@@ -107,7 +107,7 @@ export function AlertCards({ alerts, topics, illustrativeGroups, onSeeQuotes }: 
           Tiêu cực: <BaselineList topics={topics} />.
         </Callout>
       ) : (
-        <div className="grid grid-cols-3 gap-4 max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
+        <div className="grid grid-cols-3 gap-4 @max-[800px]:grid-cols-2 @max-[620px]:grid-cols-1">
           {alerts.map((alert, index) => (
             <AlertCard
               key={`${alert.kind}-${alert.topic}-${alert.group ?? ""}-${index}`}
