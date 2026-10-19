@@ -44,6 +44,14 @@ def test_upload_describes_the_file_and_guesses_the_columns(live_client: TestClie
     assert len(body.batch_id) >= 22
 
 
+def test_very_long_file_names_are_cut_for_display_but_still_judged_by_extension(
+    live_client: TestClient,
+):
+    long = upload(live_client, csv_bytes(sentences(3)), "a" * 1000 + ".csv")
+    assert long.status_code == 201 and long.json()["filename"] == "a" * 255
+    assert upload(live_client, csv_bytes(sentences(3)), "a" * 1000 + ".txt").status_code == 415
+
+
 def test_each_upload_gets_its_own_unguessable_id(live_client: TestClient):
     ids = {upload(live_client, csv_bytes(sentences(3))).json()["batch_id"] for _ in range(3)}
     assert len(ids) == 3

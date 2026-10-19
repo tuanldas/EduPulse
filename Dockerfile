@@ -5,7 +5,7 @@
 # Bundle mô hình không nằm trong repo nên phải đưa vào bằng build context tên `artifacts`:
 #   make docker-build BUNDLE_VERSION=v1.0 IMAGE=edupulse:v1.0
 #   docker compose build            (compose khai sẵn additional_contexts)
-# Build cần mạng (npm, PyPI, apt).
+# Build cần mạng (npm, PyPI, apt, và Hugging Face cho dữ liệu demo; tắt bằng EDUPULSE_BUILD_DEMO=0).
 
 ARG NODE_IMAGE=node:24.15.0-trixie-slim
 ARG PYTHON_IMAGE=python:3.12-slim-trixie
@@ -79,3 +79,33 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 # Đúng 1 worker (trạng thái nằm trong RAM); --no-access-log vì log của uvicorn ghi cả query string.
 CMD ["uvicorn", "edupulse.api.main:app", "--host", "0.0.0.0", "--port", "8000", \
      "--workers", "1", "--proxy-headers", "--no-access-log"]
+
+# ---- demo: tính dữ liệu demo lúc build (file mẫu, câu mẫu, dự đoán của tập test) ----
+# Repo và bundle không chứa câu gốc của UIT-VSFC; stage này tải chúng từ Hugging Face (cần mạng),
+# chạy chính mô hình trong image rồi chỉ giữ 4 tệp kết quả trong /demo. Tải lỗi thì ghi
+# `ok: false` kèm lý do và build vẫn thành công (API báo demo_available=false, giao diện ẩn demo).
+# Build không cần dữ liệu demo (QEMU, offline): --build-arg EDUPULSE_BUILD_DEMO=0.
+FROM runtime AS demo
+ARG EDUPULSE_BUILD_DEMO=1
+USER root
+ENV UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON_PREFERENCE=only-system \
+    HF_HUB_DISABLE_TELEMETRY=1
+COPY --from=uv /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock .python-version README.md LICENSE ./
+COPY src/ src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    set -eu; \
+    if [ "$EDUPULSE_BUILD_DEMO" = "1" ]; then \
+        uv sync --frozen --no-default-groups --group app --group demo --no-editable; \
+        python -m edupulse.demo_data --out /demo; \
+    else \
+        python -m edupulse.demo_data --out /demo --skip; \
+    fi
+
+# ---- final: image chạy (là stage cuối nên là mặc định của `docker build`) ----
+# Cùng runtime ở trên, cộng thêm dữ liệu demo; pyarrow và huggingface-hub của stage demo không vào đây.
+FROM runtime AS final
+COPY --from=demo --chown=1000:1000 /demo /app/demo-data/
+ENV EDUPULSE_DEMO_DIR=/app/demo-data

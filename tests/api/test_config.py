@@ -2,6 +2,7 @@
 
 import csv
 import io
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ from edupulse.config import (
     MAX_ROWS,
     MAX_UPLOAD_MB,
     Settings,
+    load_settings,
 )
 from edupulse.engine.bundle import load_model_card
 
@@ -102,10 +104,43 @@ def test_config_exposes_limits_budgets_and_the_model(live_client: TestClient, se
     assert config.heartbeat_s == HEARTBEAT_S
     assert config.default_budget == DEFAULT_BUDGET
     assert config.source_url == settings.source_url
+    assert config.model_url == settings.model_url
     assert config.ner_enabled == settings.ner
     health = live_client.get("/api/health").json()
     assert config.model.model_version == health["model_version"]
     assert config.model.stage == health["stage"]
+
+
+@pytest.mark.model
+def test_config_passes_the_runtime_links_through_unchanged(
+    live_client: TestClient, settings: Settings, monkeypatch
+):
+    configured = replace(
+        settings,
+        source_url="https://github.com/acme/edupulse",
+        model_url="https://huggingface.co/acme/edupulse-phobert-mtl",
+    )
+    monkeypatch.setattr(live_client.app.state, "settings", configured)
+    config = live_client.get("/api/config").json()
+    assert config["source_url"] == "https://github.com/acme/edupulse"
+    assert config["model_url"] == "https://huggingface.co/acme/edupulse-phobert-mtl"
+    cleared = replace(settings, source_url="", model_url="")
+    monkeypatch.setattr(live_client.app.state, "settings", cleared)
+    config = live_client.get("/api/config").json()
+    assert config["source_url"] == "" and config["model_url"] == ""  # chuỗi rỗng, không phải null
+
+
+def test_model_url_is_read_from_the_environment_like_the_source_url():
+    assert load_settings({}).model_url == ""
+    assert load_settings({"EDUPULSE_MODEL_URL": "  "}).model_url == ""
+    url = "https://huggingface.co/acme/edupulse-phobert-mtl"
+    assert load_settings({"EDUPULSE_MODEL_URL": url}).model_url == url
+
+
+@pytest.mark.parametrize("value", ["huggingface.co/acme/x", "ftp://host/x", "javascript:alert(1)"])
+def test_model_url_must_be_an_http_link(value: str):
+    with pytest.raises(ValueError, match="EDUPULSE_MODEL_URL"):
+        load_settings({"EDUPULSE_MODEL_URL": value})
 
 
 @pytest.mark.model

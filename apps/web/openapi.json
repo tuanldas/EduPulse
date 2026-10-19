@@ -1227,6 +1227,10 @@
           "source_url": {
             "type": "string",
             "title": "Source Url"
+          },
+          "model_url": {
+            "type": "string",
+            "title": "Model Url"
           }
         },
         "type": "object",
@@ -1240,7 +1244,8 @@
           "ui_samples",
           "demo_available",
           "demo_reason",
-          "source_url"
+          "source_url",
+          "model_url"
         ],
         "title": "AppConfig"
       },

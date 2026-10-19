@@ -12,7 +12,15 @@ from fastapi import APIRouter, File, Path, Response, UploadFile
 from edupulse.api import schemas
 from edupulse.api.batch_view import results_response, status_response, upload_response
 from edupulse.api.deps import AnalyzerDep, BackgroundDep, DemoDep, StoreDep
-from edupulse.api.errors import ApiError, not_implemented
+from edupulse.api.errors import ApiError
+from edupulse.api.export import (
+    ALL_FILENAME,
+    CORRECTED_FILENAME,
+    CSV_MEDIA_TYPE,
+    render_all,
+    render_corrected,
+    resolve_overrides,
+)
 from edupulse.api.jobs import Batch
 from edupulse.api.limits import DEMO_BATCH_ID
 from edupulse.api.parsing import is_illustrative, parse_upload
@@ -30,6 +38,7 @@ RowIndex = Annotated[int, Path(ge=0)]
 
 SAMPLE_FILENAME = "edupulse-file-mau.csv"
 INSIGHTS_CACHE_SIZE = 16  # số cách lọc nhóm được nhớ cho mỗi batch
+MAX_FILENAME_CHARS = 255
 
 
 def _finished(batch: Batch) -> Batch:
@@ -79,7 +88,9 @@ def upload_batch(
     if len(data) > MAX_UPLOAD_BYTES:
         raise too_large
     filename = file.filename or ""
-    table = parse_upload(filename, data)
+    table = parse_upload(filename, data)  # chỉ đọc phần mở rộng của tên
+    # Tên file chỉ để hiển thị lại cho chính người tải lên: cắt cho gọn, không bao giờ ghi log.
+    filename = filename[:MAX_FILENAME_CHARS]
     del data
     batch = store.create(
         filename, table, illustrative=is_illustrative("upload", None, table.columns)
@@ -262,5 +273,21 @@ def batch_insights(
     },
     summary="Xuất CSV: toàn bộ kết quả hoặc chỉ nhãn đã sửa",
 )
-def export_batch(batch_id: BatchId, body: schemas.ExportRequest) -> Response:
-    raise not_implemented()
+def export_batch(
+    batch_id: BatchId, body: schemas.ExportRequest, store: StoreDep, analyzer: AnalyzerDep
+) -> Response:
+    batch = _finished(store.get(batch_id))
+    result = batch.result
+    assert result is not None
+    corrections = resolve_overrides(result, body.overrides)
+    if body.kind == "corrected":
+        data = render_corrected(result, corrections, analyzer.bundle.manifest.model_version)
+        filename = CORRECTED_FILENAME
+    else:
+        data = render_all(batch, result, corrections)
+        filename = ALL_FILENAME
+    return Response(
+        data,
+        media_type=CSV_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
