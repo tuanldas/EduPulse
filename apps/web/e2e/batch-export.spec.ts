@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test, type Download, type Page } from "@playwright/test";
 
+import { analyzeSample as analyze, leavePage } from "./batch-helpers";
+
 // Xuất CSV trên trình duyệt thật: file toàn bộ kết quả, file chỉ nhãn đã sửa, và việc tải xong làm hết cảnh
 // báo "còn nhãn sửa chưa xuất". Cần chạy trên bản export do uvicorn phục vụ cùng origin với /api.
 
@@ -9,13 +11,14 @@ test.describe.configure({ timeout: 120_000 });
 
 const BOM = Buffer.from([0xef, 0xbb, 0xbf]);
 
+// Máy chủ giữ tối đa 8 batch: rời trang để pagehide xoá batch của test vừa chạy.
+test.afterEach(async ({ page }) => {
+  await leavePage(page);
+});
+
 async function analyzeSample(page: Page) {
   await page.goto("/batch/");
-  await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-  const run = page.getByRole("button", { name: /^Phân tích \d/ });
-  await expect(run).toBeEnabled({ timeout: 30_000 });
-  await run.click();
-  await expect(page.getByText("Đã phân tích xong.")).toBeVisible({ timeout: 90_000 });
+  await analyze(page);
 }
 
 async function readCsv(download: Download): Promise<{ bytes: Buffer; lines: string[] }> {

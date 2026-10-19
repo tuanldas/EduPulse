@@ -1,10 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { leavePage } from "./batch-helpers";
+
 // Vòng đời phiên của batch trên trình duyệt thật: heartbeat khi tab mở, `close` khi rời trang, và việc
 // chuyển sang dashboard bằng liên kết không đóng batch. Cần chạy trên bản export do uvicorn phục vụ cùng
 // origin với /api (E2E_BASE_URL), vì kiểm tra trực tiếp trạng thái batch trên máy chủ bằng `request`.
 
 test.describe.configure({ timeout: 120_000 });
+
+// Máy chủ giữ tối đa 8 batch: rời trang để pagehide xoá batch của test vừa chạy.
+test.afterEach(async ({ page }) => {
+  await leavePage(page);
+});
 
 async function createSampleBatch(page: Page): Promise<string> {
   await page.getByRole("button", { name: /Dùng file mẫu/ }).click();

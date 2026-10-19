@@ -1,12 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { analyzeSample, usingPage } from "./batch-helpers";
 import {
   THEMES,
   VIEWPORTS,
   expectNoA11yViolations,
   expectNoHorizontalScroll,
-  openPage,
   settle,
   waitForAnimations,
 } from "./helpers";
@@ -34,100 +34,91 @@ async function expectNoA11yViolationsInPopup(page: Page, label: string) {
   expect(summary, `${label}: vi phạm trợ năng`).toEqual([]);
 }
 
-async function analyzeSample(page: Page) {
-  await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-  const run = page.getByRole("button", { name: /^Phân tích \d/ });
-  await expect(run).toBeEnabled({ timeout: 30_000 });
-  await run.click();
-  await expect(page.getByText("Đã phân tích xong.")).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByRole("table")).toBeVisible();
-}
-
 for (const viewport of VIEWPORTS) {
   for (const theme of THEMES) {
     const tag = `${viewport.label} ${theme}`;
 
     test.describe(`trợ năng trang 2–3 · ${tag}`, () => {
       test("trang 2: trạng thái đầu, thiết lập, kết quả và ngăn giải thích", async ({ browser }) => {
-        const { context, page } = await openPage(browser, viewport, theme);
-        await page.goto("/batch/");
-        await expect(page.getByRole("heading", { name: "1 · Tải file" })).toBeVisible();
-        await settle(page);
-        await expectNoA11yViolations(page, "trang 2 trạng thái đầu");
+        await usingPage(browser, viewport, theme, async (page) => {
+          await page.goto("/batch/");
+          await expect(page.getByRole("heading", { name: "1 · Tải file" })).toBeVisible();
+          await settle(page);
+          await expectNoA11yViolations(page, "trang 2 trạng thái đầu");
 
-        await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-        await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
-        await expectNoA11yViolations(page, "trang 2 thiết lập");
+          await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
+          await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+          await expectNoA11yViolations(page, "trang 2 thiết lập");
 
-        await analyzeSample(page);
-        await expectNoA11yViolations(page, "trang 2 kết quả");
-        if (viewport.width <= 640) await expectNoHorizontalScroll(page);
+          await analyzeSample(page);
+          await expectNoA11yViolations(page, "trang 2 kết quả");
+          if (viewport.width <= 640) await expectNoHorizontalScroll(page);
 
-        await page.getByRole("tab", { name: /Tất cả kết quả/ }).click();
-        await expectNoA11yViolations(page, "trang 2 tab tất cả kết quả");
+          await page.getByRole("tab", { name: /Tất cả kết quả/ }).click();
+          await expectNoA11yViolations(page, "trang 2 tab tất cả kết quả");
 
-        await page.getByRole("button", { name: /^Giải thích câu/ }).first().click();
-        await expect(page.getByRole("dialog")).toBeVisible();
-        await expect(page.getByLabel("Đang tính giải thích")).toHaveCount(0, { timeout: 30_000 });
-        await expectNoA11yViolations(page, "trang 2 ngăn giải thích");
-        await context.close();
+          await page.getByRole("button", { name: /^Giải thích câu/ }).first().click();
+          await expect(page.getByRole("dialog")).toBeVisible();
+          await expect(page.getByLabel("Đang tính giải thích")).toHaveCount(0, { timeout: 30_000 });
+          await expectNoA11yViolations(page, "trang 2 ngăn giải thích");
+        });
       });
 
       test("trang 2: lỗi file, quá giới hạn và phiên đã kết thúc", async ({ browser }) => {
-        const { context, page } = await openPage(browser, viewport, theme);
-        await page.goto("/batch/");
-        await expect(page.getByRole("heading", { name: "1 · Tải file" })).toBeVisible();
+        await usingPage(browser, viewport, theme, async (page) => {
+          await page.goto("/batch/");
+          await expect(page.getByRole("heading", { name: "1 · Tải file" })).toBeVisible();
 
-        await page.locator('input[type="file"]').setInputFiles({
-          name: "ghi-chu.pdf",
-          mimeType: "application/pdf",
-          buffer: Buffer.from("%PDF-1.4"),
+          await page.locator('input[type="file"]').setInputFiles({
+            name: "ghi-chu.pdf",
+            mimeType: "application/pdf",
+            buffer: Buffer.from("%PDF-1.4"),
+          });
+          await expect(page.getByText("Chỉ nhận file CSV hoặc XLSX.")).toBeVisible();
+          await expectNoA11yViolations(page, "trang 2 lỗi file");
+
+          const rows = Array.from({ length: 2100 }, (_, i) => `Thầy dạy dễ hiểu số ${i + 1}.`).join("\n");
+          await page.locator('input[type="file"]').setInputFiles({
+            name: "qua-nhieu-cau.csv",
+            mimeType: "text/csv",
+            buffer: Buffer.from(`Góp ý\n${rows}\n`, "utf-8"),
+          });
+          await expect(page.getByText(/vượt giới hạn/)).toBeVisible({ timeout: 30_000 });
+          await expectNoA11yViolations(page, "trang 2 quá giới hạn");
+
+          await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
+          await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
+          await page.reload();
+          await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
+          await expectNoA11yViolations(page, "trang 2 phiên đã kết thúc");
         });
-        await expect(page.getByText("Chỉ nhận file CSV hoặc XLSX.")).toBeVisible();
-        await expectNoA11yViolations(page, "trang 2 lỗi file");
-
-        const rows = Array.from({ length: 2100 }, (_, i) => `Thầy dạy dễ hiểu số ${i + 1}.`).join("\n");
-        await page.locator('input[type="file"]').setInputFiles({
-          name: "qua-nhieu-cau.csv",
-          mimeType: "text/csv",
-          buffer: Buffer.from(`Góp ý\n${rows}\n`, "utf-8"),
-        });
-        await expect(page.getByText(/vượt giới hạn/)).toBeVisible({ timeout: 30_000 });
-        await expectNoA11yViolations(page, "trang 2 quá giới hạn");
-
-        await page.getByRole("button", { name: /Dùng file mẫu/ }).click();
-        await expect(page.getByRole("button", { name: /^Phân tích \d/ })).toBeEnabled({ timeout: 30_000 });
-        await page.reload();
-        await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
-        await expectNoA11yViolations(page, "trang 2 phiên đã kết thúc");
-        await context.close();
       });
 
       test("trang 3: dữ liệu demo, file vừa tải, bộ lọc nhóm và phiên đã kết thúc", async ({ browser }) => {
-        const { context, page } = await openPage(browser, viewport, theme);
-        await page.goto("/dashboard/");
-        await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
-        await settle(page);
-        await expectNoA11yViolations(page, "trang 3 dữ liệu demo");
-        if (viewport.width <= 640) await expectNoHorizontalScroll(page);
+        await usingPage(browser, viewport, theme, async (page) => {
+          await page.goto("/dashboard/");
+          await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
+          await settle(page);
+          await expectNoA11yViolations(page, "trang 3 dữ liệu demo");
+          if (viewport.width <= 640) await expectNoHorizontalScroll(page);
 
-        await page.goto("/batch/");
-        await analyzeSample(page);
-        await page.getByRole("link", { name: /Xem dashboard cho file này/ }).click();
-        await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByRole("button", { name: /Tất cả \d+ nhóm/ })).toBeVisible();
-        await expectNoA11yViolations(page, "trang 3 file vừa tải");
-        if (viewport.width <= 640) await expectNoHorizontalScroll(page);
+          await page.goto("/batch/");
+          await analyzeSample(page);
+          await page.getByRole("link", { name: /Xem dashboard cho file này/ }).click();
+          await expect(page.getByRole("heading", { name: "Cảnh báo so với mức nền" })).toBeVisible({ timeout: 30_000 });
+          await expect(page.getByRole("button", { name: /Tất cả \d+ nhóm/ })).toBeVisible();
+          await expectNoA11yViolations(page, "trang 3 file vừa tải");
+          if (viewport.width <= 640) await expectNoHorizontalScroll(page);
 
-        await page.getByRole("button", { name: /Tất cả \d+ nhóm/ }).click();
-        await expect(page.getByRole("menu")).toBeVisible();
-        await expectNoA11yViolationsInPopup(page, "trang 3 bộ lọc nhóm đang mở");
-        await page.keyboard.press("Escape");
+          await page.getByRole("button", { name: /Tất cả \d+ nhóm/ }).click();
+          await expect(page.getByRole("menu")).toBeVisible();
+          await expectNoA11yViolationsInPopup(page, "trang 3 bộ lọc nhóm đang mở");
+          await page.keyboard.press("Escape");
 
-        await page.goto("/dashboard/?batch=khong-ton-tai");
-        await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
-        await expectNoA11yViolations(page, "trang 3 phiên đã kết thúc");
-        await context.close();
+          await page.goto("/dashboard/?batch=khong-ton-tai");
+          await expect(page.getByText("Phiên làm việc đã kết thúc.")).toBeVisible({ timeout: 30_000 });
+          await expectNoA11yViolations(page, "trang 3 phiên đã kết thúc");
+        });
       });
     });
   }
