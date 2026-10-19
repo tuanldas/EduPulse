@@ -6,7 +6,7 @@
 # biến môi trường, thiếu thì đọc .env ở gốc repo (biến môi trường đã đặt thì thắng):
 #   EDUPULSE_HF_REPO       repo model dạng chủ/tên (`python -m ml.push_hub --upload` in ra)
 #   EDUPULSE_HF_REVISION   commit sha đầy đủ (40 ký tự hex); không nhận tên nhánh hay tag
-#   BUNDLE_VERSION         phiên bản bundle, mặc định v1.0
+#   BUNDLE_VERSION         phiên bản bundle, mặc định v1.1
 #   EDUPULSE_ARTIFACTS_DIR thư mục đích; mặc định $EDUPULSE_HOME/artifacts/<phiên bản>, còn
 #                          EDUPULSE_HOME mặc định là gốc repo (cùng quy tắc với Makefile và config.py)
 #   HF_ENDPOINT            máy chủ Hub, mặc định https://huggingface.co (file:// để thử không cần mạng)
@@ -46,7 +46,7 @@ done
 
 repo=${EDUPULSE_HF_REPO:-}
 revision=${EDUPULSE_HF_REVISION:-}
-version=${BUNDLE_VERSION:-v1.0}
+version=${BUNDLE_VERSION:-v1.1}
 endpoint=${HF_ENDPOINT:-https://huggingface.co}
 endpoint=${endpoint%/}
 target=${EDUPULSE_ARTIFACTS_DIR:-${EDUPULSE_HOME:-$repo_root}/artifacts/$version}

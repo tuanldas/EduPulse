@@ -1,7 +1,7 @@
 """Gom bundle triển khai `$EDUPULSE_HOME/artifacts/<version>/` từ kết quả huấn luyện và export.
 
     python -m ml.build_artifacts --version v0-smoke      # make artifacts BUNDLE_VERSION=v0-smoke
-    python -m ml.build_artifacts --version v1.0          # bản phát hành: thẻ mô hình trên test
+    python -m ml.build_artifacts --version v1.1          # bản phát hành: thẻ mô hình trên test
 
 Bundle chỉ gồm mô hình và cấu hình (model.int8.onnx, tokenizer.json, calibration.json,
 model_card.json, insight_background.json, golden_predictions.json, baseline/*.skops, manifest.json).
@@ -485,7 +485,7 @@ def build(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--version", required=True, help="vd. v0-smoke hoặc v1.0")
+    parser.add_argument("--version", required=True, help="vd. v0-smoke hoặc v1.1")
     parser.add_argument("--run", default="best", help="'best', tên run hoặc thư mục checkpoint")
     parser.add_argument(
         "--stage", choices=["smoke", "release"], help="mặc định: smoke nếu tên có 'smoke'"

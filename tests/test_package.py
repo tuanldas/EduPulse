@@ -51,8 +51,8 @@ def test_defaults_without_edupulse_home():
     assert s.outputs_dir == REPO_ROOT / "outputs"
     assert s.demo_dir == REPO_ROOT / "demo-data"
     assert s.mps_lock_path == REPO_ROOT / ".mps.lock"
-    assert s.artifacts_dir("v1.0") == REPO_ROOT / "artifacts" / "v1.0"
-    assert s.bundle_dir == REPO_ROOT / "artifacts" / "v1.0"
+    assert s.artifacts_dir("v1.1") == REPO_ROOT / "artifacts" / "v1.1"
+    assert s.bundle_dir == REPO_ROOT / "artifacts" / "v1.1"
     assert (s.ort_threads, s.ner, s.cors_origins, s.source_url) == (2, False, (), "")
     assert s.job_ttl_min == 30
 
@@ -78,7 +78,7 @@ def test_paths_follow_edupulse_home(tmp_path):
     assert s.demo_dir == home / "demo-data"
     assert s.mps_lock_path == home / ".mps.lock"
     assert s.artifacts_dir("v0-smoke") == home / "artifacts" / "v0-smoke"
-    assert s.bundle_dir == home / "artifacts" / "v1.0"
+    assert s.bundle_dir == home / "artifacts" / "v1.1"
     # Mã nguồn đi kèm repo nên không theo EDUPULSE_HOME.
     assert s.vncorenlp_dir == REPO_ROOT / "vendor" / "vncorenlp"
     assert s.web_dir == REPO_ROOT / "apps" / "web" / "out"
@@ -208,7 +208,7 @@ def test_data_and_model_tests_skip_with_reason_until_files_exist(pytester, monke
     processed = tmp_path / "data" / "processed"
     processed.mkdir(parents=True)
     (processed / "MANIFEST.json").write_text("{}", encoding="utf-8")
-    bundle = tmp_path / "artifacts" / "v1.0"
+    bundle = tmp_path / "artifacts" / "v1.1"
     bundle.mkdir(parents=True)
     (bundle / "manifest.json").write_text("{}", encoding="utf-8")
     pytester.runpytest_inprocess().assert_outcomes(passed=3)

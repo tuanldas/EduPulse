@@ -15,7 +15,7 @@ THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 export
 
 # Biến để trống trong `.env` (vd. EDUPULSE_HOME=) coi như chưa đặt.
-BUNDLE_VERSION := $(or $(strip $(BUNDLE_VERSION)),v1.0)
+BUNDLE_VERSION := $(or $(strip $(BUNDLE_VERSION)),v1.1)
 EDUPULSE_HOME  := $(or $(strip $(EDUPULSE_HOME)),$(CURDIR))
 IMAGE          ?= edupulse:$(BUNDLE_VERSION)
 # Bundle đưa vào image qua build context; khớp Settings.bundle_dir trong src/edupulse/config.py.

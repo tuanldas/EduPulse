@@ -3,7 +3,7 @@
 # Image EduPulse: FastAPI phục vụ API và bản web Next.js export tĩnh trên cổng 8000, 1 worker.
 #
 # Bundle mô hình không nằm trong repo nên phải đưa vào bằng build context tên `artifacts`:
-#   make docker-build BUNDLE_VERSION=v1.0 IMAGE=edupulse:v1.0
+#   make docker-build BUNDLE_VERSION=v1.1 IMAGE=edupulse:v1.1
 #   docker compose build            (compose khai sẵn additional_contexts)
 # Build cần mạng (npm, PyPI, apt, và Hugging Face cho dữ liệu demo; tắt bằng EDUPULSE_BUILD_DEMO=0).
 
@@ -45,7 +45,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # ---- runtime ----
 FROM ${PYTHON_IMAGE} AS runtime
-ARG BUNDLE_VERSION=v1.0
+ARG BUNDLE_VERSION=v1.1
 LABEL org.opencontainers.image.title="EduPulse" \
       org.opencontainers.image.licenses="AGPL-3.0-only"
 
