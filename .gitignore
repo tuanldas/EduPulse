@@ -37,3 +37,6 @@ apps/web/test-results/
 # Trạng thái chạy cục bộ của Claude Code
 /.claude/scheduled_tasks.lock
 /.claude/agent-memory/
+
+# File tạm của trình soạn thảo
+*.swp

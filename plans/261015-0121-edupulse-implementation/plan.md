@@ -93,6 +93,13 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Đo RAM: `import skops.io` kéo theo torch và pandas khi chúng có trong môi trường (dev: mô hình cơ sở +~500MB RSS); image chỉ có group `app` nên số chính thức đo trong container, có bật so sánh.
 - Bỏ Recharts (không trang nào dùng): cột chồng, heatmap bằng CSS; biểu đồ độ tin cậy bằng SVG.
 
+### Review bảo mật và quyết định — 2026-10-19 chiều
+- Báo cáo: `plans/reports/code-reviewer-261019-1430-security-review.md` (2 High, 3 Medium, 7 Low; log, CORS, CSV injection, zip bomb, XXE, static, non-root, XSS đạt).
+- Sửa trước khi deploy (dev-api): H1 XLSX ô xa (quét toạ độ ô trước calamine, trần giải nén 30MB), H2 trần thân 512KB cho route ngoài upload, M1 semaphore parse + kiểm sức chứa trước khi đọc, L2/L4–L7; L3 hardening đi cùng compose cuối.
+- Người dùng chọn sửa luật ẩn tên (thầy/cô giáo, hiệu trưởng, MSSV chữ+số, SĐT bàn) → `NORMALIZER_VERSION` 2, bundle v1.1 cùng mô hình. Bằng chứng: 0/16.175 câu UIT-VSFC có chữ hoa hay khớp mẫu mới ⇒ đầu vào mô hình không đổi, số test M2 giữ nguyên (dev-ml ghi `results/metrics/normalizer_v2_invariance.json`). HF sẽ đẩy v1.1.
+- Người dùng chọn gỡ câu gốc UIT-VSFC khỏi repo: `error_samples.csv` chỉ giữ mã câu + nhãn (bản đầy đủ ở `$EDUPULSE_HOME/outputs/`), wireframe dùng câu tự viết; lịch sử commit làm sạch lúc đẩy GitHub (cách làm chốt ở M3).
+- `EDUPULSE_NER` mặc định tắt ở production (RAM, tải mô hình lúc chạy). Không giả định có proxy: giới hạn thân/upload nằm trong app.
+
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
 2. ~~Chấp nhận mốc smoke 17/10?~~ Đã chốt: chấp nhận (Session 3); smoke chạy 15/10.
