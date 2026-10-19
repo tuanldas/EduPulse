@@ -1,4 +1,4 @@
-import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Callout } from "@/components/shared/callout";
 import { Icon } from "@/components/shared/icon";
 import { LabelBadge } from "@/components/shared/label-badge";
@@ -61,7 +61,7 @@ function AlertCard({
         <span>Khoảng tin cậy 95%: ít nhất {lowerBound(alert.evidence.ci_low)}</span>
         <span className="tabular-nums">n = {formatNumber(alert.evidence.n)}</span>
         {alert.group !== null ? <span>Nhóm: {alert.group}</span> : null}
-        {alert.group !== null && illustrativeGroups ? <WrappingIllustrativeBadge /> : null}
+        {alert.group !== null && illustrativeGroups ? <IllustrativeBadge /> : null}
         {keywords.length > 0 ? <span>Nổi bật: {keywords.join(", ")}</span> : null}
         {alert.note ? <span>{alert.note}</span> : null}
       </div>

@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 
-import { WrappingIllustrativeBadge } from "@/components/batch/wrapping-illustrative-badge";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { Icon } from "@/components/shared/icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +46,7 @@ export function GroupFilter({ columnLabel, groups, selected, onChange, illustrat
     <div>
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm">
         <span id={labelId}>Lọc theo {columnLabel}</span>
-        {illustrative ? <WrappingIllustrativeBadge /> : null}
+        {illustrative ? <IllustrativeBadge /> : null}
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger

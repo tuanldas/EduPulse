@@ -12,14 +12,14 @@ function joined(segments: { text: string }[]) {
 
 describe("splitByTerms", () => {
   it("tô đúng các từ khoá và giữ nguyên phần còn lại", () => {
-    const text = "Nhà trường cần cải tiến thiết bị vì máy chiếu quá mờ.";
+    const text = "Ngồi cuối lớp khó đọc chữ vì máy chiếu quá mờ.";
     const segments = splitByTerms(text, ["máy chiếu", "mờ"]);
     expect(marked(segments)).toEqual(["máy chiếu", "mờ"]);
     expect(joined(segments)).toBe(text);
   });
 
   it("không phân biệt hoa/thường và giữ chữ gốc", () => {
-    const segments = splitByTerms("Máy chiếu nhiều lúc không rõ.", ["máy chiếu"]);
+    const segments = splitByTerms("Máy chiếu hôm nay hơi nhoè.", ["máy chiếu"]);
     expect(marked(segments)).toEqual(["Máy chiếu"]);
   });
 
@@ -36,7 +36,7 @@ describe("splitByTerms", () => {
   });
 
   it("khớp mọi lần xuất hiện", () => {
-    const segments = splitByTerms("[đã gỡ câu UIT-VSFC]!", ["máy chiếu"]);
+    const segments = splitByTerms("Lớp em dùng máy chiếu đời cũ, cần đổi sang máy chiếu loại mới.", ["máy chiếu"]);
     expect(marked(segments)).toEqual(["máy chiếu", "máy chiếu"]);
   });
 
@@ -86,8 +86,8 @@ describe("emphasizeSummary", () => {
   });
 
   it("câu không có số cần nhấn mạnh giữ nguyên một đoạn", () => {
-    expect(emphasizeSummary("Không có gì đặc biệt.")).toEqual([
-      { text: "Không có gì đặc biệt.", mark: false },
+    expect(emphasizeSummary("Tóm tắt này không có số nào cần in đậm.")).toEqual([
+      { text: "Tóm tắt này không có số nào cần in đậm.", mark: false },
     ]);
   });
 

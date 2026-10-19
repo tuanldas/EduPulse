@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Callout } from "@/components/shared/callout";
 import { ConfidenceBar } from "@/components/shared/confidence-bar";
 import { FailureNotice } from "@/components/shared/failure-notice";
+import { IllustrativeBadge } from "@/components/shared/illustrative-badge";
 import { LabelBadge } from "@/components/shared/label-badge";
 import { PiiText, countPiiTags } from "@/components/shared/pii-chip";
 import { ProbBars } from "@/components/shared/prob-bars";
@@ -16,13 +17,13 @@ import type { HeadExplanation } from "@/lib/api/types";
 const HEAD: HeadExplanation = {
   label: "negative",
   probability: 0.93,
-  tokens: ["[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "[đã gỡ câu UIT-VSFC]", "."].map((text) => ({
+  tokens: ["Thầy", "hay", "vào lớp", "trễ", "và", "nghỉ", "không báo", "."].map((text) => ({
     text,
     delta: 0,
     p_without: 0.5,
   })),
-  support: [5, 6, 1],
-  oppose: [3],
+  support: [6, 3, 5],
+  oppose: [1],
 };
 
 describe("XaiSentence", () => {
@@ -30,21 +31,22 @@ describe("XaiSentence", () => {
     const { container } = render(<XaiSentence head={HEAD} />);
     const marks = container.querySelectorAll("mark");
     expect(marks).toHaveLength(4);
-    // Thứ tự trong câu: nhiều (hạng 3), đến (phản đối), không (hạng 1), đúng giờ (hạng 2).
-    expect(marks[0]).toHaveTextContent("nhiều");
-    expect(marks[0]).toHaveClass("bg-xai-1", "font-semibold");
-    expect(marks[0]).toHaveTextContent("ủng hộ, hạng 3");
-    expect(marks[1]).toHaveTextContent("đến");
-    expect(marks[1]).toHaveClass("bg-xai-opp", "italic");
-    expect(marks[1]).toHaveTextContent("phản đối");
-    expect(marks[2]).toHaveClass("bg-xai-3");
-    expect(marks[3]).toHaveClass("bg-xai-2");
+    // Thứ tự trong câu: hay (phản đối), trễ (hạng 2), nghỉ (hạng 3), không báo (hạng 1).
+    expect(marks[0]).toHaveTextContent("hay");
+    expect(marks[0]).toHaveClass("bg-xai-opp", "italic");
+    expect(marks[0]).toHaveTextContent("phản đối");
+    expect(marks[1]).toHaveTextContent("trễ");
+    expect(marks[1]).toHaveClass("bg-xai-2");
+    expect(marks[2]).toHaveTextContent("nghỉ");
+    expect(marks[2]).toHaveClass("bg-xai-1", "font-semibold");
+    expect(marks[2]).toHaveTextContent("ủng hộ, hạng 3");
+    expect(marks[3]).toHaveClass("bg-xai-3");
   });
 
   it("ghép câu đúng khoảng trắng, dấu chấm dính vào từ cuối", () => {
     const { container } = render(<XaiSentence head={HEAD} />);
     expect(container.textContent?.replace(/\s*\(.*?\)/g, "").replace(/[123−]/g, "")).toBe(
-      "[đã gỡ câu UIT-VSFC].",
+      "Thầy hay vào lớp trễ và nghỉ không báo.",
     );
   });
 
@@ -149,5 +151,13 @@ describe("thành phần hiển thị nhãn", () => {
       </Callout>,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Câu có vẻ được gõ không dấu. Hãy gõ lại có dấu nếu được.");
+  });
+
+  it("IllustrativeBadge co theo khung và xuống dòng được (không bị cắt hay làm trang cuộn ngang)", () => {
+    render(<IllustrativeBadge />);
+    const badge = screen.getByText("Dữ liệu minh hoạ — nhóm gán ngẫu nhiên");
+    expect(badge).toHaveClass("max-w-full", "shrink", "whitespace-normal");
+    expect(badge).not.toHaveClass("whitespace-nowrap");
+    expect(badge).not.toHaveClass("shrink-0");
   });
 });

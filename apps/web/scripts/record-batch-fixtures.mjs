@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Ghi fixture của phân tích hàng loạt và dashboard từ API THẬT, để test giao diện dùng đúng hình dạng và
 // giá trị máy chủ trả về (không viết tay). Dữ liệu vào là 20 câu tự viết của `tests/fixtures/golden_sentences.json`
-// (không có câu UIT-VSFC) cộng cột nhóm "minh hoạ" gán vòng tròn A–E, nên fixture có cả câu không dấu, câu có
+// (không có câu UIT-VSFC; riêng g01 được thay bằng câu cùng nhãn, xem fixture-sentences.mjs) cộng cột nhóm "minh hoạ" gán vòng tròn A–E, nên fixture có cả câu không dấu, câu có
 // số điện thoại, câu dài chưa giải thích được và nhóm minh hoạ.
 //
 //   cd apps/web && FIXTURE_API_BASE=http://localhost:8000 node scripts/record-batch-fixtures.mjs
@@ -11,6 +11,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { fixtureSentences } from "./fixture-sentences.mjs";
 
 const base = (process.env.FIXTURE_API_BASE ?? "http://localhost:8000").replace(/\/+$/, "");
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -44,7 +46,7 @@ async function save(name, data) {
 }
 
 const golden = JSON.parse(await readFile(goldenPath, "utf-8"));
-const sentences = golden.items.map((item) => item.text);
+const sentences = fixtureSentences(golden.items).map((item) => item.text);
 const csv = [
   `${csvCell(TEXT_COLUMN)},${csvCell(GROUP_COLUMN)}`,
   ...sentences.map((text, index) => `${csvCell(text)},${csvCell(GROUPS[index % GROUPS.length])}`),

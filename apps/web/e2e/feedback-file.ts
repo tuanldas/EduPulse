@@ -63,7 +63,7 @@ const PHRASES: Record<FeedbackTopic, TopicPhrases> = {
       ],
       positive: [
         "giảng bài rất dễ hiểu và có nhiều ví dụ thực tế",
-        "luôn [đã gỡ câu UIT-VSFC]",
+        "sẵn sàng giảng lại khi cả lớp chưa nắm được bài",
         "chuẩn bị bài giảng kỹ và truyền đạt rất rõ ràng",
         "thân thiện và lắng nghe ý kiến của cả lớp",
         "chấm bài nhanh và nhận xét chi tiết từng lỗi sai",

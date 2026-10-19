@@ -425,18 +425,18 @@ body:not(.anno) .illus{display:none}
 <div class="v">
   <div class="a" data-st="st.text_area(max_chars=500, key='cau')">
     <div class="lbl">Câu góp ý <span class="mi" aria-hidden="true">help</span></div>
-    <div class="ta focus">[đã gỡ câu UIT-VSFC].<span class="cnt num">40/500</span></div>
+    <div class="ta focus">Thầy hay vào lớp trễ, có hôm nghỉ không báo.<span class="cnt num">44/500</span></div>
   </div>
   <div class="a" data-st="st.pills(selection_mode='single')">
     <div class="lbl">Hoặc thử câu mẫu (UIT-VSFC)</div>
     <div class="pills">
-      <span class="pill">Thầy giảng dạy nhiệt tình dễ hiểu.</span>
-      <span class="pill">Thầy dạy lý thuyết tạm ổn.</span>
-      <span class="pill">[đã gỡ câu UIT-VSFC].</span>
-      <span class="pill">Phòng học có máy chiếu quá mờ…</span>
-      <span class="pill">[đã gỡ câu UIT-VSFC].</span>
-      <span class="pill on">[đã gỡ câu UIT-VSFC].</span>
-      <span class="pill">thay giang day nhiet tinh de hieu <span class="n">· không dấu</span></span>
+      <span class="pill">Cô giải thích kỹ, nghe là hiểu liền.</span>
+      <span class="pill">Lý thuyết học cũng bình thường.</span>
+      <span class="pill">Môn học thực tế, áp dụng được ngay.</span>
+      <span class="pill">Điều hoà phòng học hay bị hỏng…</span>
+      <span class="pill">Em thấy chưa có gì để góp ý thêm.</span>
+      <span class="pill on">Thầy hay vào lớp trễ, có hôm nghỉ không báo.</span>
+      <span class="pill">co giai thich ky nghe la hieu lien <span class="n">· không dấu</span></span>
     </div>
   </div>
   <div class="row wrap-m" style="align-items:center;gap:12px">
@@ -503,11 +503,11 @@ body:not(.anno) .illus{display:none}
     <h3 class="t3"><span class="mi">manage_search</span>Vì sao mô hình đoán như vậy?</h3>
     <span class="a" data-st="st.segmented_control"><span class="seg"><span class="on"><span class="mi xs">mood</span>Cảm xúc · Tiêu cực</span><span><span class="mi xs">category</span>Chủ đề · Giảng viên</span></span></span>
   </div>
-  <div class="xs a al-l" data-st="st.markdown · :color[từ]{background=rgba(…)}">Có <span class="w s1">nhiều<sup>3</sup></span> thầy cô <span class="w o">đến<sup>−</sup></span> lớp <span class="w s3">không<sup>1</sup></span> <span class="w s2">đúng giờ<sup>2</sup></span>.</div>
+  <div class="xs a al-l" data-st="st.markdown · :color[từ]{background=rgba(…)}">Thầy <span class="w o">hay<sup>−</sup></span> vào lớp <span class="w s2">trễ<sup>2</sup></span>, có hôm <span class="w s1">nghỉ<sup>3</sup></span> <span class="w s3">không<sup>1</sup></span> báo.</div>
   <div class="xl">
     <span><span class="k s">từ</span> ủng hộ “Tiêu cực” (số 1 = mạnh nhất, màu đậm = mạnh)</span>
     <span><span class="k o">từ</span> kéo về nhãn khác (chữ nghiêng, dấu −)</span>
-    <span>Đơn vị là từ ghép, ví dụ “thầy cô”, “đúng giờ”.</span>
+    <span>Đơn vị là từ ghép, ví dụ “giảng viên”, “đúng giờ”.</span>
   </div>
   <div class="cols c32">
     <div class="dfw a" data-st="st.dataframe(hide_index=True) · ProgressColumn">
@@ -515,9 +515,9 @@ body:not(.anno) .illus{display:none}
         <thead><tr><th class="idx">#</th><th>Từ</th><th>Bỏ từ này thì “Tiêu cực”</th><th>Mức thay đổi</th><th>Vai trò</th></tr></thead>
         <tbody>
           <tr><td class="idx">1</td><td><b>không</b></td><td class="num">93% → 46%</td><td><div class="pc"><span class="bar"><i style="width:94%"></i></span>−47</div></td><td>Ủng hộ</td></tr>
-          <tr><td class="idx">2</td><td><b>đúng giờ</b></td><td class="num">93% → 75%</td><td><div class="pc"><span class="bar"><i style="width:36%"></i></span>−18</div></td><td>Ủng hộ</td></tr>
-          <tr><td class="idx">3</td><td><b>nhiều</b></td><td class="num">93% → 87%</td><td><div class="pc"><span class="bar"><i style="width:12%"></i></span>−6</div></td><td>Ủng hộ</td></tr>
-          <tr><td class="idx">−</td><td>đến</td><td class="num">93% → 95%</td><td><div class="pc"><span class="bar"><i style="width:4%;background:var(--neu)"></i></span>+2</div></td><td class="fg-mut">Phản đối</td></tr>
+          <tr><td class="idx">2</td><td><b>trễ</b></td><td class="num">93% → 75%</td><td><div class="pc"><span class="bar"><i style="width:36%"></i></span>−18</div></td><td>Ủng hộ</td></tr>
+          <tr><td class="idx">3</td><td><b>nghỉ</b></td><td class="num">93% → 87%</td><td><div class="pc"><span class="bar"><i style="width:12%"></i></span>−6</div></td><td>Ủng hộ</td></tr>
+          <tr><td class="idx">−</td><td>hay</td><td class="num">93% → 95%</td><td><div class="pc"><span class="bar"><i style="width:4%;background:var(--neu)"></i></span>+2</div></td><td class="fg-mut">Phản đối</td></tr>
         </tbody>
       </table>
     </div>
@@ -532,12 +532,12 @@ body:not(.anno) .illus{display:none}
     <div class="box v a" data-st="st.container(border=True)">
       <div class="row" style="align-items:center;justify-content:space-between"><b>PhoBERT đa nhiệm</b><span class="bd bd-pri">Đang dùng</span></div>
       <div class="row wrap-m" style="gap:8px"><span class="bd bd-neg"><span class="mi">sentiment_dissatisfied</span>Tiêu cực · 93%</span><span class="bd bd-gv"><span class="mi">co_present</span>Giảng viên · 58%</span></div>
-      <p class="cap">Từ quyết định: <b>không</b>, <b>đúng giờ</b> · chủ đề: <b>thầy cô</b>. Khoảng 0,4 giây (kèm giải thích).</p>
+      <p class="cap">Từ quyết định: <b>không</b>, <b>trễ</b> · chủ đề: <b>thầy</b>. Khoảng 0,4 giây (kèm giải thích).</p>
     </div>
     <div class="box v a" data-st="st.container(border=True)">
       <div class="row" style="align-items:center;justify-content:space-between"><b>TF-IDF + LinearSVC</b><span class="bd bd-gray">Mô hình cơ sở</span></div>
       <div class="row wrap-m" style="gap:8px"><span class="bd bd-neg"><span class="mi">sentiment_dissatisfied</span>Tiêu cực · 81%</span><span class="bd bd-csvc"><span class="mi">domain</span>Cơ sở vật chất · 47%</span></div>
-      <p class="cap">Từ quyết định: <b>không</b>, <b>đúng giờ</b> · chủ đề: <b>lớp</b>, <b>đến</b>. Dưới 0,01 giây.</p>
+      <p class="cap">Từ quyết định: <b>không</b>, <b>trễ</b> · chủ đề: <b>lớp</b>, <b>nghỉ</b>. Dưới 0,01 giây.</p>
     </div>
   </div>
   <div class="al info a" data-st="st.info"><span class="mi">compare_arrows</span><div>Hai mô hình <b>khác nhau về chủ đề</b>. Khi hai mô hình bất đồng, nên để người xem xét câu này.</div></div>
@@ -552,7 +552,7 @@ body:not(.anno) .illus{display:none}
   <div class="cols c2">
     <div class="state v">
       <div class="sh"><span class="mi xs">label</span>A · Câu gõ không dấu</div>
-      <div class="ta" style="min-height:0">thay giang day nhiet tinh de hieu</div>
+      <div class="ta" style="min-height:0">co giai thich ky nghe la hieu lien</div>
       <div class="al warn a" data-st="st.warning"><span class="mi">spellcheck</span><div><b>Câu có vẻ được gõ không dấu.</b> Mô hình học từ tiếng Việt có dấu nên kết quả có thể kém chính xác. Hãy gõ lại có dấu nếu được.</div></div>
       <div class="row wrap-m" style="align-items:center;gap:8px"><span class="bd bd-flag"><span class="mi fill">flag</span>Cần xem xét</span><span class="cap" style="color:var(--text)">Lý do: <b>Câu không dấu</b> (luôn gắn cờ, kể cả khi độ tin cậy cao)</span></div>
       <div class="row wrap-m" style="gap:8px"><span class="bd bd-pos"><span class="mi">sentiment_satisfied</span>Tích cực · 71%</span><span class="bd bd-gv"><span class="mi">co_present</span>Giảng viên · 80%</span></div>
@@ -565,15 +565,15 @@ body:not(.anno) .illus{display:none}
     </div>
     <div class="state v">
       <div class="sh"><span class="mi xs">label</span>C · Câu quá dài để tô từ (&gt; 40 từ) · độ tin cậy vẫn cao</div>
-      <div class="ta" style="min-height:0;font-size:15px">[đã gỡ câu UIT-VSFC].</div>
-      <div class="al info a" data-st="st.info"><span class="mi">short_text</span><div><b>Câu dài 45 từ</b> (&gt; 40) nên không tô từ để giữ tốc độ. Kết quả phân loại vẫn dùng được; câu dài không tự bị gắn cờ.</div></div>
+      <div class="ta" style="min-height:0;font-size:15px">Em mong nhà trường xếp thêm giờ thực hành cho môn học này vì lý thuyết ở lớp quá nặng, bài tập thì khó mà thầy chưa kịp hướng dẫn kỹ, nên cả nhóm phải tự tìm tài liệu bên ngoài để làm đồ án nhóm.</div>
+      <div class="al info a" data-st="st.info"><span class="mi">short_text</span><div><b>Câu dài 46 từ</b> (&gt; 40) nên không tô từ để giữ tốc độ. Kết quả phân loại vẫn dùng được; câu dài không tự bị gắn cờ.</div></div>
       <div class="row wrap-m" style="gap:8px"><span class="bd bd-neg"><span class="mi">sentiment_dissatisfied</span>Tiêu cực · 96%</span><span class="bd bd-ct"><span class="mi">menu_book</span>Chương trình · 88%</span></div>
     </div>
     <div class="state v">
       <div class="sh"><span class="mi xs">label</span>D · Đủ tin cậy, không cần xem xét</div>
-      <div class="ta" style="min-height:0">Thầy giảng dạy nhiệt tình dễ hiểu.</div>
+      <div class="ta" style="min-height:0">Cô giải thích kỹ, nghe là hiểu liền.</div>
       <div class="row wrap-m" style="align-items:center;gap:8px"><span class="bd bd-pos lg"><span class="mi">sentiment_satisfied</span>Tích cực · 99%</span><span class="bd bd-gv lg"><span class="mi">co_present</span>Giảng viên · 98%</span><span class="cap"><span class="mi xs">check_circle</span> Đủ tin cậy</span></div>
-      <div class="xs" style="font-size:18px;line-height:2">Thầy <span class="w s1">giảng dạy<sup>3</sup></span> <span class="w s3">nhiệt tình<sup>1</sup></span> <span class="w s2">dễ hiểu<sup>2</sup></span>.</div>
+      <div class="xs" style="font-size:18px;line-height:2">Cô <span class="w s1">giải thích<sup>3</sup></span> <span class="w s2">kỹ<sup>2</sup></span>, nghe là <span class="w s3">hiểu<sup>1</sup></span> liền.</div>
       <p class="cap">Không có từ phản đối đáng kể nên không có từ in nghiêng.</p>
     </div>
   </div>

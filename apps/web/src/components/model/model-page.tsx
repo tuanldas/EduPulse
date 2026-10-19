@@ -8,6 +8,7 @@ import { Icon, type IconName } from "@/components/shared/icon";
 import { Caption, SectionHeading } from "@/components/shared/section-heading";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { anchorId } from "@/lib/anchor";
 import type { ApiFailure } from "@/lib/api/errors";
 
 import { LicenseCitation } from "./license-citation";
@@ -63,7 +64,7 @@ export function ModelPage() {
   // cuộn lại khi dữ liệu đã nạp (thành công hay lỗi) và bố cục đã ổn định.
   useEffect(() => {
     if (state.status === "loading") return;
-    const id = decodeURIComponent(window.location.hash.slice(1));
+    const id = anchorId(window.location.hash);
     if (id) document.getElementById(id)?.scrollIntoView();
   }, [state.status]);
 
