@@ -157,7 +157,7 @@ def test_a_sentence_of_only_punctuation_has_nothing_to_occlude():
 
 @pytest.mark.model
 def test_occlusion_runs_one_forward_per_non_punctuation_word_plus_the_sentence(analyzer: Analyzer):
-    text = "Thầy giảng bài [đã gỡ câu UIT-VSFC] :)"
+    text = "Cô hướng dẫn tỉ mỉ, bài tập vừa sức, em học thấy vui :)"
     prepared = prepare(text, use_ner=False)
     tokens = prepared.model_text.split()
     words = [t for t in tokens if not is_punctuation(t)]

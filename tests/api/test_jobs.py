@@ -17,7 +17,7 @@ from edupulse.engine.service import Analyzer
 pytestmark = pytest.mark.model
 
 SENTENCES = [
-    "[đã gỡ câu UIT-VSFC].",
+    "Thầy giải thích rõ ràng, em nghe một lần là hiểu.",
     "Phòng máy nóng, máy chiếu mờ.",
     "Giáo trình cần cập nhật thêm.",
     "Em không có ý kiến gì thêm.",

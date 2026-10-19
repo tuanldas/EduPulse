@@ -21,10 +21,10 @@ from edupulse.text import ngrams, prepare
 pytestmark = pytest.mark.model
 
 SENTENCES = [
-    "[đã gỡ câu UIT-VSFC].",
+    "Thầy giải thích rõ ràng, em nghe một lần là hiểu.",
     "Phòng học có máy chiếu quá mờ, quạt kêu to.",
-    "[đã gỡ câu UIT-VSFC].",
-    "[đã gỡ câu UIT-VSFC].",
+    "Giảng viên hay vào lớp muộn và ra về sớm.",
+    "Chương trình đào tạo bám sát nhu cầu tuyển dụng.",
     "Em không có ý kiến gì về vấn đề này.",
     "Giáo trình đã cũ, cần cập nhật thêm ví dụ thực tế.",
 ]

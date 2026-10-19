@@ -856,8 +856,9 @@ def live_base():
     thread.join(30)
 
 
+# Câu tự viết; câu cuối dài hơn giới hạn giải thích (25 từ) để máy chủ từ chối giải thích nó.
 REAL_TEXTS = [
-    "[đã gỡ câu UIT-VSFC].",
+    "Thầy giải thích rõ ràng, em nghe một lần là hiểu.",
     "Phòng máy nóng, máy chiếu mờ, quạt kêu to.",
     "Giáo trình cần được cập nhật thêm ví dụ thực tế.",
     "Em không có ý kiến gì thêm về môn học này.",
@@ -865,9 +866,9 @@ REAL_TEXTS = [
     "Lịch thi dày đặc, mong nhà trường dàn đều hơn.",
     "Wifi trong giảng đường yếu nên không tra cứu tài liệu được.",
     "Môn học hữu ích và gắn với thực tế công việc.",
-    "[đã gỡ câu UIT-VSFC] "
-    "thuyết suông [đã gỡ câu UIT-VSFC] "
-    "lý thuyết.",
+    "Em mong nhà trường bố trí thêm giờ thực hành ngay trong phòng máy, vì chỉ nghe giảng lý "
+    "thuyết thì rất khó hình dung, nhiều bạn học xong vẫn chưa tự làm được bài tập, còn thầy "
+    "cô thì không đủ thời gian hướng dẫn từng nhóm.",
 ]
 
 
