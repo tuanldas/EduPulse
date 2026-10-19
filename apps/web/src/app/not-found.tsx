@@ -4,7 +4,7 @@ import { Icon } from "@/components/shared/icon";
 import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/shell/page-header";
 
-export const metadata = { title: "Không tìm thấy trang" };
+export const metadata = { title: { absolute: "Không tìm thấy trang · EduPulse" } };
 
 // Next sinh `404.html` từ file này; FastAPI trả nó khi trình duyệt mở một đường dẫn không có.
 export default function NotFound() {

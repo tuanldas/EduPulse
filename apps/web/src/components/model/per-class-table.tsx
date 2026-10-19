@@ -18,7 +18,7 @@ interface PerClassTableProps {
 /** Bảng chỉ số từng lớp: Precision, Recall, F1 (kèm thanh) và số câu của lớp trong tập đánh giá. */
 export function PerClassTable({ task, metrics, splitName }: PerClassTableProps) {
   return (
-    <Table>
+    <Table label={`Chỉ số từng lớp trên tập ${splitName}`}>
       <caption className="sr-only">Chỉ số từng lớp trên tập {splitName}</caption>
       <TableHeader>
         <TableRow>

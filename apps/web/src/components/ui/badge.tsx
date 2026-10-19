@@ -8,7 +8,7 @@ import { TONE_CLASS } from "@/lib/colors"
 // Badge theo wireframe (.bd): bo 6px, chữ 14px/500, cặp chữ-nền theo khoá màu ngữ nghĩa. Màu luôn đi
 // kèm icon + chữ ở chỗ dùng (docs/design-guidelines.md mục 1.3).
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-px text-sm leading-[1.6] font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [&>svg]:pointer-events-none [&>svg]:size-4",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-px text-sm leading-[1.6] font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/70 [&>svg]:pointer-events-none [&>svg]:size-4",
   {
     variants: {
       variant: {

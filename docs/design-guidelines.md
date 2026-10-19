@@ -25,7 +25,7 @@
 | border | `#918F87` | `#5F6573` | `--border`, `--input` — 3,1 / 3,2:1 (WCAG 1.4.11 cho ô nhập, khung, nút viền) |
 | divider | `#DCDAD2` | `#2C313A` | `--divider` — đường kẻ trang trí, tab, sidebar |
 | grid | `#E4E2DB` | `#272C35` | `--grid` — lưới trong bảng, nền thanh tiến độ |
-| primary | `#3A4BD0` | `#5B68EE` | `--primary` — nền nút/công tắc/thanh; chữ trắng trên nút 6,8 / 4,5:1 |
+| primary | `#3A4BD0` | `#5B68EE` | `--primary` — nền nút/công tắc/thanh; chữ trắng trên nút 6,8 / 4,5:1. Hover `--primary-hover`: `#2F3EBB` / `#4F5CE0` (tối chọn bậc **tối hơn** để chữ trắng vẫn ≥ 5,3:1; `#6D79F2` của wireframe sáng hơn nên chỉ 3,7:1, axe bắt được khi con trỏ nằm trên nút) |
 | primary-text | `#3A4BD0` | `#8B96FF` | `--primary-text` — **chữ** màu primary (chip chọn, tab, số hạng): 6,5 / 7,0:1. `#5B68EE` làm chữ trên nền tối chỉ 4,1:1 nên không dùng |
 | primary-soft | `#E8EAFB` | `#22284F` | `--primary-soft` — nền mục đang chọn (chip, phân đoạn); chữ `primary-text` trên đó 5,7 / 5,3:1 |
 | link | `#3A4BD0` | `#8B96FF` | `--link` — 6,5 / 7,0:1 |
@@ -132,7 +132,7 @@ Quy tắc:
 - Mọi cặp ở mục 2 đã đo bằng test tự động (`tests/contrast.test.ts`): chữ ≥ 4,5:1, viền và fill ≥ 3:1, ở cả hai theme.
 - Không chỉ dùng màu: badge = icon + chữ; XAI = số hạng, chữ đậm / chữ nghiêng + “−” (kèm chữ ẩn “ủng hộ, hạng 1” cho trình đọc màn hình); heatmap có số trong ô và viền nét đứt cho n < 20; confusion matrix có số trong ô.
 - Mỗi biểu đồ có caption nêu ý chính (thay alt text) và bảng số tương đương (reliability diagram có bảng số; confusion matrix và bảng từng lớp vốn là bảng).
-- Điều hướng bàn phím và focus ring do Base UI cùng lớp `focus-visible:ring-ring/50`; có liên kết “Bỏ qua điều hướng”. Kết quả phân tích báo cho trình đọc màn hình bằng một câu ngắn ở vùng `role="status"`, không đọc lại cả trang.
+- Điều hướng bàn phím do Base UI; vòng tiêu điểm là `focus-visible:ring-ring/70` (độ đậm 70% mới đạt ≥ 3:1 trên nền trang cả hai theme, 50% chỉ 2,3–2,5:1) và phần tử không tự vẽ vòng dùng viền mặc định màu `--ring` đặc; điều khiển phân đoạn đổi mục bằng phím mũi tên. Có liên kết “Bỏ qua điều hướng” đưa tiêu điểm vào nội dung chính. Kết quả phân tích báo cho trình đọc màn hình bằng một câu ngắn ở vùng `role="status"`, không đọc lại cả trang.
 - Không tự thêm animation; `prefers-reduced-motion: reduce` tắt mọi chuyển động (`globals.css`).
 - Mobile 390px: cột xếp dọc, không cuộn ngang trang (có kiểm bằng Playwright); nút cao 40px (desktop-first, chấp nhận dưới 44px).
 

@@ -51,7 +51,7 @@ function ArchitectureRowView({ row }: { row: Architecture }) {
 export function ComparisonTable({ baselines, architectures }: { baselines: Baseline[]; architectures: Architecture[] }) {
   if (baselines.length === 0 && architectures.length === 0) return null;
   return (
-    <Table>
+    <Table label="So sánh với mô hình cơ sở">
       <caption className="sr-only">So sánh với mô hình cơ sở</caption>
       <TableHeader>
         <TableRow>

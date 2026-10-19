@@ -183,7 +183,7 @@
   --popover-foreground: #e7e9ee;
   --primary: #5b68ee;
   --primary-foreground: #ffffff;
-  --primary-hover: #6d79f2;
+  --primary-hover: #4f5ce0; /* tối hơn nền nút: chữ trắng khi hover vẫn ≥ 5,3:1 (#6d79f2 của wireframe chỉ 3,7:1) */
   --primary-soft: #22284f;
   /* Chữ màu primary trên nền tối phải sáng hơn nền nút (#5b68ee chỉ đạt 4,09:1 làm chữ). */
   --primary-text: #8b96ff;
@@ -231,6 +231,10 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Tiêu điểm bàn phím của phần tử không tự vẽ vòng riêng (liên kết trong đoạn văn, mục lục): màu ring đủ đậm. */
+  :focus-visible {
+    outline-color: var(--ring);
   }
   html {
     @apply font-sans;

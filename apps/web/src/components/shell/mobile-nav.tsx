@@ -16,7 +16,7 @@ import { ThemeToggle } from "./theme-toggle";
 export function MobileNav({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div
+    <header
       className={cn(
         "sticky top-0 z-20 flex h-14 items-center gap-2.5 border-b border-divider bg-background px-3",
         className,
@@ -37,6 +37,6 @@ export function MobileNav({ className }: { className?: string }) {
       </Link>
       <div className="flex-1" />
       <ThemeToggle />
-    </div>
+    </header>
   );
 }
