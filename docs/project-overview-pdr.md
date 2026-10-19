@@ -14,27 +14,27 @@ Không dừng ở một classifier: hệ thống nhận góp ý → suy luận �
 - Giảng viên, sinh viên (demo): thử phân tích một câu.
 - Hội đồng chấm đồ án: xem demo, model card, so sánh mô hình.
 
-> **Thay đổi 2026-10-15:** giao diện chuyển từ Streamlit sang **Next.js (frontend) + API Python (backend)**. Thiết kế thị giác và nội dung 4 trang trong `docs/wireframes/` vẫn giữ. Nơi host miễn phí sẽ chốt lại trong kế hoạch; mục 5 và 7 bên dưới hiểu theo kiến trúc mới.
+> **Thay đổi 2026-10-15:** giao diện chuyển từ Streamlit sang **Next.js (frontend) + FastAPI (backend)** trong 1 container Docker, chạy trên VPS của người dùng. Thiết kế thị giác và nội dung 4 trang trong `docs/wireframes/` giữ nguyên. **2026-10-17:** bỏ train thêm (chỉ 1 run PhoBERT đa nhiệm, seed 42).
 
 ## Phạm vi (chốt 2026-10-14/15)
 
 1. Dữ liệu UIT-VSFC (`uitnlp/vietnamese_students_feedback`, revision `refs/convert/parquet`), giữ split chuẩn 11.426 / 1.583 / 3.166.
 2. EDA, sinh hình và bảng cho báo cáo.
 3. Baseline: TF-IDF + LinearSVC / LogisticRegression / Naive Bayes.
-4. Mô hình chính: fine-tune `vinai/phobert-base-v2`, 1 encoder + 2 head (bản deploy); 2 mô hình đơn nhiệm làm đối chứng.
-5. App Streamlit 4 trang: phân tích 1 câu · phân tích hàng loạt (CSV/XLSX) · dashboard & insight · mô hình & đạo đức.
+4. Mô hình chính: fine-tune `vinai/phobert-base-v2`, 1 encoder + 2 head (bản deploy, 1 run seed 42). So sánh với 2 mô hình đơn nhiệm chỉ ở mức thí nghiệm sơ bộ (validation, 1 seed).
+5. App web 4 trang (Next.js export tĩnh do FastAPI phục vụ cùng origin): phân tích 1 câu · phân tích hàng loạt (CSV/XLSX) · dashboard & insight · mô hình & đạo đức.
 6. Bốn tính năng thông minh:
    - (A) XAI: tô các từ quyết định dự đoán (occlusion bỏ-từng-từ).
    - (B) Xác suất đã hiệu chỉnh, cờ "cần xem xét", sửa nhãn và xuất file để huấn luyện lại.
    - (C) Insight & khuyến nghị theo luật (từ khoá đặc trưng, câu tiêu biểu, cảnh báo so với mức nền từng chủ đề).
    - (D) Ẩn dữ liệu cá nhân (tên, email, SĐT, MSSV, CCCD, URL); không lưu dữ liệu người dùng.
-7. Deploy miễn phí: Streamlit Community Cloud từ repo GitHub public; model trên Hugging Face Hub (repo public). Dự phòng: chạy local + Cloudflare Quick Tunnel.
+7. Deploy: image Docker + `docker compose` trên VPS của người dùng, chạy 24/7; model trên Hugging Face Hub (repo public); mã nguồn trên GitHub (repo public).
 
 ## Ràng buộc
 
 - Khoảng 2 tuần. Máy dev Apple M1 Pro 16GB (MPS), dự phòng Google Colab.
 - Tập test chỉ dùng cho lần đánh giá cuối.
-- Host miễn phí (RAM ~0,7–2,7GB, CPU dùng chung) → runtime ONNX Runtime int8, không torch.
+- Host: VPS 2 vCPU / 2GB RAM (+ swap ≥ 2GB) → runtime ONNX Runtime int8, không torch; container giới hạn 2 CPU / 1,5GB.
 - Không dùng LLM / agent (tránh trùng đề tài TaskMate).
 - Giao diện tiếng Việt.
 - License: PhoBERT-base-v2 AGPL-3.0, VnCoreNLP GPL-3.0+ → repo public, có link mã nguồn trong app. UIT-VSFC chỉ dùng học thuật, phi thương mại.
@@ -59,4 +59,5 @@ Không dừng ở một classifier: hệ thống nhận góp ý → suy luận �
 ## Tài liệu liên quan
 
 - Công nghệ: [tech-stack.md](tech-stack.md)
-- Research (bằng chứng, số đo): `plans/reports/researcher-261014-1913-phobert-vsfc-modeling.md`, `...-hf-spaces-streamlit-deploy.md`, `...-intelligent-layer-xai-insights.md`
+- Research (bằng chứng, số đo): `plans/reports/researcher-261014-1913-phobert-vsfc-modeling.md`, `...-intelligent-layer-xai-insights.md`; kiến trúc web/API: `plans/261015-0121-edupulse-implementation/research/researcher-02-architecture.md`
+- Kết quả đánh giá cuối: `results/tables/test_main.md`, `results/tables/significance.md`
