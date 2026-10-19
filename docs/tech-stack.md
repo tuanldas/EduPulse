@@ -15,7 +15,7 @@ Bằng chứng và số đo: `plans/reports/researcher-261014-1913-*.md` (phiên
 | Export, suy luận | ONNX (`torch.onnx.export(dynamo=True)`) → `onnxruntime` int8 dynamic (MatMul, per-channel, reduce_range), giữ FP32 cho FFN-ra của 6 lớp đầu và 2 đầu phân loại; chạy từng câu (batch=1) ở mọi đường + `tokenizers` | onnxruntime 1.31.0, tokenizers 0.23.3 | Model 333MB (FP32 545MB), ~9 ms/câu trên M1 so với 17,8 ms của FP32; macro-F1 val giảm ≤0,5 điểm. Int8 toàn phần (291MB) trượt cổng ≤1 điểm. Chạy theo lô làm nhãn phụ thuộc câu cùng lô nên không dùng. Không cần torch khi chạy app |
 | Lưu model | Hugging Face Hub (repo model public) qua `huggingface-hub` | 2.2.0 | Miễn phí, không cần token khi tải |
 | API | FastAPI + Uvicorn, 1 worker; batch là job nền, giao diện hỏi tiến độ mỗi giây | fastapi 0.143.1, uvicorn 0.54.0, python-multipart 0.0.32 | Trạng thái batch nằm trong RAM nên bắt buộc 1 worker; endpoint tốn CPU dùng `def` để chạy trong threadpool |
-| Giao diện | Next.js `output: "export"` + React + Tailwind CSS v4 + shadcn/ui (Base UI) + Recharts; FastAPI phục vụ thư mục `out/` cùng origin | next 16.4.1, react 19.3.1, tailwindcss 4.3.3, shadcn 4.21.5, recharts 3.10.1, TypeScript 5.9.3 | 1 tiến trình, không CORS, không cần Node lúc chạy. Ghim TypeScript 5.9.3 vì `openapi-typescript` hỏng với 7.x |
+| Giao diện | Next.js `output: "export"` + React + Tailwind CSS v4 + shadcn/ui (Base UI); biểu đồ tự vẽ bằng CSS grid/flex và SVG; FastAPI phục vụ thư mục `out/` cùng origin | next 16.4.1, react 19.3.1, tailwindcss 4.3.3, shadcn 4.21.5, TypeScript 5.9.3 | 1 tiến trình, không CORS, không cần Node lúc chạy. Ghim TypeScript 5.9.3 vì `openapi-typescript` hỏng với 7.x |
 | Hợp đồng API | OpenAPI do FastAPI sinh → `openapi-typescript` + `openapi-fetch`; `schema.d.ts` commit sẵn | 7.13.0 / 0.17.0 | Kiểu TypeScript khớp API; pytest so snapshot OpenAPI để bắt lệch |
 | Công cụ web | Node + pnpm | Node 24, pnpm 12.11.2 | Chỉ cần khi dev và ở stage build web của image |
 | Ẩn dữ liệu cá nhân | regex + luật tên "xưng hô + Viết hoa" + `underthesea` NER (tuỳ chọn, bật bằng `EDUPULSE_NER=1`, chạy trên chữ gốc) | 9.5.0 | NER chỉ nhận tên khi còn chữ hoa; tên viết thường không bắt được nên giao diện ghi rõ giới hạn |
@@ -38,6 +38,7 @@ Bằng chứng và số đo: `plans/reports/researcher-261014-1913-*.md` (phiên
 | LIME, SHAP | Vượt ngân sách 2 giây/câu |
 | Attention, Gradient×Input làm XAI | Độ trung thực đo được chỉ ngang chọn ngẫu nhiên |
 | Plotly, WordCloud | Thêm phụ thuộc; WordCloud cần font phía server |
+| Recharts | Các biểu đồ đều đơn giản: cột chồng có vạch mức nền từng hàng và heatmap dựng bằng CSS, biểu đồ độ tin cậy bằng SVG; gỡ ngày 2026-10-19 vì không trang nào dùng |
 
 ## Lưu ý khi code
 

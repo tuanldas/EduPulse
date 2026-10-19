@@ -75,17 +75,23 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Người dùng duyệt bỏ 8 run MPS còn lại của phase 5 (không tắt Docker, không chạy đêm). Thay bằng: bootstrap CI 95% trên test thay cho mean ± std 3 seed; so sánh MTL/STL dùng thí nghiệm sơ bộ của research (val, 1 seed, p=0,31/0,46) và ghi rõ là sơ bộ; vòng người duyệt (HITL) chạy trọn với LinearSVC trên CPU + smoke retrain PhoBERT 20 bước trên CPU. Bản deploy = MTL seed 42 (`v0-smoke` → đánh giá test 1 lần → `v1.0`).
 - Bối cảnh: mạng mất 2 lần (tối 15/10) làm toàn bộ agent dừng tới 19/10; mất ~3,5 ngày lịch. Docker Desktop của người dùng đang tắt (không do team).
 
-### M2 — 2026-10-19 (sớm 1–2 ngày): trình người dùng duyệt
+### M2 — 2026-10-19 (sớm 1–2 ngày): ĐẠT (người dùng duyệt)
 - Test (n = 3.166) chấm đúng 1 lần: freeze commit `bac46b8` có trước dự đoán test, `freeze.reruns` rỗng. Bảng: `results/tables/test_main.md`, `significance.md`, `review_budget_test.md`, `checklist.md`, `error_analysis.md`, `hitl_retrain.md`.
 - Bản triển khai (int8, batch=1): cảm xúc 94,0 / 82,1 [79,3–84,6], chủ đề 90,0 / 81,3 [79,0–83,4] (acc / mF1 [KTC 95%]); ECE 0,014 / 0,023. Hơn LinearSVC mF1 +8,6 / +8,0 điểm (McNemar p < 0,0001); không khác FP32 (p = 0,58 / 0,35). Khớp paper (≈ 94/83, 89/80).
 - Ngân sách duyệt 10% trên test bắt 45,3% lỗi cảm xúc và 34,4% lỗi chủ đề; phần không cờ đúng cả hai 89,8% (không gắn cờ: 85,5%). Lớp yếu: trung tính (recall 43,1%), Khác (48,4%).
 - Giới hạn ghi trong thẻ mô hình: luật ẩn tên che nhầm câu Viết Hoa Chữ Đầu (CheckList 86,6%); thêm "không" 83,2%. HITL mô phỏng (80 câu cờ) không cải thiện có ý nghĩa.
 - Bundle `v1.0` (stage release) ở `$EDUPULSE_HOME/artifacts/v1.0`, mặc định từ 2026-10-19; golden 20/20, guard câu gốc 0/200.
 
-### M4 — 2026-10-19 (sớm 3 ngày): khối API xong, chờ build Docker
+### M4 — 2026-10-19 (sớm 3 ngày): ĐẠT (người dùng duyệt; build Docker làm tiếp)
 - 17 operation (`apps/web/openapi.json`): export CSV (BOM, chống formula injection, `all`/`corrected`), so sánh LinearSVC nạp lười, gzip, `model_url` (env `EDUPULSE_MODEL_URL`). Host Mac: 1.000 câu qua HTTP kèm tự giải thích 20 câu 10,4 s; `/api/analyze` giữa batch ≤27 ms.
 - Lỗi tích hợp sửa khi gộp: file "nhãn đã sửa" của API (`label_sentiment`/`label_topic`) không khớp cột `ml/retrain.py` đọc (`label_s`/`label_t`); retrain giờ đọc đúng `CORRECTED_HEADER` và có test đọc ngược từ API thật. Trùng tên module test `test_stats.py` → đổi `tests/ml/test_bootstrap_stats.py`.
 - Còn lại: build stage `demo`/`final` + smoke trong container (cần Docker); `scripts/smoke_test.py` còn cổng cũ `single_p95_s=0.6`, cần tách nhãn ≤0,5 s / giải thích ≤2 s.
+
+### Quyết định sau M2/M4 — 2026-10-19
+- M3 Hugging Face: team viết `ml/push_hub.py` và chạy thử không đẩy; chỉ đẩy repo public sau khi người dùng tự đăng nhập (`uv run hf auth login`) và báo.
+- Docker: agent được tự bật Docker Desktop (`open -a Docker`) khi cần build, smoke, kiểm amd64, và tắt lại khi xong (không còn train nên không tranh tài nguyên).
+- Đo RAM: `import skops.io` kéo theo torch và pandas khi chúng có trong môi trường (dev: mô hình cơ sở +~500MB RSS); image chỉ có group `app` nên số chính thức đo trong container, có bật so sánh.
+- Bỏ Recharts (không trang nào dùng): cột chồng, heatmap bằng CSS; biểu đồ độ tin cậy bằng SVG.
 
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).

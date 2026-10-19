@@ -98,11 +98,11 @@ Create:
 ## Todo list
 - [x] Cập nhật design-guidelines §4, §5, §6.1, §10 cho Next.js
 - [x] Nền tảng: shadcn (Base UI, kiểm `cn`), token, font, theme, khung, icon, lib, client API, `use-batch-session`, badge minh hoạ
-- [ ] Trang 1 Phân tích câu (+ XAI, trạng thái, compare Must)
-- [ ] Trang 4 Mô hình & đạo đức (nhãn stage, ghi chú x86/demo)
-- [ ] Trang 2 Phân tích hàng loạt (upload/file mẫu → ngân sách → tiến trình → bảng duyệt → Sheet → xuất; heartbeat/close)
-- [ ] Trang 3 Dashboard & insight (heatmap Must; lọc từ khoá Should)
-- [ ] Vitest + fixture ghi từ API thật trên câu tự viết
+- [x] Trang 1 Phân tích câu (+ XAI, trạng thái, compare Must)
+- [x] Trang 4 Mô hình & đạo đức (nhãn stage, ghi chú x86/demo)
+- [x] Trang 2 Phân tích hàng loạt (upload/file mẫu → ngân sách → tiến trình → bảng duyệt → Sheet → xuất; heartbeat/close)
+- [x] Trang 3 Dashboard & insight (heatmap Must; lọc từ khoá Should)
+- [x] Vitest + fixture ghi từ API thật trên câu tự viết
 - [ ] Ảnh Playwright 1440/390 sáng/tối, so wireframe, sửa lệch
 - [ ] Lint + typecheck + test + build sạch; mốc M5; commit
 
