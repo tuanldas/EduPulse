@@ -16,6 +16,7 @@ from edupulse.api.export import (
     guard_cell,
     unguard_cell,
 )
+from edupulse.labels import LABELS
 
 # --- Chống formula injection (không cần mô hình) --------------------------------------------------
 
@@ -201,6 +202,27 @@ def test_corrected_file_has_machine_columns_and_only_the_changed_rows(
         assert record["source"] == original["source"] and record["reviewed"] == "1"
         assert record["id_hash"] == hashlib.sha256(record["text_model"].encode()).hexdigest()[:16]
         assert record["text_model"] and record["text_model"] == record["text_model"].lower()
+
+
+@pytest.mark.model
+def test_the_retrain_script_reads_the_corrected_file_back(
+    live_client: TestClient, finished, tmp_path
+):
+    pytest.importorskip("pandas", reason="script huấn luyện lại cần group train")
+    from ml import retrain
+
+    batch_id, results = finished
+    original = next(r for r in results["rows"] if r["index"] == 0)
+    fixed = "positive" if original["sentiment"] != "positive" else "negative"
+    path = tmp_path / "edupulse-nhan-da-sua.csv"
+    response = export_csv(
+        live_client, batch_id, kind="corrected", overrides=[{"index": 0, "sentiment": fixed}]
+    )
+    path.write_bytes(response.content)
+    feedback = retrain.read_feedback(path)
+    assert len(feedback) == 1
+    assert LABELS["sentiment"][feedback["label_s"].iloc[0]] == fixed
+    assert LABELS["topic"][feedback["label_t"].iloc[0]] == original["topic"]
 
 
 @pytest.mark.model

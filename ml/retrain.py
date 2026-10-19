@@ -3,11 +3,13 @@
     python -m ml.retrain --feedback fb1.csv [fb2.csv ...] [--model baseline|phobert]
                          [--max-steps 20] [--feedback-weight 1] [--out DIR]
 
-Đầu vào là CSV (utf-8-sig) do API xuất sau khi duyệt, cột: id_hash, text_masked, text_model,
-model_ver, pred_s, conf_s, pred_t, conf_t, label_s, label_t, source (flag|audit), reviewed.
-`text_model` là câu đã chuẩn hoá và tách từ (cùng dạng cột `text_rdr` của dữ liệu); label_s và
-label_t là nhãn đã duyệt: số theo thứ tự `edupulse.labels` (cảm xúc 0..2, chủ đề 0..3) hoặc tên
-tiếng Anh (negative, lecturer, ...).
+Đầu vào là file "nhãn đã sửa" (CSV utf-8-sig) mà API xuất sau khi duyệt, cột theo
+`edupulse.api.export.CORRECTED_HEADER`: id_hash, text_masked, text_model, model_version,
+pred_sentiment, conf_sentiment, pred_topic, conf_topic, label_sentiment, label_topic, source
+(flag|audit|none), reviewed. `text_model` là câu đã chuẩn hoá và tách từ (cùng dạng cột `text_rdr`
+của dữ liệu); label_sentiment và label_topic là nhãn đã duyệt: số theo thứ tự `edupulse.labels`
+(cảm xúc 0..2, chủ đề 0..3) hoặc tên tiếng Anh (negative, lecturer, ...). Sau khi đọc, bảng nội bộ
+gọi hai cột nhãn là label_s và label_t.
 
 Các bước: đọc và kiểm (chỉ giữ dòng đã duyệt) -> làm sạch (bỏ câu trùng nhau và câu đã có trong
 dữ liệu gốc) -> huấn luyện lại -> so macro-F1 trên VALIDATION trước/sau -> chỉ ghi mô hình mới khi
@@ -79,6 +81,9 @@ WARMUP_RATIO = 0.1
 
 REQUIRED_COLUMNS = ("text_model", "label_s", "label_t")
 LABEL_COLUMN = {"sentiment": "label_s", "topic": "label_t"}
+# Tên cột nhãn trong file do API xuất (`edupulse.api.export.CORRECTED_HEADER`).
+FILE_LABEL_COLUMN = {"sentiment": "label_sentiment", "topic": "label_topic"}
+FILE_REQUIRED_COLUMNS = ("text_model", *FILE_LABEL_COLUMN.values())
 FEEDBACK_COLUMNS = ["text_model", "label_s", "label_t", "source", "file", "line"]
 REVIEWED_VALUES = frozenset({"true", "1", "yes"})
 # Ký tự đầu ô mà bản xuất CSV chặn formula injection bằng cách chèn dấu nháy đơn phía trước:
@@ -153,7 +158,7 @@ def _read_one(path: Path, tally: Counter[str]) -> pd.DataFrame:
     except (UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as error:
         raise FeedbackError(f"{path.name}: không đọc được như CSV UTF-8 ({error})") from error
     raw.columns = [str(name).strip() for name in raw.columns]
-    missing = [name for name in REQUIRED_COLUMNS if name not in raw.columns]
+    missing = [name for name in FILE_REQUIRED_COLUMNS if name not in raw.columns]
     if missing:
         raise FeedbackError(f"{path.name}: thiếu cột bắt buộc {', '.join(missing)}")
 
@@ -167,7 +172,7 @@ def _read_one(path: Path, tally: Counter[str]) -> pd.DataFrame:
             continue
         text = unguard(record["text_model"]).strip()
         cells = {}
-        for task, column in LABEL_COLUMN.items():
+        for task, column in FILE_LABEL_COLUMN.items():
             try:
                 cells[task] = parse_label(unguard(record[column]), task)
             except ValueError as error:

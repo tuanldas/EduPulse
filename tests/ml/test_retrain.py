@@ -17,26 +17,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from edupulse.api.export import CORRECTED_HEADER
 from edupulse.labels import LABELS, TASKS
 from edupulse.text import NORMALIZER_VERSION
 from ml import retrain
 from ml.common import write_json
 from ml.train_baseline import GRIDS, make_classifier, make_features
 
-HEADER = [
-    "id_hash",
-    "text_masked",
-    "text_model",
-    "model_ver",
-    "pred_s",
-    "conf_s",
-    "pred_t",
-    "conf_t",
-    "label_s",
-    "label_t",
-    "source",
-    "reviewed",
-]
+# Đúng header của file "nhãn đã sửa" mà API xuất: lệch là test này hỏng.
+HEADER = list(CORRECTED_HEADER)
 HP = {"sentiment": {"C": 1.0, "class_weight": None}, "topic": {"C": 1.0, "class_weight": None}}
 
 # 4 chủ đề x 3 từ chủ đề x 3 cảm xúc x 3 từ ý kiến = 108 câu tự viết, mỗi câu một tổ hợp riêng.
@@ -193,8 +182,8 @@ def test_read_feedback_drops_rows_missing_text_or_labels(tmp_path):
 
 @pytest.mark.parametrize(
     ("label_s", "label_t", "column"),
-    [(3, 0, "label_s"), (-1, 0, "label_s"), (0, 4, "label_t"), ("great", 0, "label_s"),
-     (0, "lecturers", "label_t"), (1.5, 0, "label_s")],
+    [(3, 0, "label_sentiment"), (-1, 0, "label_sentiment"), (0, 4, "label_topic"),
+     ("great", 0, "label_sentiment"), (0, "lecturers", "label_topic"), (1.5, 0, "label_sentiment")],
 )  # fmt: skip
 def test_read_feedback_names_the_line_of_an_out_of_range_label(tmp_path, label_s, label_t, column):
     rows = [csv_row("câu đúng .", 1, 1), csv_row("câu có nhãn lỗi .", label_s, label_t)]
@@ -209,10 +198,10 @@ def test_an_unreviewed_row_with_a_bad_label_is_not_an_error(tmp_path):
 
 
 def test_read_feedback_requires_the_three_columns(tmp_path):
-    header = [name for name in HEADER if name != "label_t"]
+    header = [name for name in HEADER if name != "label_topic"]
     rows = [csv_row("câu .", 1, 1)[:9] + csv_row("câu .", 1, 1)[10:]]
     path = write_csv(tmp_path / "thieu.csv", rows, header)
-    with pytest.raises(retrain.FeedbackError, match=r"thieu\.csv: thiếu cột bắt buộc label_t"):
+    with pytest.raises(retrain.FeedbackError, match=r"thieu\.csv: thiếu cột bắt buộc label_topic"):
         retrain.read_feedback(path)
 
 
@@ -220,7 +209,7 @@ def test_read_feedback_reports_missing_and_unreadable_files(tmp_path):
     with pytest.raises(retrain.FeedbackError, match="không thấy tệp"):
         retrain.read_feedback(tmp_path / "khong-co.csv")
     broken = tmp_path / "hong.csv"
-    broken.write_bytes(b"text_model,label_s,label_t\n\xff\xfe\x80,1,1\n")
+    broken.write_bytes(b"text_model,label_sentiment,label_topic\n\xff\xfe\x80,1,1\n")
     with pytest.raises(retrain.FeedbackError, match=r"hong\.csv"):
         retrain.read_feedback(broken)
     with pytest.raises(retrain.FeedbackError, match="chưa chỉ định"):

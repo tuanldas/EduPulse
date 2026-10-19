@@ -126,17 +126,17 @@ Modify:
 13. Sinh lại `openapi.json` nếu đổi; **dừng M4** (xong khối API: danh sách endpoint + kết quả test); commit (`feat: add batch analysis jobs`, `feat: add insights and recommendations`, `feat: add build-time demo data`, `feat: add csv export and retrain script`).
 
 ## Todo list
-- [ ] Hợp đồng API (heartbeat/close/sample, insights POST, `illustrative_groups`, config) + `openapi.json` + snapshot (sáng 18/10)
-- [ ] `demo_data.py` + `make demo-data` + test offline
-- [ ] Middleware giới hạn upload + parsing CSV/XLSX (trần giải nén thật) + test
-- [ ] JobStore + worker + tiến trình/ETA + heartbeat/close + TTL + 429
-- [ ] Cờ theo ngân sách + audit 5% + auto-XAI top-20; results + explain theo dòng
-- [ ] Insights (ngrams, Wilson, log-odds, luật, câu tiêu biểu, heatmap, cờ minh hoạ) + batch demo
-- [ ] Export CSV (BOM, chống injection, overrides, cột retrain)
-- [ ] `/config`, `/model-card`, `/sample.csv`, `POST /batches/sample`
-- [ ] So sánh LinearSVC nạp lười (Must)
-- [ ] `ml/retrain.py` + test baseline + chạy thử PhoBERT (Must)
-- [ ] 1 lần retrain PhoBERT đầy đủ mô phỏng người duyệt (nửa val duyệt/đánh giá, ngân sách 10%) → `results/tables/hitl_retrain.md` (Must)
+- [x] Hợp đồng API (heartbeat/close/sample, insights POST, `illustrative_groups`, config) + `openapi.json` + snapshot (sáng 18/10)
+- [x] `demo_data.py` + `make demo-data` + test offline
+- [x] Middleware giới hạn upload + parsing CSV/XLSX (trần giải nén thật) + test
+- [x] JobStore + worker + tiến trình/ETA + heartbeat/close + TTL + 429
+- [x] Cờ theo ngân sách + audit 5% + auto-XAI top-20; results + explain theo dòng
+- [x] Insights (ngrams, Wilson, log-odds, luật, câu tiêu biểu, heatmap, cờ minh hoạ) + batch demo
+- [x] Export CSV (BOM, chống injection, overrides, cột retrain; `ml/retrain.py` đọc đúng header `CORRECTED_HEADER`, có test đọc ngược)
+- [x] `/config`, `/model-card`, `/sample.csv`, `POST /batches/sample`
+- [x] So sánh LinearSVC nạp lười (Must)
+- [x] `ml/retrain.py` + test baseline + chạy thử PhoBERT (Must)
+- [x] ~~1 lần retrain PhoBERT đầy đủ mô phỏng người duyệt~~ → thay theo Session 6: mô phỏng bằng LinearSVC (nửa val duyệt/đánh giá, ngân sách 10%) + smoke PhoBERT 20 bước CPU → `results/tables/hitl_retrain.md` (Must)
 <!-- Updated: Validation Session 3 - retrain PhoBERT đầy đủ 1 lần mô phỏng vòng người duyệt cho báo cáo -->
 
 

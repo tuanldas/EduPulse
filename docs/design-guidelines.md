@@ -126,7 +126,7 @@ Quy tắc:
 **6.4 Mô hình & đạo đức**
 - `Callout` disclaimer đầu trang; mục lục link neo (Hiệu năng · Model card · Quyền riêng tư · Giấy phép & trích dẫn).
 - Hiệu năng (tên tập và nhãn bản lấy từ `stage` và `metrics.split` của `/api/model-card`: “bản smoke · số trên validation” hoặc “tập test”): nút phân đoạn Cảm xúc/Chủ đề → 4 chỉ số (Accuracy, Macro-F1, ECE, Lỗi được bắt ở ngân sách duyệt mặc định) · bảng từng lớp (F1 có thanh) · confusion matrix (% theo hàng, dựng bằng `<table>`) · bảng so sánh mô hình cơ sở với PhoBERT (dòng đang dùng in đậm; mô hình nhiều seed ghi trung bình ± độ lệch chuẩn) · biểu đồ độ tin cậy (SVG theo bề rộng khung, kèm bảng số trong mục “Xem bảng số”) + hộp “Đọc các chỉ số thế nào?” với ví dụ bằng số thật.
-- Model card 2 cột (mục đích · không dùng cho · dữ liệu · mô hình · giới hạn · kiểm tra hành vi · phiên bản · ghi chú triển khai gồm “chưa đo trên x86” và dữ liệu demo tính lúc build); 3 khối quyền riêng tư; giấy phép + nút mở mã nguồn (từ `source_url`, ẩn khi chưa cấu hình) + BibTeX có nút sao chép.
+- Model card 2 cột (mục đích · không dùng cho · dữ liệu · mô hình · giới hạn · kiểm tra hành vi · phiên bản · ghi chú triển khai gồm “chưa đo trên x86” và dữ liệu demo tính lúc build); 3 khối quyền riêng tư; giấy phép + nút mở mã nguồn và mô hình Hugging Face (từ `source_url` / `model_url`, ẩn khi chưa cấu hình) + BibTeX có nút sao chép.
 
 ## 7. Accessibility (WCAG 2.1 AA)
 - Mọi cặp ở mục 2 đã đo bằng test tự động (`tests/contrast.test.ts`): chữ ≥ 4,5:1, viền và fill ≥ 3:1, ở cả hai theme.
@@ -158,6 +158,6 @@ Quy tắc:
 
 **Còn lại:**
 1. Số liệu trên wireframe là minh hoạ (số val của r1/r3, file 1.000 câu tự dựng) — trừ khung “Trạng thái mặc định” trang 3 (số thật tập test, nhãn gốc). UI lấy mọi số từ API; số test thật sẽ hiện khi bundle `release` thay bundle `smoke`.
-2. Liên kết mã nguồn lấy từ `EDUPULSE_SOURCE_URL` lúc chạy (`source_url`); liên kết mô hình Hugging Face chưa có trường tương ứng trong `/api/config` nên đang ẩn.
+2. Liên kết mã nguồn lấy từ `EDUPULSE_SOURCE_URL` và liên kết mô hình Hugging Face từ `EDUPULSE_MODEL_URL` lúc chạy (`source_url`, `model_url` của `/api/config`); trường nào rỗng thì ẩn nút tương ứng (không có liên kết giả).
 3. Viền trái thẻ cảnh báo của dashboard (`acard`) và các trạng thái trang 2–3: kiểm khi dựng trang đó.
 4. Chưa kiểm Safari/Firefox, trình đọc màn hình thật và axe (hạng Could); nút chỉ báo của `next dev` (chữ N, góc trái dưới) chỉ có khi dev và được ẩn trong ảnh chụp.

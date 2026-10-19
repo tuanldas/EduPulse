@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AnalyzePage } from "@/components/analyze/analyze-page";
-import type { AnalyzeResponse, ExplainResponse } from "@/lib/api/types";
+import type { AnalyzeResponse, BaselineComparison, ExplainResponse } from "@/lib/api/types";
 import { resetAppConfig } from "@/lib/app-config";
 import { labelMeta } from "@/lib/labels";
 
@@ -167,7 +167,7 @@ describe("trang Phân tích câu", () => {
 
   it("so sánh mô hình mặc định tắt; bật thì hỏi riêng và không làm hỏng kết quả chính", async () => {
     const { text, response } = analysis("g02");
-    const compare = fixture<{ status: number; body: { baseline?: { name: string } } }>("analyze-g02-compare.json");
+    const compare = fixture<{ status: number; body: { baseline?: BaselineComparison } }>("analyze-g02-compare.json");
     stubApi({
       "GET /api/config": () => json(config),
       "POST /api/analyze": async (request) => {
@@ -187,8 +187,16 @@ describe("trang Phân tích câu", () => {
     await user.click(toggle);
     await screen.findByRole("region", { name: "So sánh mô hình" });
     if (compare.status === 200) {
-      // API đã có mô hình cơ sở: khung so sánh hiện tên mô hình đó.
-      expect(await screen.findByText(compare.body.baseline?.name ?? "")).toBeInTheDocument();
+      // API đã có mô hình cơ sở: khung so sánh hiện tên, từ quyết định và câu kết luận cùng/khác nhãn.
+      const baseline = compare.body.baseline!;
+      expect(await screen.findByText(baseline.name)).toBeInTheDocument();
+      for (const term of [...baseline.sentiment.top_terms, ...baseline.topic.top_terms]) {
+        expect(screen.getAllByText(term).length).toBeGreaterThan(0);
+      }
+      const region = screen.getByRole("region", { name: "So sánh mô hình" });
+      expect(region).toHaveTextContent(baseline.agree_sentiment && baseline.agree_topic ? /Hai mô hình cùng nhãn/ : /Hai mô hình khác nhau về/);
+      expect(region).toHaveTextContent("Đang dùng");
+      expect(region).toHaveTextContent("Mô hình cơ sở");
     } else {
       // Chưa làm xong (501): báo gọn, kết quả chính vẫn còn.
       await screen.findByText(/Tính năng này chưa sẵn sàng trên máy chủ/);
