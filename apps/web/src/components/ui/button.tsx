@@ -3,19 +3,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 // Kích thước và màu theo wireframe: nút cao 40px, chữ 15px, viền ≥ 3:1; `sm` 32px; `ghost` là nút
-// chữ không viền ("Xoá"); `default` là nút primary (chữ trắng).
+// chữ không viền ("Xoá"); `default` là nút primary (chữ trắng). Màu viền nằm trong từng variant (không đặt
+// `border-transparent` ở phần chung) để dùng `buttonVariants()` thẳng trên thẻ <a> mà không bị ghi đè.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
         outline:
           "border-border bg-background text-foreground hover:bg-accent aria-expanded:bg-accent",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
-        ghost: "text-foreground hover:bg-accent aria-expanded:bg-accent",
-        destructive: "bg-err-bg text-err-fg hover:bg-err-bg/70",
-        link: "text-link underline-offset-4 hover:underline",
+        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-accent",
+        ghost: "border-transparent text-foreground hover:bg-accent aria-expanded:bg-accent",
+        destructive: "border-transparent bg-err-bg text-err-fg hover:bg-err-bg/70",
+        link: "border-transparent text-link underline-offset-4 hover:underline",
       },
       size: {
         default:

@@ -1,0 +1,36 @@
+{
+  "text": "Thầy Nam giảng bài rất dễ hiểu và nhiệt tình.",
+  "response": {
+    "display_text": "Thầy [TÊN] giảng bài rất dễ hiểu và nhiệt tình.",
+    "pii_types": [
+      "name"
+    ],
+    "no_diacritics": false,
+    "n_words": 10,
+    "xai_available": true,
+    "sentiment": {
+      "label": "positive",
+      "confidence": 0.9774,
+      "probs": {
+        "negative": 0.0109,
+        "neutral": 0.0117,
+        "positive": 0.9774
+      }
+    },
+    "topic": {
+      "label": "lecturer",
+      "confidence": 0.9704,
+      "probs": {
+        "lecturer": 0.9704,
+        "training_program": 0.0109,
+        "facility": 0.0085,
+        "others": 0.0103
+      }
+    },
+    "flag": {
+      "needs_review": false,
+      "reasons": []
+    },
+    "baseline": null
+  }
+}

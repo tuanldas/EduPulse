@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { contrast, parseColor } from "./helpers/contrast";
+
 import {
   DELTA_SCALE,
   SEQUENTIAL_SCALE,
@@ -67,5 +69,21 @@ describe("khoá màu ngữ nghĩa", () => {
 
   it("trả biến CSS cho SVG và style nội tuyến", () => {
     expect(toneVar("neg")).toBe("var(--neg)");
+  });
+});
+
+describe("chữ trên các thang tường minh luôn đạt 4,5:1", () => {
+  it("confusion matrix: mọi bậc của thang tuần tự", () => {
+    for (let step = 1; step <= SEQUENTIAL_SCALE.length; step += 1) {
+      const { background, color } = sequentialColor(step / SEQUENTIAL_SCALE.length);
+      expect(contrast(parseColor(color), parseColor(background)), `bậc ${step}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("heatmap: mọi bậc của thang chênh so với mức nền", () => {
+    for (const points of [-5, 2, 7, 12, 17, 25]) {
+      const { background, color } = deltaColor(points);
+      expect(contrast(parseColor(color), parseColor(background)), `${points} điểm`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

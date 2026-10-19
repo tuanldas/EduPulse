@@ -13,5 +13,8 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
     css: false,
+    // Request của Node không nhận đường dẫn tương đối như trình duyệt, nên test gọi API bằng địa chỉ
+    // tuyệt đối (giống lúc dev). Không có máy chủ thật: `fetch` được thay bằng tests/helpers/api-stub.ts.
+    env: { NEXT_PUBLIC_API_BASE: "http://api.test" },
   },
 });

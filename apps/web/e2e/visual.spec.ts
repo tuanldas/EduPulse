@@ -29,8 +29,14 @@ async function openPage(browser: Browser, viewport: (typeof VIEWPORTS)[number], 
   const page = await context.newPage();
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
+  // Dòng "Failed to load resource" của trình duyệt không nói địa chỉ nào hỏng, nên ghi theo phản hồi HTTP.
   page.on("console", (message) => {
-    if (message.type() === "error") problems.push(`console: ${message.text()}`);
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource")) {
+      problems.push(`console: ${message.text()}`);
+    }
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) problems.push(`http ${response.status()}: ${new URL(response.url()).pathname}`);
   });
   return { context, page, problems };
 }
@@ -40,6 +46,12 @@ async function settle(page: Page) {
   await page.evaluate(() => document.fonts.ready);
   // Nút chỉ báo của `next dev` che góc trái dưới; bản export không có nó.
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+}
+
+/** Thiết kế cho di động: không cuộn ngang cả trang (bảng rộng chỉ cuộn trong khung của nó). */
+async function expectNoHorizontalScroll(page: Page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow, "trang bị cuộn ngang").toBeLessThanOrEqual(1);
 }
 
 /** Đợi phần giải thích tính xong (có bảng, hoặc báo không có từ nào để tô, hoặc câu quá dài). */
@@ -67,6 +79,7 @@ for (const viewport of VIEWPORTS) {
       await explainSettled(page);
       await settle(page);
       await page.screenshot({ path: path.join(OUTPUT, `01-phan-tich-cau-${tag}.png`), fullPage: true });
+      await expectNoHorizontalScroll(page);
       expect(problems).toEqual([]);
       await context.close();
     });
@@ -94,8 +107,8 @@ for (const viewport of VIEWPORTS) {
       await page.getByRole("button", { name: "Phân tích" }).click();
       await expect(page.getByText("Không còn nội dung để phân tích.")).toBeVisible();
       await page.screenshot({ path: path.join(OUTPUT, `01-khong-con-noi-dung-${tag}.png`), fullPage: true });
-      // Câu chỉ có số điện thoại cố ý nhận 422 `no_content`; trình duyệt tự ghi dòng này vào console.
-      expect(problems.filter((problem) => !problem.includes("status of 422"))).toEqual([]);
+      // Câu chỉ có số điện thoại cố ý nhận 422 `no_content`.
+      expect(problems.filter((problem) => problem !== "http 422: /api/analyze")).toEqual([]);
       await context.close();
     });
 
@@ -110,8 +123,8 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole("region", { name: "So sánh mô hình" })).toBeVisible();
       await expect(page.getByLabel("Đang tính mô hình cơ sở")).toHaveCount(0, { timeout: 30_000 });
       await page.screenshot({ path: path.join(OUTPUT, `01-so-sanh-mo-hinh-${tag}.png`), fullPage: true });
-      // Route so sánh có thể còn trả 501 (chưa cài đặt): trình duyệt tự ghi dòng này vào console.
-      expect(problems.filter((problem) => !problem.includes("status of 501"))).toEqual([]);
+      // Route so sánh có thể còn trả 501 (chưa cài đặt).
+      expect(problems.filter((problem) => problem !== "http 501: /api/analyze")).toEqual([]);
       await context.close();
     });
 
@@ -121,6 +134,7 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByRole("heading", { name: "Model card" })).toBeVisible({ timeout: 20_000 });
       await settle(page);
       await page.screenshot({ path: path.join(OUTPUT, `04-mo-hinh-dao-duc-${tag}.png`), fullPage: true });
+      await expectNoHorizontalScroll(page);
       expect(problems).toEqual([]);
       await context.close();
     });
