@@ -1,0 +1,13 @@
+task,topic,sentiment,n,recall,small_sample
+sentiment,lecturer,negative,791,0.9747,False
+sentiment,lecturer,neutral,74,0.3514,False
+sentiment,lecturer,positive,1425,0.9768,False
+sentiment,training_program,negative,416,0.9736,False
+sentiment,training_program,neutral,47,0.3617,False
+sentiment,training_program,positive,109,0.8899,False
+sentiment,facility,negative,138,1.0,False
+sentiment,facility,neutral,2,0.5,True
+sentiment,facility,positive,5,0.8,True
+sentiment,others,negative,64,0.8594,False
+sentiment,others,neutral,44,0.6364,False
+sentiment,others,positive,51,0.8235,False

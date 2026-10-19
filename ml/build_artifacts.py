@@ -1,13 +1,17 @@
 """Gom bundle triển khai `$EDUPULSE_HOME/artifacts/<version>/` từ kết quả huấn luyện và export.
 
     python -m ml.build_artifacts --version v0-smoke      # make artifacts BUNDLE_VERSION=v0-smoke
+    python -m ml.build_artifacts --version v1.0          # bản phát hành: thẻ mô hình trên test
 
 Bundle chỉ gồm mô hình và cấu hình (model.int8.onnx, tokenizer.json, calibration.json,
 model_card.json, insight_background.json, golden_predictions.json, baseline/*.skops, manifest.json).
 Trước khi ghi: mọi JSON phải qua schema `edupulse.bundle_schema`; `normalizer_version` của mã, dữ
-liệu
-đã xử lý, run huấn luyện, đếm nền và dự đoán vàng phải trùng nhau; và 200 câu ngẫu nhiên của
+liệu đã xử lý, run huấn luyện, đếm nền và dự đoán vàng phải trùng nhau; và 200 câu ngẫu nhiên của
 UIT-VSFC không được xuất hiện nguyên văn trong bất kỳ JSON nào (bundle không chứa câu gốc).
+
+Bản phát hành (stage release) đòi thêm: cây git sạch; thẻ mô hình lấy số trên TEST từ kết quả của
+đúng lần chấm cuối (`results/metrics/test_all.json`, cùng `freeze.json`); các tệp mô hình, cấu
+hình và baseline trong bundle có sha256 khớp `freeze.json`, tức đúng thứ đã được chấm trên test.
 """
 
 from __future__ import annotations
@@ -41,6 +45,7 @@ from edupulse.bundle_schema import (
 from edupulse.config import BUDGETS, DEFAULT_BUDGET, REPO_ROOT
 from edupulse.labels import LABELS, TASKS
 from edupulse.text import NORMALIZER_VERSION
+from ml import freeze as freeze_lib
 from ml.common import (
     SPLITS,
     assert_normalizer,
@@ -55,6 +60,7 @@ from ml.common import (
 from ml.download_data import DATASET_REPO, load_raw_manifest
 from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, unk_alias_gap
 from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
+from ml.release_card import ReleaseError, build_release_card
 from ml.train_baseline import load_model
 
 LOG_PREFIX = "build_artifacts"
@@ -85,15 +91,20 @@ OUT_OF_SCOPE = (
     "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra "
     "quyết định tự động khi không có người duyệt."
 )
-LIMITATIONS = [
-    "Lớp Trung tính và chủ đề Khác yếu (recall khoảng 53%).",
-    "Câu gõ không dấu: độ chính xác giảm mạnh (khoảng 13 điểm), hệ thống cảnh báo và gắn cờ.",
+# Giới hạn không gắn với một con số đo được; bản phát hành thêm các giới hạn kèm số đo trên test.
+STATIC_LIMITATIONS = [
     "Mỉa mai, châm biếm dễ bị hiểu sai.",
+    "Câu viết hoa chữ đầu mọi từ dễ bị luật ẩn tên coi nhiều từ là tên người, làm đổi nhãn.",
     "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
     "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
     "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
     "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt.",
+]
+LIMITATIONS = [
+    "Lớp Trung tính và chủ đề Khác yếu (recall khoảng 53%).",
+    "Câu gõ không dấu: độ chính xác giảm mạnh (khoảng 13 điểm), hệ thống cảnh báo và gắn cờ.",
+    *STATIC_LIMITATIONS,
 ]
 NOTE_X86 = "Chưa đo trên x86: số đo tốc độ và RAM lấy từ máy Apple M1 (arm64)."
 NOTE_DEMO = (
@@ -163,9 +174,7 @@ def model_card(
     calibration: Calibration,
 ) -> ModelCard:
     if stage != "smoke":
-        raise BundleError(
-            "bản release cần số trên test: chạy đánh giá cuối (ml.evaluate) rồi mở rộng bước này"
-        )
+        raise BundleError("thẻ smoke chỉ có số validation; bản release dùng ml.release_card")
     temperatures = {
         "sentiment": calibration.sentiment.temperature,
         "topic": calibration.topic.temperature,
@@ -281,6 +290,39 @@ def require_passed_gate(gate: dict[str, Any], run: Path, allow_failed: bool) -> 
     return gate["embedding"]
 
 
+# Tên trong freeze.json -> tên trong bundle (mô hình, cấu hình và baseline đã được chấm trên test).
+FROZEN_IN_BUNDLE = {
+    "onnx/model.int8.onnx": "model.int8.onnx",
+    "calibration/calibration.json": "calibration.json",
+    "tokenizer.json": "tokenizer.json",
+    **{f"baseline/{task}_linearsvc.skops": f"baseline/{task}_linearsvc.skops" for task in TASKS},
+}
+
+
+def load_release_freeze(run: Path) -> dict[str, Any]:
+    """Freeze của đúng run này; bản phát hành chỉ dựng từ cây git sạch (manifest ghi commit)."""
+    if git_commit().endswith("+dirty"):
+        raise BundleError("bản phát hành phải dựng từ cây git sạch: commit mọi thay đổi trước")
+    try:
+        document = freeze_lib.load_freeze()
+    except freeze_lib.GuardError as error:
+        raise BundleError(str(error)) from error
+    if document["deploy"]["run"] != run.name:
+        raise BundleError(
+            f"freeze.json là của run {document['deploy']['run']!r}, không phải {run.name!r}"
+        )
+    return document
+
+
+def assert_matches_freeze(bundle_dir: Path, document: dict[str, Any]) -> None:
+    """Mô hình, cấu hình và baseline trong bundle phải đúng thứ đã được chấm trên test."""
+    for frozen_name, bundle_name in FROZEN_IN_BUNDLE.items():
+        if sha256_file(bundle_dir / bundle_name) != document["files"][frozen_name]:
+            raise BundleError(
+                f"{bundle_name} khác bản đã đóng băng và chấm test ({frozen_name} trong freeze)"
+            )
+
+
 def build(
     version: str, run: Path, stage: str, force: bool, allow_failed_gate: bool = False
 ) -> Path:
@@ -311,18 +353,33 @@ def build(
     background = InsightBackground.model_validate_json(background_path.read_text("utf-8"))
     assert_same_normalizer(history, background, golden)
 
-    logits = np.load(onnx_dir / "val_logits_int8.npz")
-    val_logits = {task: logits[task] for task in TASKS}
-    targets = {task: logits[f"y_{task}"] for task in TASKS}
     model_version = f"edupulse-{run.name}"
-    card = model_card(
-        bundle_version=version,
-        model_version=model_version,
-        stage=stage,
-        val_logits=val_logits,
-        targets=targets,
-        calibration=calibration,
-    )
+    frozen = load_release_freeze(run) if stage == "release" else None
+    if frozen is not None:
+        try:
+            card = build_release_card(
+                bundle_version=version,
+                model_version=model_version,
+                run=run.name,
+                freeze_sha256=sha256_file(freeze_lib.FREEZE_PATH),
+                results_dir=REPO_ROOT / "results",
+                intended_use=INTENDED_USE,
+                out_of_scope=OUT_OF_SCOPE,
+                static_limitations=STATIC_LIMITATIONS,
+                notes=ModelCardNotes(x86=NOTE_X86, demo=NOTE_DEMO),
+            )
+        except ReleaseError as error:
+            raise BundleError(str(error)) from error
+    else:
+        logits = np.load(onnx_dir / "val_logits_int8.npz")
+        card = model_card(
+            bundle_version=version,
+            model_version=model_version,
+            stage=stage,
+            val_logits={task: logits[task] for task in TASKS},
+            targets={task: logits[f"y_{task}"] for task in TASKS},
+            calibration=calibration,
+        )
 
     staging = target.with_name(f"{target.name}.building")
     shutil.rmtree(staging, ignore_errors=True)
@@ -330,12 +387,15 @@ def build(
     try:
         shutil.copyfile(onnx_dir / "model.int8.onnx", staging / "model.int8.onnx")
         shutil.copyfile(tokenizer_path(), staging / "tokenizer.json")
-        write_json(staging / "calibration.json", calibration.model_dump(mode="json"))
+        # Chép nguyên tệp calibration đã kiểm schema (không ghi lại) để giữ đúng byte đã đóng băng.
+        shutil.copyfile(calibration_path, staging / "calibration.json")
         write_json(staging / "model_card.json", card.model_dump(mode="json"))
         write_json(staging / "insight_background.json", background.model_dump(mode="json"))
         write_json(staging / "golden_predictions.json", golden.model_dump(mode="json"))
         for name in BASELINE_FILES:
             shutil.copyfile(settings().models_dir / name, staging / name)
+        if frozen is not None:
+            assert_matches_freeze(staging, frozen)
 
         raw = load_raw_manifest()
         manifest = Manifest(

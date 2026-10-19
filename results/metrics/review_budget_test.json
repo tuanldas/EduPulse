@@ -1,0 +1,95 @@
+{
+  "split": "test",
+  "rehearsal": false,
+  "n": 3166,
+  "deploy_run": "mtl-s42",
+  "default_budget": 10,
+  "temperature": {
+    "sentiment": 1.0,
+    "topic": 1.0
+  },
+  "budgets": {
+    "5": {
+      "rank_batch": {
+        "flagged_share": 0.05022109917877448,
+        "caught_sentiment_errors": 0.2789473684210526,
+        "caught_topic_errors": 0.167192429022082,
+        "accept_accuracy_both": 0.8762886597938144,
+        "all_accuracy_both": 0.8547062539481997
+      },
+      "threshold": {
+        "tau": 0.024290209827621496,
+        "flagged_share": 0.04706253948199621,
+        "caught_sentiment_errors": 0.2578947368421053,
+        "caught_topic_errors": 0.15141955835962145,
+        "accept_accuracy_both": 0.8747099767981439,
+        "all_accuracy_both": 0.8547062539481997
+      }
+    },
+    "10": {
+      "rank_batch": {
+        "flagged_share": 0.10012634238787113,
+        "caught_sentiment_errors": 0.45263157894736844,
+        "caught_topic_errors": 0.3438485804416404,
+        "accept_accuracy_both": 0.8975078975078975,
+        "all_accuracy_both": 0.8547062539481997
+      },
+      "threshold": {
+        "tau": 0.05336170944963455,
+        "flagged_share": 0.10233733417561591,
+        "caught_sentiment_errors": 0.45263157894736844,
+        "caught_topic_errors": 0.3501577287066246,
+        "accept_accuracy_both": 0.8979591836734694,
+        "all_accuracy_both": 0.8547062539481997
+      }
+    },
+    "20": {
+      "rank_batch": {
+        "flagged_share": 0.20025268477574226,
+        "caught_sentiment_errors": 0.6421052631578947,
+        "caught_topic_errors": 0.5772870662460567,
+        "accept_accuracy_both": 0.924565560821485,
+        "all_accuracy_both": 0.8547062539481997
+      },
+      "threshold": {
+        "tau": 0.11336051345137199,
+        "flagged_share": 0.204358812381554,
+        "caught_sentiment_errors": 0.6526315789473685,
+        "caught_topic_errors": 0.5867507886435331,
+        "accept_accuracy_both": 0.925764192139738,
+        "all_accuracy_both": 0.8547062539481997
+      }
+    },
+    "30": {
+      "rank_batch": {
+        "flagged_share": 0.30006317119393555,
+        "caught_sentiment_errors": 0.7263157894736842,
+        "caught_topic_errors": 0.7003154574132492,
+        "accept_accuracy_both": 0.9368231046931408,
+        "all_accuracy_both": 0.8547062539481997
+      },
+      "threshold": {
+        "tau": 0.17959640867414423,
+        "flagged_share": 0.30195830701200255,
+        "caught_sentiment_errors": 0.7263157894736842,
+        "caught_topic_errors": 0.7003154574132492,
+        "accept_accuracy_both": 0.9366515837104072,
+        "all_accuracy_both": 0.8547062539481997
+      }
+    }
+  },
+  "calibration_quality": {
+    "sentiment": {
+      "ece_before_t": 0.013809405999135865,
+      "ece_after_t": 0.013809405999135865,
+      "nll_before_t": 0.22032477527418434,
+      "nll_after_t": 0.22032477527418434
+    },
+    "topic": {
+      "ece_before_t": 0.023180290993846105,
+      "ece_after_t": 0.023180290993846105,
+      "nll_before_t": 0.3217887910930855,
+      "nll_after_t": 0.3217887910930855
+    }
+  }
+}

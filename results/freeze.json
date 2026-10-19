@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-19T08:58:29+0700",
+  "git": {
+    "commit": "179c3e560d03c580c753080c0d45384a194ed3c9",
+    "dirty": []
+  },
+  "policy": "Tập test chỉ được chấm một lần, sau khi tệp này đã commit. Mọi lựa chọn (run triển khai, nhiệt độ, ngưỡng cờ, siêu tham số baseline) lấy từ validation. Phân tích sau đó (kiểm định, lỗi, ngân sách duyệt, thẻ mô hình) chỉ đọc dự đoán lưu ở outputs/test_preds/.",
+  "scope": "Không huấn luyện thêm: bản triển khai là run PhoBERT đa nhiệm duy nhất (seed 42) đã train ở lần chạy đầu; so sánh với đơn nhiệm chỉ có thí nghiệm sơ bộ của nghiên cứu (validation).",
+  "deploy": {
+    "run": "mtl-s42",
+    "rule": "Run PhoBERT đa nhiệm duy nhất đã huấn luyện (best_run: điểm validation cao nhất).",
+    "seed": 42,
+    "epochs": 4,
+    "best_epoch": 4,
+    "val_mean_macro_f1": 0.8348705772602674
+  },
+  "quantization": {
+    "config": "ffn_out_early6_fp32+heads_fp32",
+    "heads_fp32": true,
+    "gate_passed": true,
+    "delta_macro_f1_points": {
+      "sentiment": -0.486,
+      "topic": -0.214
+    },
+    "label_flips": {
+      "sentiment": 9,
+      "topic": 27
+    }
+  },
+  "calibration": {
+    "temperature": {
+      "sentiment": 1.0,
+      "topic": 1.0
+    },
+    "tau": {
+      "5": 0.024290209827621496,
+      "10": 0.05336170944963455,
+      "20": 0.11336051345137199,
+      "30": 0.17959640867414423
+    },
+    "default_budget": 10,
+    "budgets": [
+      5,
+      10,
+      20,
+      30
+    ]
+  },
+  "baselines": {
+    "sentiment": {
+      "linearsvc": {
+        "C": 3.0,
+        "class_weight": null
+      },
+      "logreg": {
+        "C": 3.0,
+        "class_weight": "balanced"
+      },
+      "complementnb": {
+        "alpha": 0.1
+      }
+    },
+    "topic": {
+      "linearsvc": {
+        "C": 0.3,
+        "class_weight": null
+      },
+      "logreg": {
+        "C": 3.0,
+        "class_weight": null
+      },
+      "complementnb": {
+        "alpha": 1.0
+      }
+    }
+  },
+  "data": {
+    "dataset_revision": "2d76906157232f87e9883fa37ebfc91ffdee1f83",
+    "normalizer_version": "1",
+    "test_sha256": "fdb8735213fef34a0b5ea4ad71850a381d130195210f9f73fafcd1a37b2816f1",
+    "rows": {
+      "train": 11426,
+      "validation": 1583,
+      "test": 3166
+    }
+  },
+  "files": {
+    "phobert/mtl-s42/model.safetensors": "3b797c3aa9c22b4d977fbbcf1f0a023bec9859f2bf4fefb87f2172c485a5d46d",
+    "phobert/mtl-s42/config.json": "de337b8f00d3504be515eba282adbf3f850040d7cbd9160dfa3c9022b0a1ae9c",
+    "onnx/model.int8.onnx": "7366ad1d127d01b8abce7423c5481c051f342995766fae7a7c89e2fad5ce798f",
+    "calibration/calibration.json": "22592ea76e2a130360991567828d428391793c14360c62486dcdf42bfefdd17f",
+    "tokenizer.json": "70ca5afd1c45f0481a73372cc1c2b6dae7acf2f15931ba3c81e2ac044ffe63ef",
+    "baseline/sentiment_linearsvc.skops": "d3dcc0c066bbcdb19b3940231e0120e70d517541b418a80252ea956af2e75811",
+    "baseline/sentiment_logreg.skops": "1e05d329e0611abb0b39932c50cd40ff6de12e7de3f843cc2e600693797c160c",
+    "baseline/sentiment_complementnb.skops": "a25570184984d7cb5818aee8d0a2a9678608e6d8c66480dc450e7daed1431232",
+    "baseline/topic_linearsvc.skops": "4fdab6bab80fb84c91d610a16d3d0f763d1d1c5e4e846c2dfb58bf87523f838f",
+    "baseline/topic_logreg.skops": "92c9941d4b8af70c6c609982bdb41f7a630c370e18938d854db4123c6472c55c",
+    "baseline/topic_complementnb.skops": "2eb15f3358be6b787dc3b5fc006b3981f622b8a8bc2571ccbb55f0fa9d912d7c"
+  },
+  "reruns": []
+}

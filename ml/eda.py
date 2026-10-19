@@ -24,7 +24,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from matplotlib import font_manager  # noqa: E402
 
 from edupulse.config import REPO_ROOT  # noqa: E402
 from edupulse.labels import LABELS, LABELS_VI, SENTIMENT, TASKS, TOPIC  # noqa: E402
@@ -32,22 +31,11 @@ from edupulse.text import NORMALIZER_VERSION, count_ngrams  # noqa: E402
 from edupulse.text.normalize import TONE_MAP  # noqa: E402
 from ml.common import SPLITS, load_processed, processed_manifest, write_json  # noqa: E402
 from ml.phobert_model import BASE_REVISION, load_tokenizer  # noqa: E402
+from ml.plotting import BACKGROUND, COLORS, GRID, INK, MUTED, setup_style, vn  # noqa: E402,F401
 
 LOG = logging.getLogger("eda")
 RESULTS = REPO_ROOT / "results"
 SPLIT_VI = {"train": "Train", "validation": "Validation", "test": "Test"}
-
-# Màu ngữ nghĩa của docs/design-guidelines.md mục 2.2 (fill biểu đồ, dùng chung hai theme).
-COLORS = {
-    "negative": "#C94827",
-    "neutral": "#8B909A",
-    "positive": "#1B9A6E",
-    "lecturer": "#0167BB",
-    "training_program": "#944A76",
-    "facility": "#B88818",
-    "others": "#66837A",
-}
-INK, MUTED, GRID, BACKGROUND = "#14171E", "#5B6170", "#DCDAD2", "#FAFAF8"
 
 # Số ghi trong thẻ dataset (đồng thuận giữa người gán nhãn); không tự đo được.
 INTER_ANNOTATOR_AGREEMENT = {"sentiment": 0.91, "topic": 0.71}
@@ -71,33 +59,6 @@ EXPECTED = {
         "others": 0.402,
     },
 }
-
-
-def vn(value: float, digits: int = 1) -> str:
-    """Số kiểu Việt: dấu phẩy thập phân, dấu chấm hàng nghìn."""
-    text = f"{value:,.{digits}f}"
-    return text.replace(",", "\0").replace(".", ",").replace("\0", ".")
-
-
-def setup_style() -> None:
-    families = {f.name for f in font_manager.fontManager.ttflist}
-    preferred = "Be Vietnam Pro" if "Be Vietnam Pro" in families else "DejaVu Sans"
-    plt.rcParams.update(
-        {
-            "font.family": preferred,
-            "figure.facecolor": BACKGROUND,
-            "axes.facecolor": BACKGROUND,
-            "savefig.facecolor": BACKGROUND,
-            "text.color": INK,
-            "axes.labelcolor": INK,
-            "xtick.color": MUTED,
-            "ytick.color": MUTED,
-            "axes.edgecolor": GRID,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "font.size": 10,
-        }
-    )
 
 
 def save_figure(fig: plt.Figure, name: str) -> Path:
