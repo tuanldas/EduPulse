@@ -129,7 +129,7 @@ describe("ReviewTable", () => {
 
   it("ghi lý do ngắn và cho xem lý do đầy đủ khi rê chuột", () => {
     setup({ rows: rows(1) });
-    const cell = screen.getByText("Cảm xúc không chắc");
+    const cell = screen.getByText("Cảm xúc không chắc").closest("td");
     expect(cell).toHaveAttribute("title", expect.stringContaining("Trung tính 40%"));
   });
 
