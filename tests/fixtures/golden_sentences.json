@@ -2,7 +2,7 @@
   "source": "Tự viết cho kiểm thử, không trích từ UIT-VSFC. Nội dung thuộc dự án EduPulse (AGPL-3.0).",
   "note": "`intended` là nhãn người viết dự định, chỉ để kiểm tra hợp lý; dự đoán dùng so khớp hồi quy nằm trong golden_predictions.json của bundle.",
   "items": [
-    {"id": "g01", "text": "Thầy giảng bài rất dễ hiểu và luôn [đã gỡ câu UIT-VSFC].", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": []},
+    {"id": "g01", "text": "Thầy giảng bài rất dễ hiểu và luôn sẵn lòng trả lời mọi câu hỏi của lớp.", "intended": {"sentiment": "positive", "topic": "lecturer"}, "covers": []},
     {"id": "g02", "text": "Cô dạy quá nhanh, em không kịp ghi chép và rất ít khi được hỏi lại.", "intended": {"sentiment": "negative", "topic": "lecturer"}, "covers": []},
     {"id": "g03", "text": "Thầy dạy vào thứ ba và thứ năm hằng tuần, mỗi buổi kéo dài ba tiết.", "intended": {"sentiment": "neutral", "topic": "lecturer"}, "covers": []},
     {"id": "g04", "text": "Chương trình học có nhiều bài thực hành, nội dung sát với yêu cầu của doanh nghiệp.", "intended": {"sentiment": "positive", "topic": "training_program"}, "covers": []},
