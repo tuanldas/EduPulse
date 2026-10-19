@@ -94,6 +94,7 @@ OUT_OF_SCOPE = (
 # Giới hạn không gắn với một con số đo được; bản phát hành thêm các giới hạn kèm số đo trên test.
 STATIC_LIMITATIONS = [
     "Mỉa mai, châm biếm dễ bị hiểu sai.",
+    "Câu viết hoa chữ đầu mọi từ dễ bị luật ẩn tên coi nhiều từ là tên người, làm đổi nhãn.",
     "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
     "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",

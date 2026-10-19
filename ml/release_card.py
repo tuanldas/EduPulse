@@ -48,6 +48,7 @@ PRELIMINARY_ARCHITECTURES = (
     ("Đa nhiệm (MTL), sơ bộ: validation, 1 seed", 0.8555, 0.8272),
 )
 PRELIMINARY_MCNEMAR_P = {"sentiment": 0.31, "topic": 0.46}
+CHECKLIST_WARN = 0.9  # kiểm thử CheckList đạt dưới ngưỡng này được nêu trong giới hạn
 
 
 class ReleaseError(RuntimeError):
@@ -144,6 +145,13 @@ def _percent(value: float, digits: int = 1) -> str:
     return vn(value * 100, digits)
 
 
+def accuracy_drop(note: str) -> str:
+    """Phần nói về mức giảm accuracy trong ghi chú của dòng "bỏ dấu" (sau 'Accuracy:'); không có
+    thì dùng cả ghi chú."""
+    _, found, tail = note.partition("Accuracy:")
+    return (tail if found else note).strip().rstrip(".")
+
+
 def limitations(
     test_all: dict[str, Any],
     checklist: list[ChecklistRow],
@@ -161,8 +169,10 @@ def limitations(
     ]
     robustness = next((row for row in checklist if row.kind == "robustness"), None)
     if robustness is not None:
+        flagged = f"{_percent(robustness.pass_rate)}%" if robustness.pass_rate is not None else "?"
         items.append(
-            f"Câu gõ không dấu: độ chính xác giảm ({robustness.note}); hệ thống cảnh báo và gắn cờ."
+            f"Câu gõ không dấu: độ chính xác giảm ({accuracy_drop(robustness.note)}); hệ thống "
+            f"cảnh báo và gắn cờ ({flagged} số câu thử bị gắn cờ)."
         )
     bootstrap = test_all["bootstrap"]
     intervals = []
@@ -178,14 +188,27 @@ def limitations(
         "không đáng tin."
     )
     if gate is not None:
-        sentiment_val = gate["int8"]["sentiment"]["macro_f1"]
-        topic_val = gate["int8"]["topic"]["macro_f1"]
+        gaps = []
+        for task, label in (("sentiment", "cảm xúc"), ("topic", "chủ đề")):
+            on_test, on_val = deployed[task]["macro_f1"], gate["int8"][task]["macro_f1"]
+            gaps.append(
+                f"{label} {_percent(on_test)} trên test so với {_percent(on_val)} trên validation "
+                f"(chênh {vn((on_test - on_val) * 100, 1)} điểm)"
+            )
         items.append(
-            "Macro-F1 trên test thấp hơn validation (validation đã dùng để chọn epoch nên lạc "
-            f"quan): cảm xúc {_percent(deployed['sentiment']['macro_f1'])} so với "
-            f"{_percent(sentiment_val)}, chủ đề {_percent(deployed['topic']['macro_f1'])} so với "
-            f"{_percent(topic_val)}."
+            "Macro-F1 của bản int8 trên test và trên validation (validation đã dùng để chọn epoch "
+            f"nên có phần lạc quan): {'; '.join(gaps)}."
         )
+    weak = sorted(
+        (row for row in checklist if row.pass_rate is not None and row.pass_rate < CHECKLIST_WARN),
+        key=lambda row: row.pass_rate,
+    )
+    if weak:
+        listed = "; ".join(
+            f"{row.name} {_percent(row.pass_rate)}% (n = {vn(row.n, 0)})" for row in weak
+        )
+        threshold = _percent(CHECKLIST_WARN, 0)
+        items.append(f"CheckList trên validation, kiểm thử đạt dưới {threshold}%: {listed}.")
     items.append(
         "Chỉ có một run huấn luyện (seed 42): chưa đo độ lệch giữa các seed. So sánh đa nhiệm với "
         "đơn nhiệm chỉ là thí nghiệm sơ bộ của nghiên cứu (validation, 1 seed, bản huấn luyện "

@@ -30,7 +30,10 @@ CHECKLIST_ROWS = [
         "kind": "robustness",
         "n": 1583,
         "pass_rate": 0.97,
-        "note": "cảm xúc giảm 12,5 điểm, chủ đề giảm 15,0 điểm",
+        "note": (
+            "Đạt khi hệ thống gắn cờ không dấu (lọt cờ 47/1.583 câu). Accuracy: cảm xúc giảm "
+            "12,5 điểm (94,8% → 82,3%), chủ đề giảm 15,0 điểm (89,9% → 74,9%)."
+        ),
     },
 ]
 
@@ -153,11 +156,14 @@ def test_checklist_rows_are_carried_over_unchanged(results):
 def test_limitations_carry_measured_numbers_then_the_static_ones(results):
     items = card(results).limitations
     assert items[0].startswith("Lớp Trung tính và chủ đề Khác yếu: trên test, recall")
-    assert any(item.startswith("Câu gõ không dấu") and "giảm 12,5 điểm" in item for item in items)
+    diacritics = next(item for item in items if item.startswith("Câu gõ không dấu"))
+    assert "cảm xúc giảm 12,5 điểm" in diacritics and "chủ đề giảm 15,0 điểm" in diacritics
+    assert "Đạt khi" not in diacritics and "97,0% số câu thử bị gắn cờ" in diacritics
     interval = next(item for item in items if item.startswith("Khoảng tin cậy 95%"))
     assert "[" in interval and "2.000 vòng" in interval
-    gap = next(item for item in items if item.startswith("Macro-F1 trên test thấp hơn validation"))
-    assert "so với 85,3" in gap and "so với 81,0" in gap  # số validation của bản int8 trong gate
+    gap = next(item for item in items if item.startswith("Macro-F1 của bản int8 trên test và"))
+    assert "85,3 trên validation" in gap and "81,0 trên validation" in gap  # số trong gate
+    assert gap.count("(chênh ") == 2
     assert any("một run huấn luyện" in item and "McNemar p = 0,31" in item for item in items)
     assert items[-1] == "Mỉa mai dễ bị hiểu sai."
 
@@ -165,7 +171,25 @@ def test_limitations_carry_measured_numbers_then_the_static_ones(results):
 def test_without_the_gate_file_the_validation_gap_sentence_is_left_out(results):
     results.metrics_path("onnx_gate_v1.json").unlink()
     items = card(results).limitations
-    assert not any(item.startswith("Macro-F1 trên test thấp hơn validation") for item in items)
+    assert not any(item.startswith("Macro-F1 của bản int8 trên test và") for item in items)
+
+
+def test_checklist_rows_below_ninety_percent_are_named_in_the_limitations(results):
+    items = card(results).limitations
+    weak = next(item for item in items if item.startswith("CheckList trên validation"))
+    assert "Thêm 'không' 71,0% (n = 900)" in weak and "Đổi hoa/thường" not in weak
+
+
+def test_accuracy_drop_keeps_only_the_accuracy_part_of_the_note_or_the_whole_note():
+    note = "Đạt khi cờ (lọt cờ 1/9 câu). Accuracy: cảm xúc giảm 13,6 điểm, chủ đề giảm 13,0 điểm."
+    assert release_card.accuracy_drop(note) == "cảm xúc giảm 13,6 điểm, chủ đề giảm 13,0 điểm"
+    assert release_card.accuracy_drop("giảm nhiều.") == "giảm nhiều"
+
+
+def test_a_clean_checklist_adds_no_weak_row_sentence(results):
+    rows = [{**row, "pass_rate": 0.97} for row in CHECKLIST_ROWS]
+    write_json(results.metrics_path("checklist.json"), {"split": "validation", "rows": rows})
+    assert not any(i.startswith("CheckList trên validation") for i in card(results).limitations)
 
 
 def test_without_a_robustness_row_the_no_diacritics_sentence_is_left_out(results):
