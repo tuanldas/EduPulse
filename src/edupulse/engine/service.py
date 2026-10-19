@@ -84,16 +84,29 @@ def _head_results(
 
 
 class Analyzer:
-    def __init__(self, bundle: Bundle, model: OnnxModel, *, use_ner: bool = False) -> None:
+    def __init__(
+        self,
+        bundle: Bundle,
+        model: OnnxModel,
+        *,
+        use_ner: bool = False,
+        xai_max_words: int = XAI_MAX_WORDS,
+    ) -> None:
         self.bundle = bundle
         self._model = model
         self._use_ner = use_ner
+        self.xai_max_words = xai_max_words  # câu dài hơn thì không giải thích
 
     @classmethod
     def load(cls, settings: Settings) -> "Analyzer":
         """Nạp bundle, mô hình và bộ tách từ rồi chạy thử; lỗi thì dừng với thông báo rõ."""
         bundle = load_bundle(settings.bundle_dir)
-        analyzer = cls(bundle, OnnxModel(bundle, settings.ort_threads), use_ner=settings.ner)
+        analyzer = cls(
+            bundle,
+            OnnxModel(bundle, settings.ort_threads),
+            use_ner=settings.ner,
+            xai_max_words=settings.xai_max_words,
+        )
         analyzer.warmup()
         return analyzer
 
@@ -198,8 +211,8 @@ class Analyzer:
     def explain_prepared(self, prepared: Prepared) -> Explanation:
         if prepared.n_words == 0:
             raise NoContent([0])
-        if prepared.n_words > XAI_MAX_WORDS:
-            raise ExplanationUnavailable(prepared.n_words, XAI_MAX_WORDS)
+        if prepared.n_words > self.xai_max_words:
+            raise ExplanationUnavailable(prepared.n_words, self.xai_max_words)
         return explain_tokens(self._model, self.bundle.calibration, prepared.model_text.split())
 
     def explain(self, text: str) -> Explanation:

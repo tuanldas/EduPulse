@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from edupulse.config import REPO_ROOT, XAI_MAX_WORDS, Settings, load_settings
+from edupulse.config import REPO_ROOT, Settings, load_settings
 
 # Ngưỡng go khi đo trên M1 với 2 CPU / 1,5GB. VPS x86 chia sẻ chậm hơn nên đọc số M1 với hệ số
 # an toàn ×3: 0,6 s → 1,8 s < 2 s; 30 s → 90 s < 2 phút.
@@ -48,7 +48,7 @@ GO = {
     "startup_s": 20.0,
 }
 MARKERS = ("SMOKE-NOI-DUNG-9f3a", "SMOKE-QUERY-7c1d", "SMOKE-ID-4b2e", "SMOKE-NHOM-1a6c")
-LONG_WORDS = 30  # câu 30–40 từ là ca xấu nhất của giải thích bằng bỏ từng từ
+LONG_SHARE = 0.8  # câu dài từ ~80% giới hạn giải thích là ca xấu nhất của bỏ từng từ
 BATCHED_REFERENCE = 32  # lô của bench tham khảo (nhanh hơn, nhưng kết quả phụ thuộc bạn cùng lô)
 OUTCOME = {True: "ĐẠT", False: "KHÔNG ĐẠT", None: "không đo"}
 
@@ -331,8 +331,9 @@ def wait_for_health(base: str, container: Container, timeout: float = 180.0) -> 
 def measure_service(base: str, texts: list[str], repeat: int) -> dict:
     """Phần đo HTTP dùng chung cho Docker và `--url`: độ trễ lúc rảnh, câu dài, và khi có tải."""
     if not texts:
-        raise SmokeError(f"Không có câu nào ≤ {XAI_MAX_WORDS} từ để đo")
-    long = [t for t in texts if len(t.split()) >= LONG_WORDS]
+        raise SmokeError(f"Không có câu nào ≤ {load_settings().xai_max_words} từ để đo")
+    long_words = round(load_settings().xai_max_words * LONG_SHARE)
+    long = [t for t in texts if len(t.split()) >= long_words]
     first = post_text(base, "/api/analyze", texts[0])  # gồm nạp JVM ở lần đầu
     for text in texts[:3]:
         post_text(base, "/api/explain", text)
@@ -534,7 +535,7 @@ def table(header: list[str], rows: list[list]) -> list[str]:
 def latency_rows(gate: dict) -> list[list]:
     titles = {
         "latency_idle": "rảnh",
-        "latency_idle_long": "rảnh, câu 30–40 từ",
+        "latency_idle_long": "rảnh, câu dài sát giới hạn giải thích",
         "latency_under_load": "đang có tải",
     }
     return [
@@ -693,7 +694,7 @@ def parse_args(settings: Settings) -> argparse.Namespace:
 
 def measure(args: argparse.Namespace, settings: Settings) -> tuple[list[dict], dict | None]:
     texts = read_sentences(args, settings)
-    short = [t for t in texts if len(t.split()) <= XAI_MAX_WORDS]
+    short = [t for t in texts if len(t.split()) <= settings.xai_max_words]
     if args.url:
         return [run_remote(args, short)], None
     image = build_image(args)

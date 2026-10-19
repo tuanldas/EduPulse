@@ -17,7 +17,9 @@ from pathlib import Path
 MAX_CHARS = 500  # ký tự tối đa của một câu
 MAX_UPLOAD_MB = 10
 MAX_ROWS = 2000  # dòng tối đa của một file
-XAI_MAX_WORDS = 40  # số từ tối đa của câu được giải thích bằng occlusion
+# Số từ tối đa của câu được giải thích bằng occlusion (tốn số từ + 1 lượt chạy mô hình). Đây là
+# giá trị mặc định: EDUPULSE_XAI_MAX_WORDS ghi đè, và mã chạy thật đọc `Settings.xai_max_words`.
+XAI_MAX_WORDS = 25
 AUTO_XAI_TOP = 20  # số dòng ưu tiên cao nhất được giải thích sẵn khi chạy batch
 BUDGETS = (5, 10, 20, 30)  # ngân sách duyệt, % số câu
 DEFAULT_BUDGET = 10
@@ -133,6 +135,7 @@ class Settings:
     cors_origins: tuple[str, ...]  # EDUPULSE_CORS_ORIGINS, phân tách bằng dấu phẩy
     source_url: str  # EDUPULSE_SOURCE_URL
     job_ttl_min: float  # EDUPULSE_JOB_TTL_MIN, phút
+    xai_max_words: int = XAI_MAX_WORDS  # EDUPULSE_XAI_MAX_WORDS
 
     @property
     def data_dir(self) -> Path:
@@ -177,4 +180,5 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         cors_origins=_origins(env, "EDUPULSE_CORS_ORIGINS"),
         source_url=_url(env, "EDUPULSE_SOURCE_URL"),
         job_ttl_min=_positive_float(env, "EDUPULSE_JOB_TTL_MIN", 30.0),
+        xai_max_words=_int(env, "EDUPULSE_XAI_MAX_WORDS", XAI_MAX_WORDS),
     )

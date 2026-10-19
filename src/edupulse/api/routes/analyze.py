@@ -9,7 +9,6 @@ from fastapi import APIRouter
 from edupulse.api import schemas
 from edupulse.api.deps import AnalyzerDep
 from edupulse.api.errors import ApiError, not_implemented
-from edupulse.config import XAI_MAX_WORDS
 from edupulse.engine import explain as xai
 from edupulse.engine import flags
 from edupulse.engine.service import Analysis, HeadResult, NoContent
@@ -44,14 +43,14 @@ def _reason(reason: flags.FlagReason) -> schemas.FlagReason:
     )
 
 
-def to_analyze_response(analysis: Analysis) -> schemas.AnalyzeResponse:
+def to_analyze_response(analysis: Analysis, xai_max_words: int) -> schemas.AnalyzeResponse:
     prepared = analysis.prepared
     return schemas.AnalyzeResponse(
         display_text=prepared.display_text,
         pii_types=list(prepared.pii_types),
         no_diacritics=prepared.no_diacritics,
         n_words=prepared.n_words,
-        xai_available=prepared.n_words <= XAI_MAX_WORDS,
+        xai_available=prepared.n_words <= xai_max_words,
         sentiment=schemas.SentimentPrediction(
             label=analysis.sentiment.label,
             confidence=_p(analysis.sentiment.confidence),
@@ -104,7 +103,7 @@ def analyze(body: schemas.AnalyzeRequest, analyzer: AnalyzerDep) -> schemas.Anal
         analysis = analyzer.analyze(body.text)
     except NoContent as exc:
         raise ApiError(422, exc.code, NO_CONTENT_MESSAGE) from exc
-    return to_analyze_response(analysis)
+    return to_analyze_response(analysis, analyzer.xai_max_words)
 
 
 @router.post("/explain")
