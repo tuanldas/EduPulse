@@ -35,7 +35,7 @@ endef
 unexport THIS_MAKEFILE PY IMAGE BUNDLE_DIR BUILD_DEMO_ARG web
 
 .PHONY: help env setup data eda baseline train export calibrate experiments freeze evaluate hitl report \
-	artifacts demo-data api web gen-api test e2e lint docker-build smoke up fetch-artifacts
+	artifacts demo-data api web gen-api test e2e check-raw lint docker-build smoke up fetch-artifacts
 
 help: ## Liệt kê các lệnh
 	@awk -F':.*## ' '/^[a-z][a-z0-9-]*:.*## /{printf "  %-16s %s\n", $$1, $$2}' $(THIS_MAKEFILE)
@@ -107,6 +107,9 @@ test: ## Chạy pytest (và Vitest khi đã có apps/web)
 
 e2e: ## Chạy Playwright trên container đang chạy (cần `make up`; E2E_BASE_URL để trỏ nơi khác)
 	cd apps/web && E2E_BASE_URL=$${E2E_BASE_URL:-http://127.0.0.1:$${EDUPULSE_PORT:-8000}} pnpm exec playwright test
+
+check-raw: ## Kiểm câu gốc UIT-VSFC và bí mật trong mọi commit trước khi đẩy; ARGS="--head" hoặc dải rev để thu hẹp
+	$(PY) -m ml.check_raw_sentences $(ARGS)
 
 lint: ## ruff, eslint và tsc --noEmit
 	uv run ruff check .
