@@ -258,7 +258,7 @@ def test_confident_errors_take_the_highest_confidence_errors_of_each_task():
         [0.95, 0.95, 0.90, 0.99, 0.80, 0.75], abs=1e-6
     )
     assert {r["split"] for r in rows} == {"test"}
-    assert list(rows[0]) == list(ea.SAMPLE_COLUMNS)
+    assert list(rows[0]) == list(ea.FULL_SAMPLE_COLUMNS)
 
 
 def test_a_hundred_errors_are_cut_to_fifteen_per_task_and_thirty_rows():
@@ -283,21 +283,43 @@ def test_error_samples_writer_refuses_more_than_thirty_rows(tmp_path):
     assert not (tmp_path / "too_many.csv").exists()
 
 
-def test_error_samples_csv_roundtrips_commas_quotes_and_newlines(tmp_path):
-    awkward = 'thầy nói "ổn", nhưng\nchưa hết'
-    row = {
-        "split": "validation",
-        "row": 4,
-        "task": "topic",
-        "true": "others",
-        "pred": "lecturer",
-        "confidence": 0.987654,
-        "sentence": awkward,
-    }
-    ea.write_error_samples(tmp_path / "samples.csv", [row])
+AWKWARD_ROW = {
+    "split": "validation",
+    "row": 4,
+    "task": "topic",
+    "true": "others",
+    "pred": "lecturer",
+    "confidence": 0.987654,
+    "sentence": 'thầy nói "ổn", nhưng\nchưa hết',
+}
+
+
+def test_the_full_error_samples_csv_roundtrips_commas_quotes_and_newlines(tmp_path):
+    ea.write_error_samples_full(tmp_path / "full.csv", [AWKWARD_ROW])
+    with (tmp_path / "full.csv").open(encoding="utf-8", newline="") as handle:
+        back = list(csv.DictReader(handle))
+    assert back == [{key: str(value) for key, value in AWKWARD_ROW.items()}]
+
+
+def test_the_error_samples_csv_for_the_repo_never_holds_the_sentence(tmp_path):
+    ea.write_error_samples(tmp_path / "samples.csv", [AWKWARD_ROW])  # dòng còn mang câu gốc
+    text = (tmp_path / "samples.csv").read_text(encoding="utf-8")
+    assert "sentence" not in text and "thầy nói" not in text
     with (tmp_path / "samples.csv").open(encoding="utf-8", newline="") as handle:
         back = list(csv.DictReader(handle))
-    assert back == [{key: str(value) for key, value in row.items()}]
+    assert (
+        list(back[0])
+        == list(ea.SAMPLE_COLUMNS)
+        == [
+            "split",
+            "row",
+            "task",
+            "true",
+            "pred",
+            "confidence",
+        ]
+    )
+    assert back[0]["row"] == "4" and back[0]["confidence"] == "0.987654"
 
 
 # --- 3. lỗi theo lát ---------------------------------------------------------------------------
@@ -669,7 +691,7 @@ def read_rows(path):
         return list(csv.DictReader(handle))
 
 
-def test_main_end_to_end_writes_four_files_and_only_the_samples_hold_sentences(
+def test_main_end_to_end_writes_four_files_in_results_and_the_sentences_outside_the_repo(
     tmp_path, monkeypatch, capsys
 ):
     frame, deployed, reference = big_case()
@@ -688,10 +710,17 @@ def test_main_end_to_end_writes_four_files_and_only_the_samples_hold_sentences(
     out = capsys.readouterr().out
     assert all(name in out for name in ("error_analysis.json", "error_analysis.md"))
     assert "error_samples.csv" in out and "bias_cells.csv" in out
+    assert "error_samples_full.csv" in out
 
-    # error_samples.csv: đúng 15 lỗi tự tin nhất mỗi tác vụ, tổng 30, câu gốc khớp hàng.
-    samples = read_rows(ctx.table_path("error_samples.csv"))
-    assert list(samples[0]) == list(ea.SAMPLE_COLUMNS) and len(samples) == 30
+    # error_samples.csv: đúng 15 lỗi tự tin nhất mỗi tác vụ, tổng 30, KHÔNG có cột câu gốc.
+    repo_rows = read_rows(ctx.table_path("error_samples.csv"))
+    assert list(repo_rows[0]) == list(ea.SAMPLE_COLUMNS) and len(repo_rows) == 30
+    # Bản có câu gốc nằm cạnh thư mục dự đoán, ngoài results/.
+    full_path = ctx.preds_dir.parent / "error_samples_full.csv"
+    assert not full_path.is_relative_to(ctx.results_dir)
+    samples = read_rows(full_path)
+    assert list(samples[0]) == list(ea.FULL_SAMPLE_COLUMNS) and len(samples) == 30
+    assert [{k: r[k] for k in ea.SAMPLE_COLUMNS} for r in samples] == repo_rows
     reloaded = preds_lib.load_preds(ctx.preds_dir, DEPLOY_KEY)
     for task in TASKS:
         logits = reloaded.logits[task].astype(np.float64)
@@ -708,14 +737,15 @@ def test_main_end_to_end_writes_four_files_and_only_the_samples_hold_sentences(
         assert row["pred"] == LABELS[row["task"]][reloaded.pred[row["task"]][i]]
         assert row["true"] != row["pred"]
 
-    # Câu gốc chỉ nằm ở error_samples.csv, và chỉ những câu được chọn (một câu có thể bị chọn ở
-    # cả hai tác vụ nên đếm theo câu khác nhau).
-    samples_text = ctx.table_path("error_samples.csv").read_text(encoding="utf-8")
+    # Câu gốc chỉ nằm ở tệp ngoài repo, và chỉ những câu được chọn (một câu có thể bị chọn ở cả hai
+    # tác vụ nên đếm theo câu khác nhau); không tệp nào trong results/ chứa câu nào.
+    full_text = full_path.read_text(encoding="utf-8")
     chosen = {row["sentence"] for row in samples}
-    assert sum(sentence in samples_text for sentence in frame["sentence"]) == len(chosen) <= 30
+    assert sum(sentence in full_text for sentence in frame["sentence"]) == len(chosen) <= 30
     for other in (
         "metrics/error_analysis.json",
         "tables/error_analysis.md",
+        "tables/error_samples.csv",
         "tables/bias_cells.csv",
     ):
         text = (ctx.results_dir / other).read_text(encoding="utf-8")

@@ -96,6 +96,14 @@ def card(results_ctx, **overrides) -> ModelCard:
     return release_card.build_release_card(**{**options, **overrides})
 
 
+def test_evaluation_notes_lead_the_limitations_and_static_ones_come_last(results):
+    note = "Số test lấy từ bản trước."
+    limits = card(results, evaluation_notes=[note]).limitations
+    assert limits[0] == note
+    assert limits[-1] == "Mỉa mai dễ bị hiểu sai."
+    assert card(results).limitations == limits[1:]  # không ghi chú thì danh sách như cũ
+
+
 def test_the_card_is_a_valid_release_card_with_test_metrics_of_the_deployed_model(results):
     model_card = card(results)
     assert model_card.stage == "release" and model_card.metrics.split == "test"

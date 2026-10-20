@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "from": "1",
+  "to": "2",
+  "identical": true,
+  "created_at": "2026-10-19T15:32:57+0700",
+  "dataset": {
+    "name": "uitnlp/vietnamese_students_feedback",
+    "revision": "2d76906157232f87e9883fa37ebfc91ffdee1f83",
+    "rows": {
+      "train": 11426,
+      "validation": 1583,
+      "test": 3166
+    }
+  },
+  "processed": {
+    "from": {
+      "normalizer_version": "1",
+      "manifest_sha256": "5418c565c9d758153904b2242271aadf089532e63dd449f088059138b086520b",
+      "files": {
+        "train": "a3b2ef75d0388adad0e38e87c46641665be4aef1b530332fdab79accf7952554",
+        "validation": "426ad27764e83f28295544c5c3a72476db8075d475ce629a07c9fa206bca1284",
+        "test": "fdb8735213fef34a0b5ea4ad71850a381d130195210f9f73fafcd1a37b2816f1"
+      }
+    },
+    "to": {
+      "normalizer_version": "2",
+      "manifest_sha256": "a9ba2e8171a6dd98f2e9ba8678ccb511b41bc0c84d6fe47c48c710dec7315937",
+      "files": {
+        "train": "a3b2ef75d0388adad0e38e87c46641665be4aef1b530332fdab79accf7952554",
+        "validation": "426ad27764e83f28295544c5c3a72476db8075d475ce629a07c9fa206bca1284",
+        "test": "fdb8735213fef34a0b5ea4ad71850a381d130195210f9f73fafcd1a37b2816f1"
+      }
+    }
+  },
+  "checks": {
+    "sentences": 16175,
+    "columns_compared": [
+      "sentence",
+      "sentiment",
+      "topic",
+      "text_rdr",
+      "n_words",
+      "no_diacritics"
+    ],
+    "parquet_files_byte_identical": true,
+    "rows_with_different_model_text": 0,
+    "rows_with_different_columns": 0,
+    "sentences_with_capital_letters": 0,
+    "sentences_with_pii_under_new_rules": 0
+  },
+  "why": "Dữ liệu UIT-VSFC toàn chữ thường và không có thông tin cá nhân: luật tên cần chữ hoa nên không bao giờ chạy, các mẫu mới của bản mới không khớp câu nào. Mọi cột của dữ liệu đã xử lý, kể cả model_text, giống hệt giữa hai bản, nên mô hình đã huấn luyện, cổng int8, baseline và số liệu chấm test của bản cũ áp dụng nguyên vẹn cho bản mới."
+}

@@ -11,8 +11,13 @@ nhiệt độ hiệu chuẩn, nên chỉ dùng để xếp hạng lỗi chứ kh
 
     metrics/error_analysis.json   mọi con số, không có câu gốc
     tables/error_analysis.md      báo cáo tiếng Việt, không có câu gốc
-    tables/error_samples.csv      TỐI ĐA 30 lỗi tự tin nhất kèm câu gốc: nơi duy nhất ghi câu gốc
+    tables/error_samples.csv      TỐI ĐA 30 lỗi tự tin nhất: mã hàng, nhãn, dự đoán, độ tin cậy;
+                                  KHÔNG có câu gốc (giấy phép UIT-VSFC không cho đưa vào repo)
     tables/bias_cells.csv         recall cảm xúc theo ô chủ đề x cảm xúc của bản triển khai
+
+Bản có câu gốc của 30 dòng trên ghi ra ngoài repo, cạnh thư mục dự đoán đã lưu
+(`$EDUPULSE_HOME/outputs/error_samples_full.csv`), để người viết báo cáo đọc; mở lại bất kỳ câu nào
+bằng cột `row` của `error_samples.csv`.
 
 Các hàm lõi (`analyze`, `confident_errors`, ...) thuần: nhận khung dữ liệu cùng `Preds` và không
 đọc đĩa; chỉ `run` và `main` chạm hệ thống tệp. Khung dữ liệu lấy qua `EvalContext.load_split()`,
@@ -67,7 +72,9 @@ EXIT_MISSING = 2
 
 METRICS_FILE, REPORT_FILE = "error_analysis.json", "error_analysis.md"
 SAMPLES_FILE, BIAS_FILE = "error_samples.csv", "bias_cells.csv"
-SAMPLE_COLUMNS = ("split", "row", "task", "true", "pred", "confidence", "sentence")
+FULL_SAMPLES_FILE = "error_samples_full.csv"  # ngoài repo, kèm câu gốc
+SAMPLE_COLUMNS = ("split", "row", "task", "true", "pred", "confidence")  # trong repo
+FULL_SAMPLE_COLUMNS = (*SAMPLE_COLUMNS, "sentence")
 BIAS_COLUMNS = ("task", "topic", "sentiment", "n", "recall", "small_sample")
 FRAME_COLUMNS = ("sentence", "sentiment", "topic", "text_rdr", "n_words", "no_diacritics")
 
@@ -238,11 +245,12 @@ def sample_index(samples: list[dict[str, Any]]) -> dict[str, Any]:
         }
     return {
         "file": SAMPLES_FILE,
+        "full_file": FULL_SAMPLES_FILE,
         "limit_per_task": SAMPLES_PER_TASK,
         "max_rows": MAX_SAMPLE_ROWS,
         "n_rows": len(samples),
         "per_task": per_task,
-        "rows": [{key: row[key] for key in SAMPLE_COLUMNS if key != "sentence"} for row in samples],
+        "rows": [{key: row[key] for key in SAMPLE_COLUMNS} for row in samples],
     }
 
 
@@ -530,8 +538,9 @@ def _samples_markdown(result: dict[str, Any]) -> list[str]:
         "## 2. Lỗi tự tin nhất (kiểm nhãn)",
         "",
         f"Mỗi tác vụ lấy {info['limit_per_task']} lỗi có độ tin cậy cao nhất của "
-        f"{model_display(MAIN_KEY)}, tối đa {info['max_rows']} dòng, ghi cùng câu gốc ở "
-        f"`{info['file']}` để người xem đối chiếu lại nhãn. Đó là tệp duy nhất chứa câu gốc. "
+        f"{model_display(MAIN_KEY)}, tối đa {info['max_rows']} dòng, ghi mã hàng và nhãn ở "
+        f"`{info['file']}`. Câu gốc không nằm trong repo (giấy phép UIT-VSFC): bản kèm câu là "
+        f"`{info['full_file']}` ở thư mục outputs của người chạy, mở lại câu nào bằng cột `row`. "
         f"{result['notes']['confidence']}",
         "",
     ]
@@ -767,17 +776,25 @@ def render_markdown(result: dict[str, Any]) -> str:
 # --- ghi tệp và dòng lệnh ----------------------------------------------------------------------
 
 
-def write_error_samples(path: Path, rows: list[dict[str, Any]]) -> None:
-    """Ghi `error_samples.csv`, nơi duy nhất được chứa câu gốc, với tối đa MAX_SAMPLE_ROWS dòng."""
+def write_error_samples(
+    path: Path, rows: list[dict[str, Any]], columns: tuple[str, ...] = SAMPLE_COLUMNS
+) -> None:
+    """Ghi `error_samples.csv` (tối đa MAX_SAMPLE_ROWS dòng). Mặc định không có cột câu gốc: cột
+    nào ngoài `columns` bị bỏ, nên dòng còn mang câu cũng không làm câu lọt vào tệp trong repo."""
     if len(rows) > MAX_SAMPLE_ROWS:
         raise ValueError(
             f"{SAMPLES_FILE} chỉ được chứa tối đa {MAX_SAMPLE_ROWS} dòng, nhận {len(rows)}"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=SAMPLE_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def write_error_samples_full(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Bản có câu gốc, chỉ để ngoài repo cho người viết báo cáo."""
+    write_error_samples(path, rows, FULL_SAMPLE_COLUMNS)
 
 
 def write_bias_cells(path: Path, cells: list[dict[str, Any]]) -> None:
@@ -791,7 +808,8 @@ def write_bias_cells(path: Path, cells: list[dict[str, Any]]) -> None:
 
 
 def run(ctx: EvalContext) -> tuple[list[Path], dict[str, Any]]:
-    """Đọc dự đoán của `ctx.preds_dir` và khung dữ liệu của `ctx.split`, ghi bốn tệp đầu ra.
+    """Đọc dự đoán của `ctx.preds_dir` và khung dữ liệu của `ctx.split`, ghi bốn tệp trong
+    `ctx.results_dir` và một tệp kèm câu gốc ngoài repo (cạnh thư mục dự đoán).
 
     Trả về đường dẫn các tệp đã ghi và kết quả phân tích.
     """
@@ -810,8 +828,11 @@ def run(ctx: EvalContext) -> tuple[list[Path], dict[str, Any]]:
         "git_commit": meta.get("git_commit"),
     }
 
+    samples = confident_errors(frame, deployed, ctx.split)
     samples_path = ctx.table_path(SAMPLES_FILE)
-    write_error_samples(samples_path, confident_errors(frame, deployed, ctx.split))
+    write_error_samples(samples_path, samples)
+    full_path = ctx.preds_dir.parent / FULL_SAMPLES_FILE
+    write_error_samples_full(full_path, samples)
     report_path = ctx.table_path(REPORT_FILE)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(render_markdown(result), encoding="utf-8")
@@ -819,7 +840,7 @@ def run(ctx: EvalContext) -> tuple[list[Path], dict[str, Any]]:
     write_bias_cells(bias_path, result["bias"]["topic_sentiment_cells"])
     metrics_path = ctx.metrics_path(METRICS_FILE)
     write_json(metrics_path, result)
-    return [metrics_path, report_path, samples_path, bias_path], result
+    return [metrics_path, report_path, samples_path, bias_path, full_path], result
 
 
 def headline(result: dict[str, Any]) -> list[str]:

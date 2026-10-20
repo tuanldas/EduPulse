@@ -29,7 +29,7 @@ MAX_JOBS = 8
 MAX_QUEUE = 3
 
 # Trùng giá trị mặc định của `BUNDLE_VERSION` trong Makefile.
-DEFAULT_BUNDLE_VERSION = "v1.0"
+DEFAULT_BUNDLE_VERSION = "v1.1"
 
 _VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _ORIGIN_RE = re.compile(r"https?://[^/\s,]+")

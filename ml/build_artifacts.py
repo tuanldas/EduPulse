@@ -1,7 +1,7 @@
 """Gom bundle triển khai `$EDUPULSE_HOME/artifacts/<version>/` từ kết quả huấn luyện và export.
 
     python -m ml.build_artifacts --version v0-smoke      # make artifacts BUNDLE_VERSION=v0-smoke
-    python -m ml.build_artifacts --version v1.0          # bản phát hành: thẻ mô hình trên test
+    python -m ml.build_artifacts --version v1.1          # bản phát hành: thẻ mô hình trên test
 
 Bundle chỉ gồm mô hình và cấu hình (model.int8.onnx, tokenizer.json, calibration.json,
 model_card.json, insight_background.json, golden_predictions.json, baseline/*.skops, manifest.json).
@@ -21,6 +21,7 @@ import random
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,9 @@ from ml import freeze as freeze_lib
 from ml.common import (
     SPLITS,
     assert_normalizer,
+    find_invariance_evidence,
     load_processed,
+    normalizer_compatible,
     read_json,
     resolve_run,
     settings,
@@ -60,12 +63,15 @@ from ml.common import (
 from ml.download_data import DATASET_REPO, load_raw_manifest
 from ml.export_onnx import INPUT_NAMES, OUTPUT_NAMES, unk_alias_gap
 from ml.phobert_model import BASE_MODEL, BASE_REVISION, MAX_LEN, PAD_ID, tokenizer_path
+from ml.plotting import vn
 from ml.release_card import ReleaseError, build_release_card
 from ml.train_baseline import load_model
 
 LOG_PREFIX = "build_artifacts"
 GUARD_SAMPLES = 200
 GUARD_MIN_TOKENS = 4  # câu ngắn hơn có thể trùng một n-gram trong đếm nền
+FULL_SCAN_MIN_TOKENS = 8  # quét hết mọi câu: ngắn hơn thì trùng ngẫu nhiên với câu tự viết
+GUARD_TEXT_SUFFIXES = (".json", ".md")
 BASELINE_FILES = tuple(f"baseline/{task}_linearsvc.skops" for task in TASKS)
 BUNDLE_FILES = (
     "model.int8.onnx",
@@ -91,13 +97,30 @@ OUT_OF_SCOPE = (
     "Đánh giá, xếp loại hay kỷ luật cá nhân giảng viên; truy vết hay xếp hạng sinh viên; ra "
     "quyết định tự động khi không có người duyệt."
 )
+# Ẩn thông tin cá nhân là luật (edupulse.text.pii), không phải mô hình. Hai câu dưới đây phải đúng
+# với luật: tests/ml/test_build_artifacts.py kiểm từng ví dụ bằng chính `mask`.
+PII_MASKED = (
+    "Ẩn thông tin cá nhân là best effort theo luật, không phải mô hình. Ẩn được: số điện thoại "
+    "(di động, bàn, kể cả có ngoặc quanh mã vùng), email, CCCD/CMND, mã sinh viên (số, hoặc chữ "
+    "HOA và số như B20DCCN123), liên kết (cả github.com/x/y, instagram.com/x không có http), @tên "
+    "tài khoản, và tên Viết Hoa đứng sau từ xưng hô hoặc chức danh (thầy, cô, thầy giáo, cô giáo, "
+    "giảng viên, hiệu trưởng, trưởng khoa, trợ giảng, cố vấn...)."
+)
+PII_MISSED = (
+    "Thông tin cá nhân còn sót: tên viết thường; tên không đứng sau từ xưng hô hay chức danh khi "
+    "EDUPULSE_NER=0 (mặc định, không dùng nhận diện tên); mã 7 chữ số hoặc mã không kèm từ gợi ý "
+    "(dễ nhầm mã môn, mã lớp); mã sinh viên chữ-số viết thường; liên kết không có http hay www và "
+    "không thuộc các mạng xã hội thông dụng."
+)
+PREVIOUS_BUNDLE = "v1.0"  # bản đã được chấm test, trước khi chuẩn hoá đổi
 # Giới hạn không gắn với một con số đo được; bản phát hành thêm các giới hạn kèm số đo trên test.
 STATIC_LIMITATIONS = [
     "Mỉa mai, châm biếm dễ bị hiểu sai.",
     "Câu viết hoa chữ đầu mọi từ dễ bị luật ẩn tên coi nhiều từ là tên người, làm đổi nhãn.",
     "Dữ liệu từ một trường, giai đoạn 2013-2016; cách viết và môn học hiện nay có thể khác.",
     "Cơ sở vật chất gần như chỉ có câu tiêu cực trong dữ liệu nên mô hình hay gán CSVC tiêu cực.",
-    "Tên người chỉ ẩn được khi viết hoa sau từ xưng hô (best effort); tên viết thường thì sót.",
+    PII_MASKED,
+    PII_MISSED,
     "Tỉ lệ trên dashboard tính từ nhãn dự đoán nên có thể lệch vài điểm so với thực tế.",
     "Mô hình int8 cho xác suất lệch nhẹ giữa phân tích một câu và phân tích hàng loạt.",
 ]
@@ -134,34 +157,96 @@ def git_commit() -> str:
 def assert_same_normalizer(
     history: dict[str, Any], background: InsightBackground, golden: GoldenPredictions
 ) -> None:
+    """Mã, dữ liệu đã xử lý, đếm nền và dự đoán vàng phải cùng một bản chuẩn hoá. Run huấn luyện
+    có thể do bản cũ hơn nếu bằng chứng bất biến chứng minh hai bản cho model_text giống hệt."""
     versions = {
         "mã nguồn": NORMALIZER_VERSION,
         "dữ liệu đã xử lý": assert_normalizer()["normalizer_version"],
-        "run huấn luyện": history.get("normalizer_version"),
         "đếm nền insight": background.normalizer_version,
         "dự đoán vàng": golden.normalizer_version,
     }
-    if len(set(versions.values())) != 1:
-        raise BundleError(f"normalizer_version không đồng nhất: {versions}")
+    trained_with = history.get("normalizer_version")
+    if len(set(versions.values())) != 1 or not normalizer_compatible(trained_with):
+        raise BundleError(
+            f"normalizer_version không đồng nhất: {versions}, run huấn luyện {trained_with!r} "
+            "(khác bản của mã thì cần results/metrics/normalizer_v*_invariance.json còn hiệu lực)"
+        )
+
+
+def evaluation_notes(trained_with: str | None) -> list[str]:
+    """Ghi chú nguồn gốc số test khi mô hình do bản chuẩn hoá cũ hơn huấn luyện và chấm.
+
+    Số test là của lần chấm duy nhất ở bản trước; chuẩn hoá mới cho model_text giống hệt trên mọi
+    câu của dữ liệu nên chúng áp dụng nguyên vẹn, không chấm lại. Cùng bản chuẩn hoá thì không cần.
+    """
+    evidence = find_invariance_evidence(trained_with)
+    if evidence is None:
+        return []
+    checks, old, new = evidence["checks"], evidence["from"], evidence["to"]
+    same_bytes = checks.get("parquet_files_byte_identical")
+    data = "tệp dữ liệu đã xử lý giống hệt từng byte" if same_bytes else "mọi cột dữ liệu giống hệt"
+    return [
+        f"Số liệu test là của lần chấm duy nhất trên bản {PREVIOUS_BUNDLE} (cùng mô hình, "
+        f"calibration và baseline; chuẩn hoá bản {old}). Chuẩn hoá bản {new} cho model_text giống "
+        f"hệt bản {old} trên cả {vn(checks['sentences'], 0)} câu UIT-VSFC ({data}), nên các số này "
+        "áp dụng nguyên vẹn cho bundle này và test không được chấm lại (bằng chứng: "
+        f"results/metrics/normalizer_v{new}_invariance.json)."
+    ]
+
+
+def guard_texts(directory: Path) -> dict[str, str]:
+    """Tệp văn bản ở gốc thư mục mà guard quét (JSON, Markdown); `.skops` là nhị phân nên bỏ qua."""
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(directory.iterdir())
+        if path.is_file() and path.suffix in GUARD_TEXT_SUFFIXES
+    }
+
+
+def corpus_sentences(column: str, min_tokens: int) -> list[str]:
+    """Câu của cả ba split ở dạng `column` (`sentence` gốc hoặc `text_rdr` đã tách từ)."""
+    return [
+        sentence
+        for split in SPLITS
+        # Chỉ tìm chuỗi, không tính chỉ số nào trên test.
+        for sentence in load_processed(split, allow_test=True)[column]
+        if len(sentence.split()) >= min_tokens
+    ]
+
+
+def first_file_with(texts: dict[str, str], sentences: Iterable[str]) -> str | None:
+    for sentence in sentences:
+        for name, text in texts.items():
+            if sentence in text:
+                return name
+    return None
 
 
 def assert_no_source_sentences(bundle_dir: Path, samples: int = GUARD_SAMPLES) -> int:
     """Không câu gốc UIT-VSFC nào (mẫu ngẫu nhiên) xuất hiện nguyên văn trong JSON của bundle."""
-    texts = {
-        path.name: path.read_text(encoding="utf-8") for path in sorted(bundle_dir.glob("*.json"))
-    }
-    pool = [
-        sentence
-        for split in SPLITS
-        # Chỉ tìm chuỗi, không tính chỉ số nào trên test.
-        for sentence in load_processed(split, allow_test=True)["sentence"]
-        if len(sentence.split()) >= GUARD_MIN_TOKENS
-    ]
-    for sentence in random.Random(0).sample(pool, samples):
-        for name, text in texts.items():
-            if sentence in text:
-                raise BundleError(f"bundle chứa câu gốc của dữ liệu trong {name}")
+    pool = corpus_sentences("sentence", GUARD_MIN_TOKENS)
+    leaked = first_file_with(guard_texts(bundle_dir), random.Random(0).sample(pool, samples))
+    if leaked:
+        raise BundleError(f"bundle chứa câu gốc của dữ liệu trong {leaked}")
     return samples
+
+
+def assert_no_source_sentences_anywhere(directory: Path) -> int:
+    """Như trên nhưng quét MỌI câu dài (dạng gốc và dạng đã tách từ): guard trước khi công khai.
+
+    Chỉ tính câu từ `FULL_SCAN_MIN_TOKENS` tiếng, vì quét hết thì câu ngắn dễ trùng ngẫu nhiên với
+    câu tự viết (vd. "em rất hài_lòng ." trong dự đoán vàng). Trả về số câu đã đối chiếu.
+    """
+    pool = dict.fromkeys(
+        [
+            *corpus_sentences("sentence", FULL_SCAN_MIN_TOKENS),
+            *corpus_sentences("text_rdr", FULL_SCAN_MIN_TOKENS),
+        ]
+    )
+    leaked = first_file_with(guard_texts(directory), pool)
+    if leaked:
+        raise BundleError(f"thư mục chứa câu gốc của dữ liệu trong {leaked}")
+    return len(pool)
 
 
 def model_card(
@@ -221,7 +306,7 @@ def baseline_rows() -> list[BaselineRow]:
     if not path.is_file():
         raise BundleError(f"chưa có {path} — chạy `make baseline`")
     data = read_json(path)
-    if data["normalizer_version"] != NORMALIZER_VERSION:
+    if not normalizer_compatible(data["normalizer_version"]):
         raise BundleError(
             "val_baselines.json sinh bởi bản chuẩn hoá khác — chạy lại `make baseline`"
         )
@@ -280,7 +365,7 @@ def require_passed_gate(gate: dict[str, Any], run: Path, allow_failed: bool) -> 
     """Cổng int8 của đúng run này phải qua trước khi đóng gói; trả về mục `embedding`."""
     if gate.get("run") != run.name:
         raise BundleError(f"onnx_gate.json là của run {gate.get('run')!r}, không phải {run.name!r}")
-    if gate.get("normalizer_version") != NORMALIZER_VERSION:
+    if not normalizer_compatible(gate.get("normalizer_version")):
         raise BundleError("onnx_gate.json sinh bởi bản chuẩn hoá khác — chạy lại `make export`")
     if not gate["gate"]["passed"] and not allow_failed:
         raise BundleError(
@@ -367,6 +452,7 @@ def build(
                 out_of_scope=OUT_OF_SCOPE,
                 static_limitations=STATIC_LIMITATIONS,
                 notes=ModelCardNotes(x86=NOTE_X86, demo=NOTE_DEMO),
+                evaluation_notes=evaluation_notes(history.get("normalizer_version")),
             )
         except ReleaseError as error:
             raise BundleError(str(error)) from error
@@ -440,7 +526,7 @@ def build(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--version", required=True, help="vd. v0-smoke hoặc v1.0")
+    parser.add_argument("--version", required=True, help="vd. v0-smoke hoặc v1.1")
     parser.add_argument("--run", default="best", help="'best', tên run hoặc thư mục checkpoint")
     parser.add_argument(
         "--stage", choices=["smoke", "release"], help="mặc định: smoke nếu tên có 'smoke'"

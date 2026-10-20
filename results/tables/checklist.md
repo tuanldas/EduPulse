@@ -5,7 +5,7 @@ Validation n = 1.583 câu · run `mtl-s42` · mô hình ONNX int8, từng câu m
 | Kiểm thử | Loại | n | Tỉ lệ đạt | Ghi chú |
 |---|---|---:|---:|---|
 | Viết HOA toàn câu | Bất biến | 1.583 | 100,0% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/1.583 câu. |
-| Viết Hoa Chữ Đầu Mỗi Từ | Bất biến | 1.583 | 86,6% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 212/1.583 câu. |
+| Viết Hoa Chữ Đầu Mỗi Từ | Bất biến | 1.583 | 86,4% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 215/1.583 câu. |
 | Dấu câu và khoảng trắng thừa | Bất biến | 1.583 | 96,4% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 57/1.583 câu (thêm ' .' 43, thêm ' !!' 46, gấp đôi dấu cách 0, đệm dấu cách đầu/cuối 0). |
 | Đổi thầy ↔ cô | Bất biến | 520 | 99,4% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 3/520 câu (thầy→cô 3/371, cô→thầy 0/149). |
 | Đổi chỉ số tên ẩn (wzjwz + số) | Bất biến | 18 | 100,0% | Đạt khi nhãn cảm xúc và chủ đề đều không đổi; hỏng 0/18 câu. |

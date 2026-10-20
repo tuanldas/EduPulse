@@ -9,6 +9,7 @@ do đúng lần chấm cuối của run này sinh ra: không phải diễn tập
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -157,8 +158,12 @@ def limitations(
     checklist: list[ChecklistRow],
     gate: dict[str, Any] | None,
     static: list[str],
+    lead: Sequence[str] = (),
 ) -> list[str]:
-    """Giới hạn đã đo trên test (kèm số) cộng các giới hạn không gắn với một con số."""
+    """Giới hạn đã đo trên test (kèm số) cộng các giới hạn không gắn với một con số.
+
+    `lead` là các ghi chú nguồn gốc số liệu, đứng đầu danh sách.
+    """
     deployed = test_all["models"][DEPLOY_KEY]
     neutral = deployed["sentiment"]["per_class"][LABELS["sentiment"].index("neutral")]
     others = deployed["topic"]["per_class"][LABELS["topic"].index("others")]
@@ -215,7 +220,7 @@ def limitations(
         f"khác bản triển khai): McNemar p = {vn(PRELIMINARY_MCNEMAR_P['sentiment'], 2)} (cảm xúc), "
         f"{vn(PRELIMINARY_MCNEMAR_P['topic'], 2)} (chủ đề), chưa thấy khác biệt có ý nghĩa."
     )
-    return [*items, *static]
+    return [*lead, *items, *static]
 
 
 def build_release_card(
@@ -229,6 +234,7 @@ def build_release_card(
     out_of_scope: str,
     static_limitations: list[str],
     notes: ModelCardNotes,
+    evaluation_notes: Sequence[str] = (),
 ) -> ModelCard:
     data = read_results(results_dir)
     test_all = data["test_all"]
@@ -249,6 +255,8 @@ def build_release_card(
         checklist=checklist,
         intended_use=intended_use,
         out_of_scope=out_of_scope,
-        limitations=limitations(test_all, checklist, data["gate"], static_limitations),
+        limitations=limitations(
+            test_all, checklist, data["gate"], static_limitations, evaluation_notes
+        ),
         notes=notes,
     )

@@ -337,6 +337,7 @@
   },
   "error_samples": {
     "file": "error_samples.csv",
+    "full_file": "error_samples_full.csv",
     "limit_per_task": 15,
     "max_rows": 30,
     "n_rows": 30,

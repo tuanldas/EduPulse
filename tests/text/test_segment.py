@@ -78,10 +78,10 @@ def test_singleton_is_shared():
 def test_four_threads_match_sequential_results():
     segmenter = get_segmenter()
     base = [
-        "[đã gỡ câu UIT-VSFC] .",
+        "bài giảng của thầy rõ ràng , ví dụ sát thực tế .",
         "phòng máy hay hỏng , máy chiếu mờ , wifi yếu .",
         "chương trình học nặng lý thuyết , cần thêm thực hành .",
-        "em [đã gỡ câu UIT-VSFC] colonsmile .",
+        "em xin thầy thêm vài bài luyện tập ở nhà colonsmile .",
         "học phí 2 triệu 5 mỗi tín chỉ , giờ giấc không hợp lý .",
     ]
     sentences = [f"{base[i % len(base)]} lớp {i}" for i in range(200)]

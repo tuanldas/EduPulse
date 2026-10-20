@@ -147,9 +147,9 @@ def test_normalize_text_full_order():
     "dataset_style",
     [
         "thầy dạy rất nhiệt tình colonsmile .",
-        "ví dụ [đã gỡ câu UIT-VSFC] ) .",
-        "[đã gỡ câu UIT-VSFC] , thầy wzjwz209 dạy thay .",
-        "[đã gỡ câu UIT-VSFC] .",
+        "ví dụ doubledot cấu trúc dữ liệu , gồm 4 loại chính của knuth ( 1968 ) .",
+        "tuần trước cô wzjwz208 nghỉ ốm , cô wzjwz209 dạy bù .",
+        "phòng thực hành còn thiếu doubledot ghế , quạt , máy lạnh , vdotv .",
         "điểm 3dot0 ghz và 11doubledot55 pm , uitdotedudotvn .",
     ],
 )

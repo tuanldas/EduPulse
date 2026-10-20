@@ -67,7 +67,7 @@ Mỗi dòng là một cặp (nhãn thật → nhãn dự đoán), xếp theo s�
 
 ## 2. Lỗi tự tin nhất (kiểm nhãn)
 
-Mỗi tác vụ lấy 15 lỗi có độ tin cậy cao nhất của PhoBERT đa nhiệm · int8 (bản triển khai), tối đa 30 dòng, ghi cùng câu gốc ở `error_samples.csv` để người xem đối chiếu lại nhãn. Đó là tệp duy nhất chứa câu gốc. Độ tin cậy là xác suất softmax lớn nhất của logits bản triển khai ở T = 1 (chưa áp nhiệt độ hiệu chuẩn); chỉ dùng để xếp hạng lỗi.
+Mỗi tác vụ lấy 15 lỗi có độ tin cậy cao nhất của PhoBERT đa nhiệm · int8 (bản triển khai), tối đa 30 dòng, ghi mã hàng và nhãn ở `error_samples.csv`. Câu gốc không nằm trong repo (giấy phép UIT-VSFC): bản kèm câu là `error_samples_full.csv` ở thư mục outputs của người chạy, mở lại câu nào bằng cột `row`. Độ tin cậy là xác suất softmax lớn nhất của logits bản triển khai ở T = 1 (chưa áp nhiệt độ hiệu chuẩn); chỉ dùng để xếp hạng lỗi.
 
 | Tác vụ | Số dòng | Độ tin cậy cao nhất | Độ tin cậy thấp nhất trong nhóm |
 |---|---:|---:|---:|

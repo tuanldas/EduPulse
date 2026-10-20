@@ -21,6 +21,8 @@ không tác vụ nào tụt. Test không bao giờ dùng để chấm; chỗ duy
   bản gốc.
 - phobert: tiếp tục huấn luyện PhoBERT đa nhiệm đã triển khai `--max-steps` bước, CHỈ trên CPU; mỗi
   batch nửa là phản hồi (lấy có hoàn lại), nửa là mẫu phát lại từ train để mô hình không trôi.
+  Cổng chấm bản FP32 (torch) trên validation, không phải int8: mô hình mới muốn thành bundle phải
+  đi tiếp qua export ONNX int8 và cổng int8 (`make export calibrate artifacts`).
 
 Không bao giờ ghi vào models/ hay bundle: mô hình mới nằm ở --out (mặc định
 outputs/retrain/<loại>-<giờ>/). Mã thoát: 0 xong, 2 lỗi đầu vào, 3 mô hình mới bị từ chối, 4 khoá
@@ -53,6 +55,7 @@ from ml.common import (
     MpsBusyError,
     load_processed,
     mps_lock,
+    normalizer_compatible,
     read_json,
     resolve_run,
     set_seed,
@@ -429,10 +432,11 @@ def retrain_phobert(
     history_path = run / "history.json"
     if history_path.is_file():
         found = read_json(history_path).get("normalizer_version")
-        if found != NORMALIZER_VERSION:
+        if not normalizer_compatible(found):
             raise InputError(
                 f"{run.name} huấn luyện với bản chuẩn hoá {found!r} nhưng mã đang là "
-                f"{NORMALIZER_VERSION!r}; không trộn phản hồi mới vào mô hình cũ"
+                f"{NORMALIZER_VERSION!r} và không có bằng chứng bất biến; không trộn phản hồi "
+                "mới vào mô hình cũ"
             )
     target = assert_safe_output(out or default_out("phobert"), run)
 

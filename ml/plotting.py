@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
+from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 # Màu ngữ nghĩa của docs/design-guidelines.md mục 2.2 (fill biểu đồ, dùng chung hai theme).
 COLORS = {
@@ -29,6 +30,25 @@ def vn(value: float, digits: int = 1) -> str:
     """Số kiểu Việt: dấu phẩy thập phân, dấu chấm hàng nghìn."""
     text = f"{value:,.{digits}f}"
     return text.replace(",", "\0").replace(".", ",").replace("\0", ".")
+
+
+def format_tick(value: float, _position: int | None = None) -> str:
+    """Nhãn trục kiểu Việt: dấu phẩy thập phân, dấu chấm hàng nghìn (0,2 · 1.600 · 1.234,5)."""
+    rounded = round(float(value), 6) + 0.0  # + 0.0 đổi -0.0 thành 0.0
+    text = f"{rounded:.6f}".rstrip("0").rstrip(".")
+    decimals = len(text.split(".")[1]) if "." in text else 0
+    return vn(rounded, decimals)
+
+
+def vietnamese_axes(ax: plt.Axes, which: str = "both") -> None:
+    """Đặt nhãn số của trục tuyến tính theo kiểu Việt; trục log giữ nhãn luỹ thừa 10 mặc định.
+
+    Mỗi trục nhận một FuncFormatter riêng: matplotlib gắn formatter vào đúng một trục.
+    """
+    if which in ("x", "both"):
+        ax.xaxis.set_major_formatter(FuncFormatter(format_tick))
+    if which in ("y", "both"):
+        ax.yaxis.set_major_formatter(FuncFormatter(format_tick))
 
 
 def setup_style() -> None:

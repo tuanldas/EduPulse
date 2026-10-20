@@ -7,13 +7,13 @@
 name: edupulse
 services:
   edupulse:
-    image: edupulse:${BUNDLE_VERSION:-v1.0}
+    image: edupulse:${BUNDLE_VERSION:-v1.1}
     build:
       context: .
       additional_contexts:
-        artifacts: ${EDUPULSE_ARTIFACTS_DIR:-${EDUPULSE_HOME:-.}/artifacts/${BUNDLE_VERSION:-v1.0}}
+        artifacts: ${EDUPULSE_ARTIFACTS_DIR:-${EDUPULSE_HOME:-.}/artifacts/${BUNDLE_VERSION:-v1.1}}
       args:
-        BUNDLE_VERSION: ${BUNDLE_VERSION:-v1.0}
+        BUNDLE_VERSION: ${BUNDLE_VERSION:-v1.1}
     ports:
       - "${EDUPULSE_PORT:-8000}:8000"
     # Chỉ chuyển các biến chạy lúc runtime; đường dẫn của máy chủ (EDUPULSE_HOME, ...) ở lại ngoài.

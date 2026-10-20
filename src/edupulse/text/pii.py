@@ -4,10 +4,12 @@ Mỗi câu cho hai góc nhìn từ cùng một tập vị trí đã phát hiện
 - `display`: giữ hoa/thường, thay bằng nhãn `[TÊN] [SĐT] [EMAIL] [MSSV] [CCCD] [URL]`;
 - `model`: tên -> `wzjwz<k>` (k phân biệt theo tên trong câu, như dữ liệu gốc), PII khác bị xoá.
 
-Số điện thoại, email, URL, CCCD, MSSV được bắt bằng regex. Tên người chỉ bắt được khi viết hoa:
-luật rẻ "từ xưng hô + 1-4 âm tiết Viết Hoa" luôn bật, NER của underthesea là tuỳ chọn và chỉ chạy
-khi câu có chữ hoa. Tên viết thường ("thầy nam") KHÔNG bắt được: giới hạn đã biết, phải nói rõ
-với người dùng (best effort).
+Số điện thoại (di động, bàn, kể cả có ngoặc quanh mã vùng), email, URL (kể cả không có http với
+các mạng xã hội thông dụng), @tên tài khoản, CCCD, MSSV (số, hoặc chữ + số như B20DCCN123) được
+bắt bằng regex. Tên người chỉ bắt được khi viết hoa: luật rẻ "từ xưng hô (+ chức danh) + 1-4 âm
+tiết Viết Hoa" luôn bật, NER của underthesea là tuỳ chọn và chỉ chạy khi câu có chữ hoa. Tên viết
+thường ("thầy nam") KHÔNG bắt được: giới hạn đã biết, phải nói rõ với người dùng (best effort).
+Mã chỉ có 7 chữ số không kèm từ gợi ý cũng không bắt: dễ nhầm với mã môn, mã lớp.
 """
 
 from __future__ import annotations
@@ -36,11 +38,21 @@ MAX_NAME_WORDS = 4
 
 # --- Regex (đầu số di động 03/05/07/08/09, 10 số từ 15/9/2018) ---------------------------------
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-_URL = re.compile(r"(?i)\b(?:https?://|www\.|(?:facebook|fb|zalo|tiktok)\.[a-z]+/)\S+")
+# Mạng xã hội và dịch vụ chia sẻ thông dụng: chỉ bắt khi có đường dẫn ("github.com/x/y"); tên miền
+# trần như uit.edu.vn là từ thường gặp trong góp ý, không phải liên kết cá nhân.
+_URL = re.compile(
+    r"(?i)\b(?:https?://|www\.|"
+    r"(?:facebook|fb|zalo|tiktok|instagram|github|gitlab|linkedin|twitter|youtube|youtu|"
+    r"telegram|discord|messenger)\.[a-z]+/|"
+    r"(?:t|m)\.me/|bit\.ly/|tinyurl\.com/|forms\.gle/|(?:drive|docs)\.google\.com/)\S+"
+)
+# @tên_tài_khoản đứng riêng; lookbehind loại phần sau "@" của email ("a@b.com").
+_HANDLE = re.compile(r"(?<![\w.+@-])@[A-Za-z0-9_]{2,30}(?:\.[A-Za-z0-9_]+)*")
 _PHONE_MOBILE = re.compile(
     r"(?<![\d.])\(?(?:\+?84|0084|0)\)?[\s.\-]?[35789](?:[\s.\-]?\d){8}(?!\d)"
 )
-_PHONE_LANDLINE = re.compile(r"(?<![\d.])0[\s.\-]?2\d{1,2}(?:[\s.\-]?\d){7,8}(?!\d)")
+# Mã vùng có thể đặt trong ngoặc: "(028) 3812 3456".
+_PHONE_LANDLINE = re.compile(r"(?<![\d.])\(?0[\s.\-]?2\d{1,2}\)?(?:[\s.\-]?\d){7,8}(?!\d)")
 # 3 số tỉnh + 1 số thế kỷ/giới + 2 số năm sinh + 6 số ngẫu nhiên.
 _CCCD = re.compile(r"(?<![\d.])0\d{2}[0-3]\d{8}(?!\d)")
 _NATIONAL_ID_CONTEXT = re.compile(
@@ -52,29 +64,46 @@ _STUDENT_ID_CONTEXT = re.compile(
 )
 # Chuỗi 8-12 chữ số đứng riêng; lookbehind loại "2.500.000", "8.5", "12/10/2023", "it001".
 _LONG_ID = re.compile(r"(?<![\w.,/])\d{8,12}(?!\w)")
+# MSSV chữ + số kiểu PTIT: B20DCCN123. Chỉ chữ HOA, như luật tên; dữ liệu gốc toàn chữ thường.
+_STUDENT_ID_ALNUM = re.compile(r"\b[A-Z]\d{2}[A-Z]{2,4}\d{3,4}\b")
 
 # Thứ tự = độ ưu tiên khi hai mẫu trùng vị trí.
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (URL, _URL),
     (EMAIL, _EMAIL),
+    (URL, _HANDLE),
     (STUDENT_ID, _STUDENT_ID_CONTEXT),
+    (STUDENT_ID, _STUDENT_ID_ALNUM),
     (NATIONAL_ID, _NATIONAL_ID_CONTEXT),
     (NATIONAL_ID, _CCCD),
     (PHONE, _PHONE_MOBILE),
     (PHONE, _PHONE_LANDLINE),
     (STUDENT_ID, _LONG_ID),
 )
+# Mẫu chỉ có thể khớp khi câu có "@": bỏ qua cả lượt quét trên chuỗi dài không có "@".
+_NEEDS_AT = frozenset({_EMAIL, _HANDLE})
 
 # --- Luật tên: từ xưng hô + âm tiết Viết Hoa ---------------------------------------------------
 _CUE = re.compile(
-    r"(?<!\w)(?:(?:giảng|giáo)\s+viên|thầy|cô|anh|chị|bạn|em|ông|bà|(?:gv|ths|ts|pgs|gs)\.?)\s+",
+    r"(?<!\w)(?:"
+    r"(?:thầy|cô)\s+giáo(?:\s+vụ)?|giáo\s+vụ|hiệu\s+(?:trưởng|phó)|trưởng\s+(?:khoa|bộ\s+môn)|"
+    r"trợ\s+giảng|cố\s+vấn(?:\s+học\s+tập)?|"
+    r"(?:giảng|giáo)\s+viên|thầy|cô|anh|chị|bạn|em|ông|bà|(?:gv|ths|ts|pgs|gs)\.?"
+    r")\s+",
+    re.IGNORECASE,
+)
+# Chức danh đứng giữa từ xưng hô và tên: "thầy hiệu trưởng Hùng", "cô trưởng khoa Lan", "thầy trợ
+# giảng Minh". Chỉ cụm đủ nghĩa chứ không phải từng từ lẻ: "em môn Toán" không có chức danh nào.
+_TITLE = re.compile(
+    r"(?:(?:phó\s+)?hiệu\s+trưởng|hiệu\s+phó|(?:phó\s+|trưởng\s+)(?:khoa|bộ\s+môn|phòng)|"
+    r"trợ\s+giảng|cố\s+vấn(?:\s+học\s+tập)?|chủ\s+nhiệm|giáo\s+vụ)\s+",
     re.IGNORECASE,
 )
 _WORD = re.compile(r"[^\W\d_]+")
 _BLANKS = re.compile(r"[ \t]+")
-# Từ Viết Hoa hay đứng sau từ xưng hô nhưng không phải tên: "Thầy Cô", "Cô Giáo", "Thầy Hiệu Trưởng"
+# Từ Viết Hoa hay đứng sau từ xưng hô nhưng không phải tên: "Thầy Cô", "Thầy Khoa Công nghệ"
 _NOT_NAMES = frozenset(
-    "thầy cô anh chị bạn em ông bà gv ths ts pgs gs giảng giáo viên sinh chủ nhiệm hiệu trưởng "
+    "thầy cô anh chị bạn em ông bà gv ths ts pgs gs giảng viên sinh chủ nhiệm hiệu trưởng "
     "phó khoa bộ môn tổ trợ sư tiến sĩ thạc ơi ạ".split()
 )
 # Chữ in hoa toàn câu thì chữ hoa không còn báo hiệu tên.
@@ -102,7 +131,7 @@ def _overlaps(span: Span, taken: Iterable[Span]) -> bool:
 def _regex_spans(text: str) -> list[Span]:
     accepted: list[Span] = []
     for pii_type, pattern in _PATTERNS:
-        if pii_type == EMAIL and "@" not in text:
+        if pattern in _NEEDS_AT and "@" not in text:
             continue  # mẫu email quét tuyến tính nhiều lần trên chuỗi dài không có "@"
         for match in pattern.finditer(text):
             span = Span(match.start(), match.end(), pii_type)
@@ -121,7 +150,10 @@ def _is_mostly_upper(text: str) -> bool:
 def _cue_name_spans(text: str) -> list[Span]:
     spans: list[Span] = []
     for cue in _CUE.finditer(text):
-        position = end = cue.end()
+        position = cue.end()
+        while title := _TITLE.match(text, position):
+            position = title.end()
+        start = end = position
         count = 0
         while count < MAX_NAME_WORDS:
             word = _WORD.match(text, position)
@@ -136,7 +168,7 @@ def _cue_name_spans(text: str) -> list[Span]:
                 break
             position = separator.end()
         if count:
-            spans.append(Span(cue.end(), end, NAME))
+            spans.append(Span(start, end, NAME))
     return spans
 
 

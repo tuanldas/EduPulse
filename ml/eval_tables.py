@@ -22,7 +22,18 @@ from ml.common import (
     prediction_metrics,
     reliability_bins,
 )
-from ml.plotting import ACCENT, COLORS, GRID, INK, MUTED, plt, save_figure_to, setup_style, vn
+from ml.plotting import (
+    ACCENT,
+    COLORS,
+    GRID,
+    INK,
+    MUTED,
+    plt,
+    save_figure_to,
+    setup_style,
+    vietnamese_axes,
+    vn,
+)
 from ml.preds import (
     BASELINES,
     DEPLOY_KEY,
@@ -294,4 +305,6 @@ def plot_reliability(path: Path, series: dict[str, dict[str, Any]], task: str, t
     counts.set_ylabel("Số câu", color=MUTED)
     counts.set_xlabel("Độ tin cậy (xác suất lớn nhất)")
     counts.set_xlim(0, 1)
+    vietnamese_axes(ax, "y")
+    vietnamese_axes(counts, "x")  # trục x dùng chung với khung trên; trục y của khung dưới là log
     return save_figure_to(fig, path)

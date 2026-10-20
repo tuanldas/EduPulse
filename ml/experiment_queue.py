@@ -38,6 +38,7 @@ from ml.common import (
     docker_running,
     keep_awake,
     mps_lock,
+    normalizer_compatible,
     phobert_run_name,
     phobert_runs_dir,
     read_json,
@@ -98,7 +99,7 @@ def mismatches(history: dict[str, Any], epochs: int) -> list[str]:
         for key, value in wanted.items()
         if args.get(key) != value
     ]
-    if history.get("normalizer_version") != NORMALIZER_VERSION:
+    if not normalizer_compatible(history.get("normalizer_version")):
         found.append(
             f"normalizer_version: đã chạy với {history.get('normalizer_version')!r}, "
             f"mã đang là {NORMALIZER_VERSION!r}"

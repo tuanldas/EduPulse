@@ -22,9 +22,9 @@ from typing import Any
 
 from edupulse.config import BUDGETS, DEFAULT_BUDGET, REPO_ROOT
 from edupulse.labels import TASKS
-from edupulse.text import NORMALIZER_VERSION
 from ml.common import (
     best_run,
+    normalizer_compatible,
     phobert_runs_dir,
     processed_manifest,
     read_json,
@@ -154,13 +154,13 @@ def build_freeze(deploy_run: str | None = None, repo: Path | None = None) -> dic
             f"cổng int8 của {deploy_run} chưa qua hoặc là của run khác: dừng, báo lead "
             "(không tìm cấu hình lượng tử hoá mới)"
         )
-    if gate.get("normalizer_version") != NORMALIZER_VERSION:
+    if not normalizer_compatible(gate.get("normalizer_version")):
         raise GuardError("onnx_gate.json sinh bởi bản chuẩn hoá khác: chạy lại `make export`")
     calibration = read_json(calibration_path(deploy_run))
     manifest = processed_manifest()
     baselines_path = repo / "results" / "metrics" / "val_baselines.json"
     baselines = read_json(baselines_path)
-    if baselines["normalizer_version"] != NORMALIZER_VERSION:
+    if not normalizer_compatible(baselines["normalizer_version"]):
         raise GuardError("val_baselines.json sinh bởi bản chuẩn hoá khác: chạy lại `make baseline`")
     return {
         "schema_version": SCHEMA_VERSION,
