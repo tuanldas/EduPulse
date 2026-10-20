@@ -159,6 +159,14 @@ class Settings:
     def job_ttl_s(self) -> float:
         return self.job_ttl_min * 60
 
+    @property
+    def heartbeat_s(self) -> int:
+        """Nhịp tim của tab giữ batch: tối đa HEARTBEAT_S và ít nhất 3 nhịp trong một TTL.
+
+        TTL ngắn (vd. 1 phút khi chạy E2E) mà vẫn giữ nhịp 60 s thì batch hết hạn đúng lúc nhịp tới.
+        """
+        return max(5, min(HEARTBEAT_S, int(self.job_ttl_s // 3)))
+
     def artifacts_dir(self, version: str | None = None) -> Path:
         """Nơi build và tải một phiên bản bundle; mặc định là phiên bản hiện hành."""
         return self.home / "artifacts" / _version("version", version or self.bundle_version)

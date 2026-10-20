@@ -171,3 +171,10 @@ def test_model_card_is_the_bundle_card_unchanged(live_client: TestClient, analyz
     response = live_client.get("/api/model-card")
     assert response.status_code == 200
     assert ModelCard.model_validate(response.json()) == load_model_card(analyzer.bundle)
+
+
+@pytest.mark.parametrize(("ttl_min", "expected"), [(30, HEARTBEAT_S), (1, 20), (0.1, 5)])
+def test_heartbeat_keeps_at_least_three_beats_per_ttl(ttl_min: float, expected: int):
+    # TTL ngắn (E2E đặt 1 phút) mà vẫn đập 60 s/lần thì batch hết hạn đúng lúc nhịp tới.
+    settings = replace(load_settings({}), job_ttl_min=ttl_min)
+    assert settings.heartbeat_s == expected

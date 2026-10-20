@@ -19,7 +19,6 @@ from edupulse.config import (
     AUTO_XAI_TOP,
     BUDGETS,
     DEFAULT_BUDGET,
-    HEARTBEAT_S,
     MAX_CHARS,
     MAX_ROWS,
     MAX_UPLOAD_MB,
@@ -72,7 +71,7 @@ async def app_config(analyzer: AnalyzerDep, settings: SettingsDep, demo: DemoDep
             for b in BUDGETS
         ],
         default_budget=DEFAULT_BUDGET,
-        heartbeat_s=HEARTBEAT_S,
+        heartbeat_s=settings.heartbeat_s,
         ui_samples=[UiSample(text=s.text, no_diacritics=s.no_diacritics) for s in demo.ui_samples],
         demo_available=demo.available,
         demo_reason=demo.reason,
