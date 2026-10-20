@@ -21,7 +21,7 @@ from edupulse.api.export import (
     render_corrected,
     resolve_overrides,
 )
-from edupulse.api.jobs import Batch
+from edupulse.api.jobs import Batch, BatchResult
 from edupulse.api.limits import DEMO_BATCH_ID
 from edupulse.api.parsing import is_illustrative, parse_upload
 from edupulse.api.routes.analyze import NO_CONTENT_MESSAGE, to_explain_response
@@ -41,13 +41,18 @@ INSIGHTS_CACHE_SIZE = 16  # số cách lọc nhóm được nhớ cho mỗi batc
 MAX_FILENAME_CHARS = 255
 
 
-def _finished(batch: Batch) -> Batch:
-    """Batch đã chạy xong và có kết quả để đọc; demo và batch chưa xong thì 409."""
+def _finished(batch: Batch) -> BatchResult:
+    """Kết quả của batch đã chạy xong; demo và batch chưa xong thì 409.
+
+    `result` được đọc đúng một lần: tab có thể đóng (batch bị giải phóng) ngay sau phép kiểm này,
+    nên route dùng giá trị trả về thay vì đọc lại `batch.result`.
+    """
     if batch.readonly:
         raise ApiError(409, "batch_readonly", "Batch demo chỉ có insight, không có kết quả dòng.")
-    if batch.state != "done" or batch.result is None:
+    result = batch.result
+    if batch.state != "done" or result is None:
         raise ApiError(409, "not_done", "Batch chưa phân tích xong.")
-    return batch
+    return result
 
 
 def _errors(codes: dict[int, str]) -> dict[int | str, dict[str, object]]:
@@ -181,9 +186,9 @@ def delete_batch(batch_id: BatchId, store: StoreDep) -> Response:
 def batch_results(
     batch_id: BatchId, store: StoreDep, analyzer: AnalyzerDep
 ) -> schemas.ResultsResponse:
-    batch = _finished(store.get(batch_id))
-    assert batch.result is not None
-    return results_response(batch, batch.result, analyzer.xai_max_words)
+    batch = store.get(batch_id)
+    result = _finished(batch)
+    return results_response(batch, result, analyzer.xai_max_words)
 
 
 @router.get(
@@ -200,9 +205,8 @@ def batch_results(
 def explain_row(
     batch_id: BatchId, index: RowIndex, store: StoreDep, analyzer: AnalyzerDep
 ) -> schemas.ExplainResponse:
-    batch = _finished(store.get(batch_id))
-    result = batch.result
-    assert result is not None
+    batch = store.get(batch_id)
+    result = _finished(batch)
     if index >= len(result.rows):
         raise ApiError(404, "row_not_found", "Batch không có dòng này.")
     row = result.rows[index]
@@ -278,9 +282,8 @@ def batch_insights(
 def export_batch(
     batch_id: BatchId, body: schemas.ExportRequest, store: StoreDep, analyzer: AnalyzerDep
 ) -> Response:
-    batch = _finished(store.get(batch_id))
-    result = batch.result
-    assert result is not None
+    batch = store.get(batch_id)
+    result = _finished(batch)
     corrections = resolve_overrides(result, body.overrides)
     if body.kind == "corrected":
         data = render_corrected(result, corrections, analyzer.bundle.manifest.model_version)

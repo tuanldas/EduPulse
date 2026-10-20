@@ -452,3 +452,22 @@ def test_closing_a_finished_batch_frees_its_results(live_client: TestClient):
 def test_batch_ids_are_not_guessable_by_prefix(live_client: TestClient):
     batch_id = upload(live_client, csv_bytes(sentences(3))).json()["batch_id"]
     assert live_client.get(f"/api/batches/{batch_id[:10]}").status_code == 404
+
+
+def test_finished_reads_the_result_only_once():
+    """Tab đóng ngay sau phép kiểm (kết quả bị giải phóng) không được làm route đọc lại ra None."""
+    from edupulse.api.routes.batches import _finished
+
+    class ClosingBatch:
+        readonly = False
+        state = "done"
+        reads = 0
+
+        @property
+        def result(self):
+            self.reads += 1
+            return "kết quả" if self.reads == 1 else None
+
+    batch = ClosingBatch()
+    assert _finished(batch) == "kết quả"
+    assert batch.reads == 1
