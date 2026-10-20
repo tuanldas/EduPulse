@@ -100,6 +100,15 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - Người dùng chọn gỡ câu gốc UIT-VSFC khỏi repo: `error_samples.csv` chỉ giữ mã câu + nhãn (bản đầy đủ ở `$EDUPULSE_HOME/outputs/`), wireframe dùng câu tự viết; lịch sử commit làm sạch lúc đẩy GitHub (cách làm chốt ở M3).
 - `EDUPULSE_NER` mặc định tắt ở production (RAM, tải mô hình lúc chạy). Không giả định có proxy: giới hạn thân/upload nằm trong app.
 
+### M5 — 2026-10-19 (sớm 5 ngày): ĐẠT (người dùng duyệt)
+- Review ảnh 4 trang (1440/390 × sáng/tối, 20 ảnh): https://claude.ai/artifact/Lhct9n8hHA8X92vpqQf19x. Playwright 94/94 trên bản export do FastAPI phục vụ, axe 0 vi phạm, không cuộn ngang từ 320px. Đóng băng tính năng.
+- Sửa nhỏ không cần duyệt lại: bảng so sánh trang 4 ghi "± 0,0" cho hàng 1 seed; khối quyền riêng tư theo luật ẩn tên v1.1.
+- Smoke chính thức trong Docker (`results/perf/smoke-2026-10-19-arm64.md`): nhãn p95 0,046 s, giải thích p95 0,655 s, RAM không thu hồi ~650MB (kể cả khi bật so sánh; page cache file mô hình ~620MB tính riêng), upload 5MB, khởi động 2,5 s; amd64 qua Rosetta: golden 20/20, 197/200 câu cùng nhãn (`results/perf/amd64-check-2026-10-19.md`).
+- Cổng "1.000 câu ≤ 30 s trên Mac" trượt 30,8 s do máy (A/B: image ngày 15/10 hôm nay cũng 32–34 s). Người dùng chọn **đạt có điều kiện**: thước đo quyết định là tiêu chí PDR (dưới 2 phút trên VPS), đo lại ở bước nghiệm thu VPS.
+
+### Gián đoạn — 2026-10-19 17:30: agent hết hạn mức tuần
+- dev-ml và dev-api (model Sonnet) dừng vì hạn mức tuần của tài khoản, mở lại 23:00 ngày 21/10; cây làm việc của cả hai sạch, phần đã commit đã gộp vào main (bundle v1.1, chuẩn hoá v2, sửa H1/H2/M1/L2). Lead tự làm việc nhỏ trong lúc chờ; hẹn khôi phục agent lúc 23:17 ngày 21/10.
+
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
 2. ~~Chấp nhận mốc smoke 17/10?~~ Đã chốt: chấp nhận (Session 3); smoke chạy 15/10.
