@@ -56,6 +56,14 @@ describe("bảng so sánh với mô hình cơ sở", () => {
     expect(within(row).getAllByText("—")).toHaveLength(3);
   });
 
+  it("hàng chỉ có 1 seed ghi một giá trị, không kèm ± 0,0", () => {
+    render(<ComparisonTable baselines={[]} architectures={[stl]} />);
+    const row = rowOf(/Đơn nhiệm \(STL\)/);
+    expect(within(row).getByText(formatScore(stl.sentiment_macro_f1.mean))).toBeInTheDocument();
+    expect(within(row).getByText(formatScore(stl.topic_macro_f1.mean))).toBeInTheDocument();
+    expect(row).not.toHaveTextContent("±");
+  });
+
   it("ghi số seed sau tên khi tên chưa nói, không lặp khi tên đã có", () => {
     render(<ComparisonTable baselines={[]} architectures={[stl, mtl]} />);
     expect(rowOf(/Đa nhiệm \(MTL\)/)).toHaveTextContent("Đa nhiệm (MTL) (3 seed)");

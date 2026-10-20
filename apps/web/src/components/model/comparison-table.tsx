@@ -32,8 +32,9 @@ function BaselineRowView({ row }: { row: Baseline }) {
 }
 
 function ArchitectureRowView({ row }: { row: Architecture }) {
+  // Một seed không có độ lệch chuẩn nên chỉ ghi giá trị, không ghi "± 0,0".
   const stat = (value: { mean: number; std: number; n: number }) =>
-    `${formatScore(value.mean)} ± ${formatScore(value.std)}`;
+    value.n > 1 ? `${formatScore(value.mean)} ± ${formatScore(value.std)}` : formatScore(value.mean);
   // Số seed chỉ ghi thêm khi tên chưa nói (tránh "1 seed (1 seed)").
   const seedNote = /seed/i.test(row.name) ? null : (
     <span className="text-xs text-muted-foreground">({row.seeds.length} seed)</span>
@@ -54,7 +55,8 @@ function ArchitectureRowView({ row }: { row: Architecture }) {
 
 /**
  * So sánh các mô hình cơ sở với mô hình đang dùng (dòng đang dùng in đậm). Mô hình huấn luyện nhiều
- * seed (đơn nhiệm / đa nhiệm) chỉ có Macro-F1 dạng trung bình ± độ lệch chuẩn nên ô khác ghi "—".
+ * seed (đơn nhiệm / đa nhiệm) chỉ có Macro-F1 dạng trung bình ± độ lệch chuẩn (một seed thì chỉ ghi giá trị)
+ * nên ô khác ghi "—".
  */
 export function ComparisonTable({ baselines, architectures }: { baselines: Baseline[]; architectures: Architecture[] }) {
   if (baselines.length === 0 && architectures.length === 0) return null;

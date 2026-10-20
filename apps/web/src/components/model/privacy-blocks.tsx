@@ -30,10 +30,10 @@ export function PrivacyBlocks() {
           Câu và file bạn tải lên chỉ nằm trong bộ nhớ của phiên làm việc và mất khi đóng tab. Không ghi log nội dung.
         </Block>
         <Block icon="visibility_off" title="Tự ẩn thông tin cá nhân">
-          SĐT, email, MSSV, CCCD, URL được thay bằng <PiiChip>{PII_TAG.phone}</PiiChip> <PiiChip>{PII_TAG.email}</PiiChip>{" "}
-          <PiiChip>{PII_TAG.student_id}</PiiChip>… trước khi phân tích và xuất file. Tên người{" "}
-          <PiiChip>{PII_TAG.name}</PiiChip> chỉ ở mức cố gắng tối đa (best effort): tên viết thường, biệt danh có thể sót →
-          hãy ẩn danh trước khi tải file.
+          SĐT (cả số bàn), email, MSSV, CCCD, liên kết và @tài khoản được thay bằng <PiiChip>{PII_TAG.phone}</PiiChip>{" "}
+          <PiiChip>{PII_TAG.email}</PiiChip> <PiiChip>{PII_TAG.student_id}</PiiChip>… trước khi phân tích và xuất file. Tên
+          Viết Hoa đứng sau thầy, cô, cô giáo, hiệu trưởng… thành <PiiChip>{PII_TAG.name}</PiiChip>, ở mức cố gắng tối đa
+          (best effort): tên viết thường hoặc không có từ xưng hô có thể sót → hãy ẩn danh trước khi tải file.
         </Block>
         <Block icon="person_check" title="Con người quyết định">
           Câu có độ tin cậy thấp được gắn cờ để người duyệt; nhãn đã sửa có thể xuất ra để huấn luyện lại. Hệ thống không
