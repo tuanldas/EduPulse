@@ -84,14 +84,16 @@ def upload_batch(
     )
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise too_large
-    data = file.file.read(MAX_UPLOAD_BYTES + 1)
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise too_large
+    store.ensure_capacity()  # kho đầy thì 429 ngay, không đọc hay parse file
     filename = file.filename or ""
-    table = parse_upload(filename, data)  # chỉ đọc phần mở rộng của tên
+    with store.parsing():  # vài file một lúc: RAM và CPU không nhân lên theo số upload song song
+        data = file.file.read(MAX_UPLOAD_BYTES + 1)
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise too_large
+        table = parse_upload(filename, data)  # chỉ đọc phần mở rộng của tên
+        del data
     # Tên file chỉ để hiển thị lại cho chính người tải lên: cắt cho gọn, không bao giờ ghi log.
     filename = filename[:MAX_FILENAME_CHARS]
-    del data
     batch = store.create(
         filename, table, illustrative=is_illustrative("upload", None, table.columns)
     )

@@ -7,7 +7,9 @@ Quy ước:
   theo độ nhất quán số cột trên những dòng đầu (Excel locale Việt hay xuất `;`, và câu tiếng Việt
   có dấu phẩy nên `csv.Sniffer` hay đoán sai).
 - XLSX: sheet hiển thị đầu tiên, đọc bằng `python-calamine`. File zip được giải nén THỬ theo luồng
-  với trần dung lượng thật (không tin `file_size` trong header, có thể khai giả) trước khi mở.
+  với trần dung lượng thật (không tin `file_size` trong header, có thể khai giả) trước khi mở, rồi
+  các sheet được quét lấy dòng/cột xa nhất từ thuộc tính `r` của `<row>` và `<c>` (không tin
+  `<dimension>`), vì calamine cấp phát ma trận đặc theo ô xa nhất.
 - Quá `MAX_ROWS` dòng dữ liệu thì từ chối, kèm số dòng thật để giao diện báo.
 
 Lỗi là `ApiError` với mã ổn định; thông điệp không chứa nội dung file hay tên file.
@@ -18,6 +20,7 @@ from __future__ import annotations
 import csv
 import datetime
 import io
+import posixpath
 import re
 import struct
 import unicodedata
@@ -25,6 +28,7 @@ import zipfile
 import zlib
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from xml.parsers import expat
 
 from edupulse.api.errors import ApiError
 from edupulse.api.limits import (
@@ -33,13 +37,24 @@ from edupulse.api.limits import (
     MAX_COLUMNS,
     MAX_GROUPS,
     XLSX_MAX_MEMBERS,
+    XLSX_MAX_SHEET_CELLS,
+    XLSX_MAX_SHEET_ROWS,
     XLSX_MAX_UNCOMPRESSED_MB,
 )
 from edupulse.config import MAX_ROWS
 from edupulse.demo_data import strip_diacritics
 
 DELIMITERS = (",", ";", "\t")
-SNIFF_ROWS = 100  # số dòng đầu dùng để chọn dấu phân cách
+SNIFF_ROWS = 100  # số dòng đầu (không trống) dùng để chọn dấu phân cách
+SNIFF_RAW_ROWS = (
+    2000  # trần số dòng thô được xem, kể cả dòng trống: file toàn dòng trống không quét hết
+)
+# File 10MB toàn dấu phân cách không phải góp ý (cả 2.000 dòng x 200 cột chỉ ~400.000): dừng sớm vì
+# csv.reader dựng nguyên một dòng 10 triệu ô (~155MB) trước khi ta được xem nó.
+MAX_DELIMITERS = 2_000_000
+# Dòng trống tối đa trước khi từ chối: bằng số dòng tối đa của một sheet XLSX (cùng một trần, vì
+# sheet đã tô định dạng tới hàng nghìn dòng vẫn là file hợp lệ), đủ nhỏ để quét CSV không tốn CPU.
+MAX_BLANK_ROWS = XLSX_MAX_SHEET_ROWS
 ZIP_MAGIC = b"PK\x03\x04"
 UTF16_BOMS = (b"\xff\xfe", b"\xfe\xff")
 _XLSX_CHUNK = 1 << 16
@@ -140,13 +155,19 @@ def choose_delimiter(text: str) -> str:
     một cột chứa dấu phẩy trong câu rơi vào `;` hoặc TAB, tức không bị tách câu.
     """
     best, best_score = DELIMITERS[0], None
+    skipped = False
     for delimiter in DELIMITERS:
+        if text.count(delimiter) > MAX_DELIMITERS:
+            skipped = True
+            continue
         widths: list[int] = []
+        seen = 0
         try:
             for row in _iter_csv(text, delimiter):
+                seen += 1
                 if any(cell.strip() for cell in row):
                     widths.append(len(row))
-                if len(widths) >= SNIFF_ROWS:
+                if len(widths) >= SNIFF_ROWS or seen >= SNIFF_RAW_ROWS:
                     break
         except ApiError:
             continue
@@ -162,6 +183,8 @@ def choose_delimiter(text: str) -> str:
         )
         if best_score is None or score > best_score:
             best, best_score = delimiter, score
+    if best_score is None and skipped:
+        raise _decode_failed("CSV có quá nhiều dấu phân cách")
     return best
 
 
@@ -174,12 +197,12 @@ _LOCAL_SIGNATURE = b"PK\x03\x04"
 _ENCRYPTED_FLAG = 0x1
 
 
-def _inflated_size(raw: bytes, member: zipfile.ZipInfo, budget: int) -> int:
-    """Số byte THỰC của một tệp con sau khi giải nén, đếm tối đa `budget + 1`.
+def _inflate_chunks(raw: bytes, member: zipfile.ZipInfo, budget: int) -> Iterator[bytes]:
+    """Các đoạn byte THỰC của một tệp con sau khi giải nén, dừng khi tổng đã quá `budget`.
 
     Giải nén thẳng luồng nén ở đúng vị trí của nó, không đi qua `file_size`/`crc` trong header
     (kẻ tấn công khai nhỏ để qua mặt trình đọc tôn trọng header). Tệp chỉ lưu (stored) không nở
-    ra nên tính bằng số byte nằm trong file.
+    ra nên các đoạn chính là byte nằm trong file.
     """
     offset = member.header_offset
     header = raw[offset : offset + _LOCAL_HEADER.size]
@@ -190,7 +213,10 @@ def _inflated_size(raw: bytes, member: zipfile.ZipInfo, budget: int) -> int:
         raise _decode_failed("XLSX hỏng hoặc có mật khẩu")
     position = offset + _LOCAL_HEADER.size + name_length + extra_length
     if member.compress_type == zipfile.ZIP_STORED:
-        return max(0, min(member.compress_size, len(raw) - position))
+        end = position + max(0, min(member.compress_size, len(raw) - position))
+        for start in range(position, end, _XLSX_CHUNK):
+            yield raw[start : min(start + _XLSX_CHUNK, end)]
+        return
     if member.compress_type != zipfile.ZIP_DEFLATED:
         raise _decode_failed("XLSX dùng kiểu nén không hỗ trợ")
     inflater = zlib.decompressobj(-zlib.MAX_WBITS)
@@ -204,10 +230,17 @@ def _inflated_size(raw: bytes, member: zipfile.ZipInfo, budget: int) -> int:
                 position += len(chunk)
                 if not chunk:
                     break  # luồng nén cụt: phần đã giải nén vẫn được tính
-            total += len(inflater.decompress(chunk, _XLSX_CHUNK))
+            data = inflater.decompress(chunk, _XLSX_CHUNK)
+            total += len(data)
+            if data:
+                yield data
     except zlib.error:
         raise _decode_failed("XLSX hỏng") from None
-    return total
+
+
+def _inflated_size(raw: bytes, member: zipfile.ZipInfo, budget: int) -> int:
+    """Số byte THỰC của một tệp con sau khi giải nén, đếm tối đa `budget + 1`."""
+    return sum(len(chunk) for chunk in _inflate_chunks(raw, member, budget))
 
 
 def check_xlsx_size(data: bytes) -> None:
@@ -232,6 +265,145 @@ def check_xlsx_size(data: bytes) -> None:
             raise _decode_failed(f"XLSX giải nén vượt {XLSX_MAX_UNCOMPRESSED_MB}MB")
 
 
+_CELL_REF = re.compile(r"([A-Za-z]{1,4})([0-9]{1,12})")
+_HUGE = 10**12  # số đo "vô cùng lớn" cho tham chiếu ô sai dạng hoặc quá dài, để chắc chắn bị chặn
+
+
+def _column_number(letters: str) -> int:
+    """Số thứ tự cột từ chữ cái (A = 1, XFD = 16384); 4 chữ cái trở lên vượt mọi cột có thật."""
+    if len(letters) > 3:
+        return _HUGE
+    number = 0
+    for char in letters.upper():
+        number = number * 26 + ord(char) - 64
+    return number
+
+
+class _SheetExtent:
+    """Dòng/cột xa nhất của một sheet theo các thuộc tính `r` của `<row>` và `<c>`.
+
+    Ô không có `r` nằm ngay sau ô trước nó, dòng không có `r` nằm ngay sau dòng trước, nên ngoài
+    tham chiếu còn đếm số `<row>` và số `<c>` nhiều nhất trong một dòng.
+    """
+
+    def __init__(self) -> None:
+        self.rows = 0
+        self.max_row = 0
+        self.max_col = 0
+        self.cells = 0
+        self.max_cells = 0
+
+    def start(self, name: str, attrs: dict[str, str]) -> None:
+        tag = name.rpartition(":")[2]  # chấp nhận tiền tố không gian tên như <x:row>
+        if tag == "row":
+            self.rows += 1
+            self.cells = 0
+            ref = attrs.get("r", "")
+            if ref.isdigit():
+                self.max_row = max(self.max_row, int(ref) if len(ref) <= 12 else _HUGE)
+        elif tag == "c":
+            self.cells += 1
+            self.max_cells = max(self.max_cells, self.cells)
+            match = _CELL_REF.fullmatch(attrs.get("r", ""))
+            if match:
+                self.max_col = max(self.max_col, _column_number(match[1]))
+                self.max_row = max(self.max_row, int(match[2]))
+        else:
+            return
+        self.check()
+
+    def check(self) -> None:
+        """Từ chối ngay khi vùng ô vượt giới hạn: các số đo chỉ tăng nên dừng sớm là đúng."""
+        rows, cols = max(self.rows, self.max_row), max(self.max_col, self.max_cells)
+        if rows > XLSX_MAX_SHEET_ROWS or cols > MAX_COLUMNS or rows * cols > XLSX_MAX_SHEET_CELLS:
+            raise _decode_failed(
+                f"XLSX có vùng ô quá lớn (tối đa {XLSX_MAX_SHEET_ROWS} dòng, {MAX_COLUMNS} cột)"
+            )
+
+
+def _reject_doctype(*_: object) -> None:
+    raise _decode_failed("XLSX chứa khai báo DTD")
+
+
+def _scan_part(raw: bytes, member: zipfile.ZipInfo, budget: int) -> None:
+    """Quét một tệp con XML bằng expat, không dựng cây, ném lỗi nếu vùng ô quá lớn.
+
+    Parser thật nên thuộc tính được hiểu đúng như trình đọc XML của calamine hiểu (khoảng trắng
+    quanh dấu `=`, nháy đơn hoặc kép, `>` trong giá trị); XML sai cấu trúc bị từ chối chứ không
+    bỏ qua. DTD bị từ chối hẳn nên không có thực thể nào được mở rộng. Tệp không phải XML (ảnh,
+    cài đặt máy in...) không thể là sheet nên được bỏ qua.
+    """
+    extent = _SheetExtent()
+    parser = expat.ParserCreate()
+    parser.StartElementHandler = extent.start
+    parser.StartDoctypeDeclHandler = _reject_doctype
+    started = False
+    try:
+        for chunk in _inflate_chunks(raw, member, budget):
+            if not started:
+                started = True
+                if not chunk.lstrip(b"\xef\xbb\xbf\xff\xfe\xfe\xff \t\r\n\x00").startswith(b"<"):
+                    return
+            parser.Parse(chunk, False)
+        if started:
+            parser.Parse(b"", True)
+    except expat.ExpatError:
+        raise _decode_failed("XLSX hỏng") from None
+
+
+def _relationship_targets(raw: bytes, member: zipfile.ZipInfo, budget: int) -> list[str]:
+    """Tên tệp con (đường dẫn trong zip) mà các quan hệ của workbook trỏ tới."""
+    targets: list[str] = []
+
+    def start(name: str, attrs: dict[str, str]) -> None:
+        target = attrs.get("Target")
+        if name.rpartition(":")[2] == "Relationship" and target:
+            if attrs.get("TargetMode", "").lower() != "external":
+                # calamine ghép "xl/" vào đường dẫn tương đối; chuẩn hoá thêm để bắt cả `..`.
+                name_in_zip = target[1:] if target.startswith("/") else f"xl/{target}"
+                targets.extend((name_in_zip, posixpath.normpath(name_in_zip)))
+
+    parser = expat.ParserCreate()
+    parser.StartElementHandler = start
+    parser.StartDoctypeDeclHandler = _reject_doctype
+    try:
+        for chunk in _inflate_chunks(raw, member, budget):
+            parser.Parse(chunk, False)
+        parser.Parse(b"", True)
+    except expat.ExpatError:
+        raise _decode_failed("XLSX hỏng") from None
+    return targets
+
+
+def check_xlsx_extent(data: bytes) -> None:
+    """Từ chối XLSX có vùng ô quá lớn TRƯỚC khi calamine cấp phát ma trận đặc cho sheet.
+
+    Calamine cấp phát cả hình chữ nhật từ ô đầu tới ô xa nhất (~31 byte mỗi ô), nên một file vài KB
+    có ô ở dòng 1.048.576 cột 50 cũng ăn ~1,6GB và làm container chết. Kiểm này đọc đúng các tệp
+    mà workbook trỏ tới (calamine mở sheet theo quan hệ, không theo tên thư mục) cùng các tệp
+    dưới `xl/worksheets/`, nên đổi tên tệp sheet không qua mặt được.
+    """
+    try:
+        members = zipfile.ZipFile(io.BytesIO(data)).infolist()
+    except (zipfile.BadZipFile, ValueError, OSError):
+        raise _decode_failed("XLSX hỏng") from None
+    by_name: dict[str, list[zipfile.ZipInfo]] = {}
+    for member in members:
+        if not member.is_dir():
+            by_name.setdefault(member.filename, []).append(member)
+    if "xl/workbook.xml" not in by_name:
+        raise _decode_failed("không phải XLSX (thiếu xl/workbook.xml)")
+    limit = XLSX_MAX_UNCOMPRESSED_MB * 1024 * 1024
+    names = {name for name in by_name if name.startswith("xl/worksheets/")}
+    for rels in by_name.get("xl/_rels/workbook.xml.rels", []):
+        names.update(_relationship_targets(data, rels, limit))
+    for name in sorted(names & by_name.keys()):
+        for member in by_name[
+            name
+        ]:  # tên trùng trong danh mục: quét hết, không đoán cái nào được đọc
+            _scan_part(data, member, limit)  # ném lỗi ngay khi vùng ô vượt giới hạn
+
+
 def _cell_text(cell: object) -> str:
     """Ô XLSX -> chuỗi: số nguyên không có ".0", ngày giờ theo ISO."""
     if cell is None or cell == "":
@@ -249,6 +421,7 @@ def _iter_xlsx(data: bytes) -> tuple[Iterator[list[str]], list[ParseWarning]]:
     from python_calamine import CalamineWorkbook, SheetTypeEnum, SheetVisibleEnum
 
     check_xlsx_size(data)
+    check_xlsx_extent(data)
     try:
         book = CalamineWorkbook.from_object(io.BytesIO(data))
         visible = [
@@ -314,12 +487,16 @@ def build_table(
     renamed = 0
     rows: list[list[str]] = []
     source_rows: list[int] = []
-    blank = 0
+    blank = 0  # dòng trống sau tiêu đề, để báo cho người dùng
+    empty = 0  # mọi dòng trống kể cả trước tiêu đề, để dừng khi file toàn dòng trống
     total = 0  # số dòng dữ liệu không trống, kể cả phần vượt giới hạn không được lưu
 
     for raw in iterator:
         cells = [_clean_cell(cell) for cell in raw]
         if not any(cells):
+            empty += 1
+            if empty > MAX_BLANK_ROWS:
+                raise _decode_failed(f"quá {MAX_BLANK_ROWS} dòng trống")
             if columns is not None:
                 blank += 1
             continue

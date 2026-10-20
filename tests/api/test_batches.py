@@ -1,8 +1,10 @@
 """Phân tích hàng loạt qua HTTP với mô hình thật: tải file, chạy, tiến độ, kết quả, giải thích."""
 
+import io
 import math
 import time
 
+import openpyxl
 import pytest
 from batch_helpers import (
     SENTENCES,
@@ -83,6 +85,23 @@ def test_upload_errors_have_stable_codes(live_client, name, data, status, code):
     response = upload(live_client, data, name)
     assert response.status_code == status
     assert error(response).code == code
+
+
+def test_an_xlsx_with_one_far_corner_cell_is_refused_before_it_can_exhaust_memory(
+    live_client: TestClient,
+):
+    # ~5KB, nhưng calamine sẽ dựng ma trận đặc ~52 triệu ô (~1,6GB) nếu được mở.
+    book = openpyxl.Workbook()
+    book.active.append(["Góp ý"])
+    book.active.cell(row=1_048_576, column=50, value="x")
+    out = io.BytesIO()
+    book.save(out)
+    assert len(out.getvalue()) < 10_000
+    started = time.monotonic()
+    response = upload(live_client, out.getvalue(), "xa.xlsx")
+    assert response.status_code == 422 and error(response).code == "decode_failed"
+    assert "vùng ô" in error(response).message
+    assert time.monotonic() - started < 5
 
 
 def test_too_many_rows_reports_the_real_count(live_client: TestClient):

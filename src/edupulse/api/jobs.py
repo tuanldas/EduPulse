@@ -19,12 +19,20 @@ import secrets
 import threading
 import time
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import cast
 
 from edupulse.api.errors import ApiError
-from edupulse.api.limits import DEMO_BATCH_ID, MAX_GROUP_CHARS, MAX_GROUPS
+from edupulse.api.limits import (
+    DEMO_BATCH_ID,
+    MAX_GROUP_CHARS,
+    MAX_GROUPS,
+    MAX_PARALLEL_PARSES,
+    PARSE_WAIT_S,
+    PURGE_EVERY_S,
+)
 from edupulse.api.parsing import ParsedTable, is_illustrative
 from edupulse.api.schemas import BatchState, BatchStep
 from edupulse.config import AUTO_XAI_TOP, BUDGETS, MAX_CHARS, MAX_JOBS, MAX_QUEUE
@@ -140,12 +148,18 @@ class JobStore:
         ttl_s: float,
         max_batches: int = MAX_JOBS,
         max_queue: int = MAX_QUEUE,
+        parse_slots: int = MAX_PARALLEL_PARSES,
+        parse_wait_s: float = PARSE_WAIT_S,
+        purge_every_s: float = PURGE_EVERY_S,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.analyzer = analyzer
         self.ttl_s = ttl_s
         self.max_batches = max_batches
         self.max_queue = max_queue
+        self.parse_wait_s = parse_wait_s
+        self.purge_every_s = purge_every_s
+        self._parse_slots = threading.BoundedSemaphore(parse_slots)
         self._clock = clock
         self._lock = threading.RLock()
         self._batches: dict[str, Batch] = {}
@@ -242,6 +256,27 @@ class JobStore:
             self._purge_locked()
             return len(self._batches)
 
+    def ensure_capacity(self) -> None:
+        """429 nếu kho đã đủ batch. Gọi TRƯỚC khi đọc và parse file để không tốn công vô ích."""
+        with self._lock:
+            self._purge_locked()
+            if len(self._batches) >= self.max_batches:
+                raise _busy("Máy chủ đang giữ tối đa số batch, hãy thử lại sau ít phút.")
+
+    @contextmanager
+    def parsing(self) -> Iterator[None]:
+        """Một trong vài chỗ đọc + parse file; hết chỗ quá lâu thì 429.
+
+        Upload song song mà không có trần thì RAM và CPU nhân lên theo số yêu cầu (6 file 9MB cùng
+        lúc đo được +286MB), nên mỗi lúc chỉ vài file được mở ra.
+        """
+        if not self._parse_slots.acquire(timeout=self.parse_wait_s):
+            raise _busy("Máy chủ đang đọc nhiều file cùng lúc, hãy thử lại sau ít giây.")
+        try:
+            yield
+        finally:
+            self._parse_slots.release()
+
     def _purge_locked(self) -> None:
         now = self._clock()
         expired = [b for b in self._batches.values() if now - b.last_access > self.ttl_s]
@@ -266,7 +301,9 @@ class JobStore:
     ) -> Batch:
         with self._lock:
             self._purge_locked()
-            if len(self._batches) >= self.max_batches:
+            if (
+                len(self._batches) >= self.max_batches
+            ):  # chỗ có thể đã bị lấy từ lúc ensure_capacity
                 raise _busy("Máy chủ đang giữ tối đa số batch, hãy thử lại sau ít phút.")
             now = self._clock()
             batch = Batch(
@@ -360,7 +397,12 @@ class JobStore:
 
     def _work(self) -> None:
         while True:
-            batch_id = self._queue.get()
+            try:
+                batch_id = self._queue.get(timeout=self.purge_every_s)
+            except queue.Empty:  # rảnh: dọn batch hết hạn dù không có yêu cầu nào chạm vào kho
+                with self._lock:
+                    self._purge_locked()
+                continue
             if batch_id is None:
                 return
             with self._lock:

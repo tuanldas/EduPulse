@@ -27,7 +27,7 @@ from edupulse.api.paths import is_api_path
 from edupulse.api.routes import analyze, batches, meta
 from edupulse.api.schemas import ErrorResponse
 from edupulse.api.security_headers import SecurityHeadersMiddleware
-from edupulse.api.upload_limit import UploadLimitMiddleware
+from edupulse.api.upload_limit import JsonBodyLimitMiddleware, UploadLimitMiddleware
 from edupulse.config import Settings, load_settings
 from edupulse.demo_data import load_demo
 from edupulse.engine.bundle import (
@@ -151,8 +151,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(batches.router)
     _serve_web(app, settings.web_dir)
 
-    # Giới hạn upload nằm trong cùng: phản hồi 413 của nó vẫn qua header an toàn và nhật ký.
+    # Giới hạn thân yêu cầu nằm trong cùng: phản hồi 413 vẫn qua header an toàn và nhật ký. Upload
+    # (multipart) và các thân JSON còn lại có trần riêng; hai bên không giẫm lên đường dẫn của nhau.
     app.add_middleware(UploadLimitMiddleware)
+    app.add_middleware(JsonBodyLimitMiddleware)
     # Kết quả 2.000 dòng ~0,8MB JSON nén còn ~0,1MB; phản hồi nhỏ (health...) để nguyên.
     app.add_middleware(GZipMiddleware, minimum_size=GZIP_MIN_BYTES, compresslevel=5)
     # Middleware thêm sau nằm ngoài: nhật ký bọc tất cả, header an toàn phủ cả phản hồi CORS.
