@@ -64,9 +64,10 @@ def test_page_directory_without_trailing_slash_redirects(client: TestClient, web
     )
     if page is None:
         pytest.skip("bản export chưa có trang con nào")
-    redirect = client.get(f"/{page}", follow_redirects=False)
+    redirect = client.get(f"/{page}", headers={"host": "evil.example"}, follow_redirects=False)
     assert redirect.status_code == 307
-    assert redirect.headers["location"].endswith(f"/{page}/")
+    # Đường dẫn tương đối: không phản chiếu header Host do client gửi.
+    assert redirect.headers["location"] == f"/{page}/"
     assert client.get(f"/{page}/").status_code == 200
 
 
