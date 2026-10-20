@@ -108,6 +108,8 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 
 ### Gián đoạn — 2026-10-19 17:30: agent hết hạn mức tuần
 - dev-ml và dev-api (model Sonnet) dừng vì hạn mức tuần của tài khoản, mở lại 23:00 ngày 21/10; cây làm việc của cả hai sạch, phần đã commit đã gộp vào main (bundle v1.1, chuẩn hoá v2, sửa H1/H2/M1/L2). Lead tự làm việc nhỏ trong lúc chờ; hẹn khôi phục agent lúc 23:17 ngày 21/10.
+- Lead đã làm (2026-10-20 sáng): gộp v1.1 + H1/H2/M1/L2; tự sửa L5 (Location tương đối), L6 (nhịp tim theo TTL), L7 (đọc kết quả batch một lần); sửa "± 0,0" và khối quyền riêng tư trang 4; dựng lại demo-data cho v1.1; quét câu gốc trên repo = 0; pytest 2.102 pass; `push_hub --dry-run` trên v1.1 đạt (10 tệp, 340MB, 0 câu gốc).
+- Còn lại cho agent: L4 CSP + ghim Swagger (kèm chạy lại E2E), nới `test_batch_performance`, L1 tuỳ chọn; compose cuối + hardening L3 + đo smoke cuối trong Docker; docs/deployment.md, README cuối, results/README.md + model_card.md; tái lập trên clone sạch; M3 (HF sau khi người dùng đăng nhập; GitHub với lịch sử sạch).
 
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
