@@ -89,7 +89,8 @@ Modify:
 - [ ] README cuối; rà tech-stack; cập nhật PDR mục 5, 7, ràng buộc host
 - [ ] `results/README.md` + `results/model_card.md`
 - [ ] Tái lập trên clone sạch
-- [ ] Mốc M3: public repo GitHub, `EDUPULSE_SOURCE_URL`, tag `v1.0.0`; commit
+- [x] Mốc M3: public repo GitHub (https://github.com/tuanldas/EduPulse, lịch sử đã viết lại), `EDUPULSE_SOURCE_URL` — 2026-10-20
+- [ ] Tag `v1.0.0` khi nộp bản cuối
 
 ## Success Criteria
 - Clone sạch + `.env` + artifacts → `docker compose up -d --build` → `/api/health` 200, `healthy`, `demo_available=true` (Mac, có mạng).

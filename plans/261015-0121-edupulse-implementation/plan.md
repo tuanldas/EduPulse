@@ -101,7 +101,7 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 - `EDUPULSE_NER` mặc định tắt ở production (RAM, tải mô hình lúc chạy). Không giả định có proxy: giới hạn thân/upload nằm trong app.
 
 ### M5 — 2026-10-19 (sớm 5 ngày): ĐẠT (người dùng duyệt)
-- Review ảnh 4 trang (1440/390 × sáng/tối, 20 ảnh): https://claude.ai/artifact/Lhct9n8hHA8X92vpqQf19x. Playwright 94/94 trên bản export do FastAPI phục vụ, axe 0 vi phạm, không cuộn ngang từ 320px. Đóng băng tính năng.
+- Review ảnh 4 trang (1440/390 × sáng/tối, 20 ảnh; trang review trên claude.ai đã gỡ ngày 20/10). Playwright 94/94 trên bản export do FastAPI phục vụ, axe 0 vi phạm, không cuộn ngang từ 320px. Đóng băng tính năng.
 - Sửa nhỏ không cần duyệt lại: bảng so sánh trang 4 ghi "± 0,0" cho hàng 1 seed; khối quyền riêng tư theo luật ẩn tên v1.1.
 - Smoke chính thức trong Docker (`results/perf/smoke-2026-10-19-arm64.md`): nhãn p95 0,046 s, giải thích p95 0,655 s, RAM không thu hồi ~650MB (kể cả khi bật so sánh; page cache file mô hình ~620MB tính riêng), upload 5MB, khởi động 2,5 s; amd64 qua Rosetta: golden 20/20, 197/200 câu cùng nhãn (`results/perf/amd64-check-2026-10-19.md`).
 - Cổng "1.000 câu ≤ 30 s trên Mac" trượt 30,8 s do máy (A/B: image ngày 15/10 hôm nay cũng 32–34 s). Người dùng chọn **đạt có điều kiện**: thước đo quyết định là tiêu chí PDR (dưới 2 phút trên VPS), đo lại ở bước nghiệm thu VPS.
@@ -109,7 +109,14 @@ Năng lực: 1 người + agent AI, làm cả cuối tuần ~7h/ngày ≈ 98h l�
 ### Gián đoạn — 2026-10-19 17:30: agent hết hạn mức tuần
 - dev-ml và dev-api (model Sonnet) dừng vì hạn mức tuần của tài khoản, mở lại 23:00 ngày 21/10; cây làm việc của cả hai sạch, phần đã commit đã gộp vào main (bundle v1.1, chuẩn hoá v2, sửa H1/H2/M1/L2). Lead tự làm việc nhỏ trong lúc chờ; hẹn khôi phục agent lúc 23:17 ngày 21/10.
 - Lead đã làm (2026-10-20 sáng): gộp v1.1 + H1/H2/M1/L2; tự sửa L5 (Location tương đối), L6 (nhịp tim theo TTL), L7 (đọc kết quả batch một lần); sửa "± 0,0" và khối quyền riêng tư trang 4; dựng lại demo-data cho v1.1; quét câu gốc trên repo = 0; pytest 2.102 pass; `push_hub --dry-run` trên v1.1 đạt (10 tệp, 340MB, 0 câu gốc).
-- Còn lại cho agent: L4 CSP + ghim Swagger (kèm chạy lại E2E), nới `test_batch_performance`, L1 tuỳ chọn; compose cuối + hardening L3 + đo smoke cuối trong Docker; docs/deployment.md, README cuối, results/README.md + model_card.md; tái lập trên clone sạch; M3 (HF sau khi người dùng đăng nhập; GitHub với lịch sử sạch).
+- Còn lại cho agent: L4 CSP + ghim Swagger (kèm chạy lại E2E), nới `test_batch_performance`, L1 tuỳ chọn; compose cuối + hardening L3 + đo smoke cuối trong Docker; docs/deployment.md, README cuối, results/README.md + model_card.md; tái lập trên clone sạch; M3 HF (sau khi người dùng đăng nhập).
+
+### M3 GitHub — 2026-10-20 tối: đã đẩy
+- Repo public https://github.com/tuanldas/EduPulse, chỉ nhánh `main`. Người dùng chọn giữ 226 commit và viết lại lịch sử bằng git-filter-repo: 87 dòng câu gốc trong 33 phiên bản tệp cũ (test, wireframe, `error_samples.csv` cũ) thành `[đã gỡ câu UIT-VSFC]`; cây HEAD không đổi (`811125e`), giữ đủ 226 commit và 44 merge, commit message không phải sửa. Quét lại bản clone từ GitHub: 0 câu gốc, 0 bí mật (962 blob, 228 message).
+- Mọi SHA đã đổi. Tệp trong `results/` và manifest bundle giữ nguyên nên còn ghi SHA cũ (sửa sẽ đụng lần chấm test duy nhất). Đối chiếu cũ → mới: freeze `179c3e560d` → `6dd48705f5`; test_all + error_analysis `bac46b8bf8` → `5c7b167958`; hitl_retrain `9ba1ef7972` → `b2de581a23`; amd64 19/10 `837a364` → `68ac382d2a`; smoke 15/10 `d858f07` → `9286f4184c`; smoke 19/10 `55a9050` → `e650f1e705`; bundle v1.0 `6c19cdb3cf` → `f7cc8144d8`; bundle v1.1 `a716d152b1` → `5d9d35bd01`.
+- Lịch sử cũ (còn câu gốc, chỉ để trên máy, không đẩy): `$EDUPULSE_HOME/backup/edupulse-history-before-rewrite-2026-10-20.bundle` + `refs-before-rewrite-2026-10-20.txt`.
+- Chốt chặn: `make check-raw` (`ml/check_raw_sentences.py`, có test) và hook `pre-push` cục bộ gọi nó trên các commit remote chưa có; không kiểm được cũng chặn. 4 worktree agent đã đặt lại về `main` mới; không dùng SHA cũ, agent vẫn không tự đẩy.
+- Còn lại M3: HF sau khi người dùng đăng nhập; manifest v1.1 đang ghi SHA cũ `a716d152b1` nên trước khi đẩy dựng lại bundle (cùng mô hình) hoặc ghi SHA mới vào README HF. Tag `v1.0.0` khi nộp bản cuối.
 
 ## Câu hỏi chưa giải quyết
 1. VPS x86_64 hay arm64, có domain cho HTTPS không? (quyết định Caddy, cách build, mức tin của kiểm QEMU).
